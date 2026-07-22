@@ -1,1 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>A.I. ADVANCE MUSIC ACADEMY // HUB</title>
+    <style>
+        :root { --bg: #050a14; --sidebar-w: 280px; --teal: #00f2ff; --purple: #290052; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Arial Narrow', sans-serif; display: flex; height: 100vh; overflow: hidden; }
 
+        /* SIDEBAR ARCHITECTURE */
+        #sidebar {
+            width: var(--sidebar-w); background: #000; border-right: 1.8px solid var(--purple);
+            padding: 40px 20px; display: flex; flex-direction: column;
+        }
+        .brand { font-size: 24px; font-weight: 900; letter-spacing: 3px; margin-bottom: 50px; }
+        .nav-list { list-style: none; padding: 0; }
+        .nav-item { 
+            padding: 15px; cursor: pointer; color: #7d92ad; transition: 0.3s; 
+            font-size: 14px; letter-spacing: 2px; text-transform: uppercase;
+        }
+        .nav-item:hover, .nav-item.active { color: var(--teal); background: rgba(0, 242, 255, 0.05); border-left: 3px solid var(--teal); }
+
+        /* MAIN VIEWPORT */
+        #view-zone { flex-grow: 1; height: 100vh; overflow-y: auto; padding: 40px; transition: 0.5s; }
+        
+        /* HUD BLOCK (96px) */
+        #hud {
+            position: fixed; bottom: 0; right: 0; left: var(--sidebar-w);
+            height: 96px; background: #000; border-top: 1.8px solid var(--purple);
+            display: flex; align-items: center; padding: 0 40px;
+        }
+        #hud-input { background: transparent; border: none; color: var(--teal); width: 100%; outline: none; font-size: 18px; }
+    </style>
+</head>
+<body>
+
+<nav id="sidebar">
+    <div class="brand">THE SICK TEAM<br><small style="color:var(--teal); font-size:10px;">SOVEREIGN GRID</small></div>
+    <ul class="nav-list">
+        <li class="nav-item active" onclick="loadNode('home')">HOME</li>
+        <li class="nav-item" onclick="loadNode('create')">CREATE</li>
+        <li class="nav-item" onclick="loadNode('splitter-mastering')">SPLITTER / MASTERING</li>
+        <li class="nav-item" onclick="loadNode('daw')">DAW</li>
+        <li class="nav-item" onclick="loadNode('soul-forge')">EPK SOUL FORGE</li>
+        <li class="nav-item" onclick="loadNode('gallery')">GALLERY</li>
+        <li class="nav-item" onclick="loadNode('radio-station')">RADIO STATION</li>
+    </ul>
+</nav>
+
+<main id="view-zone">
+    <!-- Content from other files will load here -->
+    <h1>ACADEMY INITIALIZED...</h1>
+</main>
+
+<div id="hud">
+    <span style="color:var(--purple); margin-right:20px;">LEXI_CMD:></span>
+    <input type="text" id="hud-input" placeholder="Awaiting 'parley'...">
+</div>
+
+<script>
+    async function loadNode(page) {
+        const zone = document.getElementById('view-zone');
+        zone.style.opacity = '0'; // Fade out
+        
+        try {
+            const response = await fetch(page + '.html');
+            const content = await response.text();
+            
+            // Extract only the body content from the sub-files
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(content, 'text/html');
+            const newContent = doc.body ? doc.body.innerHTML : content;
+            
+            setTimeout(() => {
+                zone.innerHTML = newContent;
+                zone.style.opacity = '1'; // Fade in
+                
+                // Update Active Class
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.toggle('active', item.innerText.toLowerCase().includes(page.split('-')[0]));
+                });
+            }, 300);
+        } catch (err) {
+            zone.innerHTML = "<h1>ERROR LOADING NODE: " + page + "</h1>";
+        }
+    }
+
+    // Default Load
+    window.onload = () => loadNode('home');
+</script>
+</body>
+</html>
