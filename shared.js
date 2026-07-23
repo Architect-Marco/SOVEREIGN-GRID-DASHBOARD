@@ -3805,15 +3805,18 @@
 
         const FORGE_CARD_STYLES = {
             neon: {
-                cardBorder: '1.8px solid rgba(168,85,247,0.45)',
+                frameBg: 'rgba(168,85,247,0.45)',
+                framePadding: '1.8px',
                 cardBg: '#0a0a10',
                 headerBg: 'linear-gradient(180deg, rgba(88,28,135,0.35), rgba(10,10,16,0.2))',
                 titleColor: '#a855f7',
                 titleFont: "'JetBrains Mono', monospace",
+                titleShadow: 'none',
                 starBg: '#facc15',
                 nameBarBg: 'rgba(168,85,247,0.08)',
                 nameBarBorder: '1px solid rgba(168,85,247,0.2)',
                 nameColor: '#ec4899',
+                nameShadow: 'none',
                 quoteColor: '#93c5fd',
                 stat1Border: '1px solid rgba(45,212,191,0.4)', stat1Color: '#2dd4bf',
                 stat2Border: '1px solid rgba(236,72,153,0.4)', stat2Color: '#ec4899',
@@ -3823,20 +3826,25 @@
                 genreColor: '#6b7280'
             },
             gold: {
-                cardBorder: '2.5px solid #b8860b',
-                cardBg: '#0d0b08',
-                headerBg: 'linear-gradient(180deg, rgba(184,134,11,0.25), rgba(13,11,8,0.2))',
-                titleColor: '#d4af37',
+                // A real metallic gradient (light -> deep gold -> bronze -> light) instead of
+                // a flat mustard tone — this is what actually reads as "gold" vs "yellow".
+                frameBg: 'linear-gradient(135deg, #fdf1b8 0%, #d4af37 22%, #8a6a1f 50%, #d4af37 78%, #fdf1b8 100%)',
+                framePadding: '3px',
+                cardBg: 'linear-gradient(180deg, #14110a, #0a0806)',
+                headerBg: 'linear-gradient(180deg, rgba(212,175,55,0.18), rgba(10,8,6,0.15))',
+                titleColor: '#f0d78c',
                 titleFont: "Georgia, 'Times New Roman', serif",
-                starBg: '#d4af37',
-                nameBarBg: 'rgba(184,134,11,0.1)',
+                titleShadow: '0 1px 0 #5c4813, 0 0 14px rgba(240,215,140,0.35)',
+                starBg: 'linear-gradient(135deg, #fdf1b8, #d4af37 60%, #8a6a1f)',
+                nameBarBg: 'rgba(212,175,55,0.08)',
                 nameBarBorder: '1px solid rgba(212,175,55,0.35)',
-                nameColor: '#d4af37',
+                nameColor: '#f0d78c',
+                nameShadow: '0 1px 0 #5c4813, 0 0 10px rgba(240,215,140,0.3)',
                 quoteColor: '#c9a876',
-                stat1Border: '1px solid rgba(212,175,55,0.5)', stat1Color: '#d4af37',
-                stat2Border: '1px solid rgba(212,175,55,0.5)', stat2Color: '#d4af37',
-                stat3Border: '1px solid rgba(212,175,55,0.5)', stat3Color: '#d4af37',
-                stat4Border: '1px solid rgba(212,175,55,0.5)', stat4Color: '#d4af37',
+                stat1Border: '1px solid rgba(212,175,55,0.55)', stat1Color: '#f0d78c',
+                stat2Border: '1px solid rgba(212,175,55,0.55)', stat2Color: '#f0d78c',
+                stat3Border: '1px solid rgba(212,175,55,0.55)', stat3Color: '#f0d78c',
+                stat4Border: '1px solid rgba(212,175,55,0.55)', stat4Color: '#f0d78c',
                 taglineColor: '#f0e6d2',
                 genreColor: '#8a7c5a'
             }
@@ -3846,17 +3854,20 @@
             const s = FORGE_CARD_STYLES[styleName] || FORGE_CARD_STYLES.neon;
             const set = (id, prop, val) => { const el = document.getElementById(id); if (el) el.style[prop] = val; };
 
-            set('forged-card', 'border', s.cardBorder);
+            set('forged-card-frame', 'background', s.frameBg);
+            set('forged-card-frame', 'padding', s.framePadding);
             set('forged-card', 'background', s.cardBg);
             set('forged-header-bar', 'background', s.headerBg);
             set('forged-title', 'color', s.titleColor);
             set('forged-title', 'fontFamily', s.titleFont);
+            set('forged-title', 'textShadow', s.titleShadow);
             set('forged-star', 'background', s.starBg);
             set('forged-name-bar', 'background', s.nameBarBg);
             set('forged-name-bar', 'borderTop', s.nameBarBorder);
             set('forged-name-bar', 'borderBottom', s.nameBarBorder);
             set('forged-name', 'color', s.nameColor);
             set('forged-name', 'fontFamily', s.titleFont);
+            set('forged-name', 'textShadow', s.nameShadow);
             set('forged-quote', 'color', s.quoteColor);
             set('forged-stat-box-1', 'border', s.stat1Border); set('forged-resonance', 'color', s.stat1Color);
             set('forged-stat-box-2', 'border', s.stat2Border); set('forged-virality', 'color', s.stat2Color);
@@ -3947,7 +3958,7 @@
         // Exports the rendered card as a real downloadable PNG, pixel-for-pixel
         // what's on screen — no server round-trip, all done client-side.
         window.downloadForgedCard = function() {
-            const cardEl = document.getElementById('forged-card');
+            const cardEl = document.getElementById('forged-card-frame');
             if (!cardEl || typeof html2canvas === 'undefined') {
                 alert('Card export isn\'t available right now — try refreshing the page.');
                 return;
