@@ -3880,13 +3880,20 @@
         window.setForgeCardStyle = function(styleName) {
             window.forgeCardStyle = styleName;
             window.applyForgeCardStyle(styleName);
+
+            const frame = document.getElementById('forged-card-frame');
+            const gold = document.getElementById('forged-card-gold');
+            if (frame) frame.classList.toggle('hidden', styleName === 'gold');
+            if (gold) gold.classList.toggle('hidden', styleName !== 'gold');
+
             ['neon', 'gold'].forEach(name => {
                 const btn = document.getElementById('card-style-btn-' + name);
                 if (!btn) return;
+                const ring = ' outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400';
                 if (name === styleName) {
-                    btn.className = 'px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all bg-purple-500/15 border-purple-500/50 text-purple-300';
+                    btn.className = 'px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all bg-purple-500/15 border-purple-500/50 text-purple-300' + ring;
                 } else {
-                    btn.className = 'px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all bg-white/5 border-white/15 text-gray-500';
+                    btn.className = 'px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all bg-white/5 border-white/15 text-gray-500' + ring;
                 }
             });
         };
@@ -3949,6 +3956,22 @@
                     imgPlaceholder.classList.remove('hidden');
                 }
 
+                // Mirror the same data into the Gold Deluxe overlay so switching
+                // styles doesn't require re-forging.
+                document.getElementById('forged-gold-name').innerText = bandName;
+                document.getElementById('forged-gold-quote').innerText = quote;
+                document.getElementById('forged-gold-resonance').innerText = resonance;
+                document.getElementById('forged-gold-virality').innerText = virality;
+                document.getElementById('forged-gold-mystery').innerText = mystery;
+                document.getElementById('forged-gold-members').innerText = members;
+                const goldImg = document.getElementById('forged-gold-img');
+                if (window.epkPhotoDataUrl) {
+                    goldImg.src = window.epkPhotoDataUrl;
+                    goldImg.classList.remove('hidden');
+                } else {
+                    goldImg.classList.add('hidden');
+                }
+
                 window.applyForgeCardStyle(window.forgeCardStyle);
                 card.classList.remove('hidden');
                 requestAnimationFrame(() => card.classList.add('materialize'));
@@ -3958,7 +3981,9 @@
         // Exports the rendered card as a real downloadable PNG, pixel-for-pixel
         // what's on screen — no server round-trip, all done client-side.
         window.downloadForgedCard = function() {
-            const cardEl = document.getElementById('forged-card-frame');
+            const cardEl = window.forgeCardStyle === 'gold'
+                ? document.getElementById('forged-card-gold')
+                : document.getElementById('forged-card-frame');
             if (!cardEl || typeof html2canvas === 'undefined') {
                 alert('Card export isn\'t available right now — try refreshing the page.');
                 return;
@@ -3986,7 +4011,25 @@
             }
             if (typeof window.addCreation === 'function') window.addCreation(name, '');
             const genre = document.getElementById('epk-genre') ? (document.getElementById('epk-genre').value || 'Sovereign-tuned frequency signature') : '';
-            if (typeof window.addPressKit === 'function') window.addPressKit({ artistName: name, bio, genre });
+
+            // Capture the actual rendered card (whichever style is active) so the
+            // Press Kit's "Slides" / "Full EPK" boxes have something real to show —
+            // not just text, the actual card image.
+            const cardEl = window.forgeCardStyle === 'gold'
+                ? document.getElementById('forged-card-gold')
+                : document.getElementById('forged-card-frame');
+
+            if (cardEl && typeof html2canvas !== 'undefined') {
+                html2canvas(cardEl, { backgroundColor: null, scale: 2 }).then(canvas => {
+                    if (typeof window.addPressKit === 'function') {
+                        window.addPressKit({ artistName: name, bio, genre, cardImage: canvas.toDataURL('image/png') });
+                    }
+                }).catch(() => {
+                    if (typeof window.addPressKit === 'function') window.addPressKit({ artistName: name, bio, genre });
+                });
+            } else if (typeof window.addPressKit === 'function') {
+                window.addPressKit({ artistName: name, bio, genre });
+            }
         };
 
         // ===== PRESS KITS (EPKs) — generated whenever an artist is deployed from Soul Forge =====
@@ -4014,30 +4057,57 @@
                             </button>
                         </div>
                         <div id="pk-body-${pk.id}" class="hidden grid grid-cols-4 gap-3 p-4">
-                            <div class="bg-black/40 border border-white/10 rounded-lg p-3 aspect-square flex flex-col">
-                                <span class="text-[8px] text-gray-500 font-black uppercase tracking-widest">Slides</span>
-                                <div class="flex-1 flex items-center justify-center text-gray-700 text-lg">〰️</div>
+                            <div onclick="${pk.cardImage ? `window.openGalleryPreviewFromSrc('${pk.artistName.replace(/'/g, "\\\\'")}', '${pk.cardImage}')` : ''}" class="bg-black/40 border border-white/10 rounded-lg p-3 aspect-square flex flex-col ${pk.cardImage ? 'cursor-pointer hover:border-purple-500/40' : ''} overflow-hidden relative">
+                                <span class="text-[8px] text-gray-500 font-black uppercase tracking-widest relative z-10">Slides</span>
+                                ${pk.cardImage
+                                    ? `<img src="${pk.cardImage}" class="absolute inset-0 w-full h-full object-cover opacity-80">`
+                                    : `<div class="flex-1 flex items-center justify-center text-gray-700 text-lg">〰️</div>`}
                             </div>
                             <div class="bg-black/40 border border-white/10 rounded-lg p-3 aspect-square flex flex-col items-center justify-center gap-2">
                                 <span class="text-[8px] text-gray-500 font-black uppercase tracking-widest self-start">Podcast</span>
-                                <button class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white flex-shrink-0">▶</button>
-                                <span class="text-[8px] text-gray-600 text-center">AI-narrated review</span>
+                                <span class="text-gray-700 text-lg">🎙️</span>
+                                <span class="text-[8px] text-gray-600 text-center">Narration engine not connected yet</span>
                             </div>
                             <div class="bg-black/40 border border-white/10 rounded-lg p-3 flex flex-col gap-2">
                                 <span class="text-[8px] text-gray-500 font-black uppercase tracking-widest">Spotlight</span>
                                 <p class="text-[9px] text-gray-400 italic leading-snug line-clamp-3 flex-1">${pk.bio}</p>
                                 <span class="text-[8px] text-gray-600">${pk.genre}</span>
                             </div>
-                            <div class="bg-black/40 border border-white/10 rounded-lg p-3 flex flex-col items-center justify-center gap-2 text-center">
+                            <div onclick="${pk.cardImage ? `window.downloadPressKitImage('${pk.id}')` : ''}" class="bg-black/40 border border-white/10 rounded-lg p-3 flex flex-col items-center justify-center gap-2 text-center ${pk.cardImage ? 'cursor-pointer hover:border-purple-500/40' : ''}">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="text-gray-500"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                                 <span class="text-[9px] text-white font-black">Full EPK</span>
-                                <span class="text-[8px] text-gray-600">All deliverables</span>
+                                <span class="text-[8px] text-gray-600">${pk.cardImage ? 'Download card' : 'No deliverables yet'}</span>
                             </div>
                         </div>
                     </div>`;
                 }).join('');
             }
             try { localStorage.setItem('sbn-press-kits', JSON.stringify(window.pressKits)); } catch (err) { console.error('Could not save press kits:', err); }
+        };
+
+        // Opens the captured card image full-size in the Gallery preview modal
+        window.openGalleryPreviewFromSrc = function(name, src) {
+            const modal = document.getElementById('gallery-preview-modal');
+            const img = document.getElementById('gallery-preview-image');
+            const vid = document.getElementById('gallery-preview-video');
+            const aud = document.getElementById('gallery-preview-audio');
+            const label = document.getElementById('gallery-preview-label');
+            if (!modal || !img) return;
+            if (vid) { vid.pause(); vid.classList.add('hidden'); }
+            if (aud) { aud.pause(); aud.classList.add('hidden'); }
+            if (label) label.innerText = name;
+            img.src = src;
+            img.classList.remove('hidden');
+            modal.classList.remove('hidden');
+        };
+
+        window.downloadPressKitImage = function(id) {
+            const pk = window.pressKits.find(p => p.id === id);
+            if (!pk || !pk.cardImage) return;
+            const link = document.createElement('a');
+            link.download = (pk.artistName || 'press-kit').trim().replace(/[^a-z0-9]+/gi, '-') + '.png';
+            link.href = pk.cardImage;
+            link.click();
         };
 
         window.togglePressKit = function(id) {
@@ -4058,13 +4128,14 @@
             if (pk) { pk.artistName = 'Unlinked'; window.renderPressKits(); }
         };
 
-        window.addPressKit = function({ artistName, bio, genre }) {
+        window.addPressKit = function({ artistName, bio, genre, cardImage }) {
             window.pressKits.unshift({
                 id: 'pk-' + Date.now(),
                 date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
                 artistName: artistName || 'New Artist Unit',
                 bio: bio || 'Synthesized from the 528Hz luxury vacuum...',
-                genre: genre || 'Sovereign-tuned frequency signature'
+                genre: genre || 'Sovereign-tuned frequency signature',
+                cardImage: cardImage || null
             });
             window.renderPressKits();
         };
