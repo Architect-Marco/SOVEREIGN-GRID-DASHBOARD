@@ -6,6 +6,7 @@
     <title>SBN // EPK // SOUL FORGE V7.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/wavesurfer.js@7"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="shared.css">
 </head>
 </head>
@@ -174,7 +175,7 @@
                         <h3 class="neon-blue-text text-xl font-black uppercase italic tracking-tighter mb-6">Results</h3>
 
                         <!-- THE RESULTS COLUMN: REVEAL AREA -->
-                        <div id="forge-results" class="relative w-full h-[440px] bg-black/40 border border-teal-900/20 rounded-lg flex items-center justify-center overflow-hidden">
+                        <div id="forge-results" class="relative w-full min-h-[440px] bg-black/40 border border-teal-900/20 rounded-lg flex items-center justify-center overflow-hidden p-4">
 
                             <!-- THE SCAN-LINE (Hidden until Forge starts) -->
                             <div id="scan-line" class="hidden absolute top-0 inset-x-0 h-[2px] bg-teal-400 shadow-[0_0_15px_#ffffff] z-30 animate-scan"></div>
@@ -185,17 +186,49 @@
                                 <span class="text-[9px] font-mono text-teal-900 tracking-[0.3em] uppercase">Awaiting_Signal...</span>
                             </div>
 
-                            <!-- THE ARTIST CARD (Hidden until materialized) -->
+                            <!-- THE ARTIST CARD (Hidden until materialized) — matches the printed Soul Forge template -->
                             <div id="result-card" class="hidden opacity-0 transform scale-95 transition-all duration-700 w-full">
-                                <div class="w-full bg-[#050505] border border-teal-500/30 rounded p-4 shadow-2xl">
-                                    <div class="text-[10px] text-teal-400 font-mono mb-2"> [ SOUL_FORGED_SUCCESS ] </div>
-                                    <img id="forged-img" src="" class="w-full h-72 object-cover border border-teal-900 mb-4 hidden">
-                                    <div id="forged-img-placeholder" class="w-full h-72 border border-teal-900 mb-4 flex items-center justify-center bg-black/40">
-                                        <span class="text-4xl opacity-30">🎵</span>
+                                <div id="forged-card" class="w-full rounded-2xl overflow-hidden border-[1.8px] border-[rgba(168,85,247,0.45)] shadow-2xl" style="background:#0a0a10;">
+                                    <div class="px-5 py-4" style="background:linear-gradient(180deg, rgba(88,28,135,0.35), rgba(10,10,16,0.2));">
+                                        <span class="text-2xl font-black uppercase italic tracking-tight" style="background:linear-gradient(90deg,#a855f7,#7c3aed); -webkit-background-clip:text; background-clip:text; color:transparent;">Soul Forge</span>
                                     </div>
-                                    <div id="forged-name" class="text-xs font-bold neon-blue-text mb-1 uppercase tracking-wider">NEW_ARTIST_UNIT</div>
-                                    <div id="forged-bio" class="text-[9px] text-teal-700 font-mono italic mb-4 line-clamp-2">"Synthesized from the 528Hz luxury vacuum..."</div>
-                                    <button onclick="window.deployForgedArtist(this)" class="w-full py-2 bg-teal-500/10 border border-teal-500/40 text-[9px] text-teal-400 tracking-widest hover:bg-teal-500 hover:text-black transition-all"> [ DEPLOY_TO_HOME ] </button>
+                                    <div class="relative">
+                                        <img id="forged-img" src="" class="w-full h-64 object-cover hidden">
+                                        <div id="forged-img-placeholder" class="w-full h-64 flex items-center justify-center bg-black/40">
+                                            <span class="text-4xl opacity-30">🎵</span>
+                                        </div>
+                                        <div id="forged-star" class="absolute top-3 right-3 w-11 h-11 rounded-full flex items-center justify-center text-black text-xs font-black" style="background:#facc15;">68</div>
+                                    </div>
+                                    <div class="px-5 py-3.5 text-center" style="background:rgba(168,85,247,0.08); border-top:1px solid rgba(168,85,247,0.2); border-bottom:1px solid rgba(168,85,247,0.2);">
+                                        <span id="forged-name" class="text-lg font-black uppercase italic tracking-tight" style="background:linear-gradient(90deg,#a855f7,#ec4899); -webkit-background-clip:text; background-clip:text; color:transparent;">NEW ARTIST UNIT</span>
+                                    </div>
+                                    <div class="px-5 py-4">
+                                        <p id="forged-quote" class="text-blue-300 italic text-xs leading-relaxed text-center">"Synthesized from the 528Hz luxury vacuum..."</p>
+                                    </div>
+                                    <div class="grid grid-cols-4 gap-2 px-5 pb-4">
+                                        <div class="rounded-lg border border-teal-400/40 py-2.5 text-center">
+                                            <div id="forged-resonance" class="text-teal-400 font-black text-base">--</div>
+                                            <div class="text-gray-500 text-[7px] uppercase font-black tracking-widest mt-0.5">Resonance</div>
+                                        </div>
+                                        <div class="rounded-lg border border-pink-500/40 py-2.5 text-center">
+                                            <div id="forged-virality" class="text-pink-400 font-black text-base">--</div>
+                                            <div class="text-gray-500 text-[7px] uppercase font-black tracking-widest mt-0.5">Virality</div>
+                                        </div>
+                                        <div class="rounded-lg border border-purple-500/40 py-2.5 text-center">
+                                            <div id="forged-mystery" class="text-purple-400 font-black text-base">--</div>
+                                            <div class="text-gray-500 text-[7px] uppercase font-black tracking-widest mt-0.5">Mystery</div>
+                                        </div>
+                                        <div class="rounded-lg border border-white/15 py-2.5 text-center">
+                                            <div id="forged-members" class="text-white font-black text-base">--</div>
+                                            <div class="text-gray-500 text-[7px] uppercase font-black tracking-widest mt-0.5">Members</div>
+                                        </div>
+                                    </div>
+                                    <p id="forged-tagline" class="text-white font-black italic text-xs text-center pb-3">"Feel the pulse. Find your truth."</p>
+                                    <p id="forged-genre" class="text-gray-500 text-[10px] text-center pb-4 px-5 truncate">Cinematic Liquid Funk infused with ...</p>
+                                </div>
+                                <div class="flex gap-2 mt-4">
+                                    <button onclick="window.downloadForgedCard()" class="flex-1 py-2.5 bg-purple-500/10 border border-purple-500/40 rounded-lg text-[9px] text-purple-300 font-black uppercase tracking-widest hover:bg-purple-500 hover:text-black transition-all">⬇ Download Card</button>
+                                    <button onclick="window.deployForgedArtist(this)" class="flex-1 py-2.5 bg-teal-500/10 border border-teal-500/40 rounded-lg text-[9px] text-teal-400 font-black uppercase tracking-widest hover:bg-teal-500 hover:text-black transition-all">Deploy to Home</button>
                                 </div>
                             </div>
                         </div>
