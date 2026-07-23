@@ -4046,6 +4046,13 @@
         window.pressKits = [];
 
         window.renderPressKits = function() {
+            // Persist FIRST, unconditionally — this must happen regardless of which
+            // page called it. Soul Forge (where deploys actually happen) doesn't have
+            // the press-kits-list element at all, so the old code — which only saved
+            // as a side-effect further down, after the DOM check below — was silently
+            // skipping the save every single time a deploy happened from that page.
+            try { localStorage.setItem('sbn-press-kits', JSON.stringify(window.pressKits)); } catch (err) { console.error('Could not save press kits:', err); }
+
             const list = document.getElementById('press-kits-list');
             if (!list) return;
             if (window.pressKits.length === 0) {
