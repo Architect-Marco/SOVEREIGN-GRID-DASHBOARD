@@ -3538,6 +3538,36 @@
             }).join('');
         };
 
+        // Grabs a still frame from a video's own data (many of these "video" files are really
+        // just audio with cover art baked into the frame — this pulls that art out so the
+        // gallery grid can show it as a real thumbnail instead of a generic camera icon).
+        function captureVideoThumbnail(videoSrc, callback) {
+            const vid = document.createElement('video');
+            vid.muted = true;
+            vid.preload = 'metadata';
+            vid.src = videoSrc;
+            vid.addEventListener('loadeddata', function onLoaded() {
+                vid.removeEventListener('loadeddata', onLoaded);
+                try {
+                    vid.currentTime = Math.min(0.3, (vid.duration || 1) / 2);
+                } catch (e) { callback(null); }
+            });
+            vid.addEventListener('seeked', function onSeeked() {
+                vid.removeEventListener('seeked', onSeeked);
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = vid.videoWidth || 320;
+                    canvas.height = vid.videoHeight || 320;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+                    callback(canvas.toDataURL('image/jpeg', 0.85));
+                } catch (e) {
+                    callback(null); // e.g. no real video track to draw — falls back to the icon
+                }
+            });
+            vid.addEventListener('error', () => callback(null));
+        }
+
         window.handleGalleryUpload = function(event) {
             const files = event.target.files;
             if (!files || !files.length) return;
@@ -3548,16 +3578,27 @@
                 const kind = isVideo ? 'MPEG-4 File' : (isAudio ? (/\.mp3$/i.test(file.name) || file.type.includes('mpeg') ? 'MP3 Audio' : 'Audio File') : 'PNG image');
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    window.galleryItems.unshift({
+                    const src = e.target.result;
+                    const item = {
                         name: file.name,
                         size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
                         kind: kind,
                         date: new Date().toLocaleDateString('en-GB'),
                         type: type,
-                        src: e.target.result
-                    });
+                        src: src
+                    };
+                    window.galleryItems.unshift(item);
                     window.gallerySelectedName = file.name;
                     window.renderGallery();
+
+                    if (isVideo) {
+                        captureVideoThumbnail(src, function(thumb) {
+                            if (thumb) {
+                                item.coverArt = thumb;
+                                window.renderGallery();
+                            }
+                        });
+                    }
                 };
                 reader.readAsDataURL(file);
             });
