@@ -3797,6 +3797,89 @@
             window.epkVocalChoice = choice;
         };
 
+        // Two selectable Soul Forge card looks. Every value here is a solid color/border
+        // (never CSS gradient-clip text) — html2canvas silently drops gradient-clipped
+        // text when exporting, which is why the downloaded card used to lose its title
+        // and band name. Solid colors export exactly as they render on screen.
+        window.forgeCardStyle = window.forgeCardStyle || 'neon';
+
+        const FORGE_CARD_STYLES = {
+            neon: {
+                cardBorder: '1.8px solid rgba(168,85,247,0.45)',
+                cardBg: '#0a0a10',
+                headerBg: 'linear-gradient(180deg, rgba(88,28,135,0.35), rgba(10,10,16,0.2))',
+                titleColor: '#a855f7',
+                titleFont: "'JetBrains Mono', monospace",
+                starBg: '#facc15',
+                nameBarBg: 'rgba(168,85,247,0.08)',
+                nameBarBorder: '1px solid rgba(168,85,247,0.2)',
+                nameColor: '#ec4899',
+                quoteColor: '#93c5fd',
+                stat1Border: '1px solid rgba(45,212,191,0.4)', stat1Color: '#2dd4bf',
+                stat2Border: '1px solid rgba(236,72,153,0.4)', stat2Color: '#ec4899',
+                stat3Border: '1px solid rgba(168,85,247,0.4)', stat3Color: '#a855f7',
+                stat4Border: '1px solid rgba(255,255,255,0.15)', stat4Color: '#ffffff',
+                taglineColor: '#ffffff',
+                genreColor: '#6b7280'
+            },
+            gold: {
+                cardBorder: '2.5px solid #b8860b',
+                cardBg: '#0d0b08',
+                headerBg: 'linear-gradient(180deg, rgba(184,134,11,0.25), rgba(13,11,8,0.2))',
+                titleColor: '#d4af37',
+                titleFont: "Georgia, 'Times New Roman', serif",
+                starBg: '#d4af37',
+                nameBarBg: 'rgba(184,134,11,0.1)',
+                nameBarBorder: '1px solid rgba(212,175,55,0.35)',
+                nameColor: '#d4af37',
+                quoteColor: '#c9a876',
+                stat1Border: '1px solid rgba(212,175,55,0.5)', stat1Color: '#d4af37',
+                stat2Border: '1px solid rgba(212,175,55,0.5)', stat2Color: '#d4af37',
+                stat3Border: '1px solid rgba(212,175,55,0.5)', stat3Color: '#d4af37',
+                stat4Border: '1px solid rgba(212,175,55,0.5)', stat4Color: '#d4af37',
+                taglineColor: '#f0e6d2',
+                genreColor: '#8a7c5a'
+            }
+        };
+
+        window.applyForgeCardStyle = function(styleName) {
+            const s = FORGE_CARD_STYLES[styleName] || FORGE_CARD_STYLES.neon;
+            const set = (id, prop, val) => { const el = document.getElementById(id); if (el) el.style[prop] = val; };
+
+            set('forged-card', 'border', s.cardBorder);
+            set('forged-card', 'background', s.cardBg);
+            set('forged-header-bar', 'background', s.headerBg);
+            set('forged-title', 'color', s.titleColor);
+            set('forged-title', 'fontFamily', s.titleFont);
+            set('forged-star', 'background', s.starBg);
+            set('forged-name-bar', 'background', s.nameBarBg);
+            set('forged-name-bar', 'borderTop', s.nameBarBorder);
+            set('forged-name-bar', 'borderBottom', s.nameBarBorder);
+            set('forged-name', 'color', s.nameColor);
+            set('forged-name', 'fontFamily', s.titleFont);
+            set('forged-quote', 'color', s.quoteColor);
+            set('forged-stat-box-1', 'border', s.stat1Border); set('forged-resonance', 'color', s.stat1Color);
+            set('forged-stat-box-2', 'border', s.stat2Border); set('forged-virality', 'color', s.stat2Color);
+            set('forged-stat-box-3', 'border', s.stat3Border); set('forged-mystery', 'color', s.stat3Color);
+            set('forged-stat-box-4', 'border', s.stat4Border); set('forged-members', 'color', s.stat4Color);
+            set('forged-tagline', 'color', s.taglineColor);
+            set('forged-genre', 'color', s.genreColor);
+        };
+
+        window.setForgeCardStyle = function(styleName) {
+            window.forgeCardStyle = styleName;
+            window.applyForgeCardStyle(styleName);
+            ['neon', 'gold'].forEach(name => {
+                const btn = document.getElementById('card-style-btn-' + name);
+                if (!btn) return;
+                if (name === styleName) {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all bg-purple-500/15 border-purple-500/50 text-purple-300';
+                } else {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all bg-white/5 border-white/15 text-gray-500';
+                }
+            });
+        };
+
         window.forgeMyArtist = function() {
             const placeholder = document.getElementById('forge-placeholder');
             const scanLine = document.getElementById('scan-line');
@@ -3855,6 +3938,7 @@
                     imgPlaceholder.classList.remove('hidden');
                 }
 
+                window.applyForgeCardStyle(window.forgeCardStyle);
                 card.classList.remove('hidden');
                 requestAnimationFrame(() => card.classList.add('materialize'));
             }, 2000);
