@@ -4001,34 +4001,44 @@
         };
 
         window.deployForgedArtist = function(btn) {
-            const name = document.getElementById('forged-name').innerText;
-            const bioEl = document.getElementById('forged-quote');
-            const bio = bioEl ? bioEl.innerText : '';
+            // Read from the form input directly, not a style-specific card element —
+            // whichever card style (Neon/Gold) isn't active is display:none, and
+            // .innerText on a hidden element returns '' in most browsers. That silent
+            // empty string was why deploys sometimes seemed to do nothing.
+            const nameInput = document.getElementById('epk-band-name');
+            const name = (nameInput && nameInput.value ? nameInput.value : 'New Artist Unit').toUpperCase();
+            const quoteEl = window.forgeCardStyle === 'gold'
+                ? document.getElementById('forged-gold-quote')
+                : document.getElementById('forged-quote');
+            const bio = quoteEl ? quoteEl.innerText : '';
+            const genre = document.getElementById('epk-genre') ? (document.getElementById('epk-genre').value || 'Sovereign-tuned frequency signature') : '';
+
             if (btn) {
                 const original = btn.innerText;
                 btn.innerText = '[ DEPLOYED ✅ ]';
                 setTimeout(() => { btn.innerText = original; }, 1500);
             }
             if (typeof window.addCreation === 'function') window.addCreation(name, '');
-            const genre = document.getElementById('epk-genre') ? (document.getElementById('epk-genre').value || 'Sovereign-tuned frequency signature') : '';
 
-            // Capture the actual rendered card (whichever style is active) so the
-            // Press Kit's "Slides" / "Full EPK" boxes have something real to show —
-            // not just text, the actual card image.
+            // Create the press kit entry right away — it must never depend on the
+            // card-image capture below succeeding. The image is a nice-to-have that
+            // fills in a moment later if it works; the entry itself is not optional.
+            if (typeof window.addPressKit !== 'function') return;
+            window.addPressKit({ artistName: name, bio, genre });
+            const newPk = window.pressKits[0];
+
             const cardEl = window.forgeCardStyle === 'gold'
                 ? document.getElementById('forged-card-gold')
                 : document.getElementById('forged-card-frame');
 
-            if (cardEl && typeof html2canvas !== 'undefined') {
+            if (cardEl && typeof html2canvas !== 'undefined' && newPk) {
                 html2canvas(cardEl, { backgroundColor: null, scale: 2 }).then(canvas => {
-                    if (typeof window.addPressKit === 'function') {
-                        window.addPressKit({ artistName: name, bio, genre, cardImage: canvas.toDataURL('image/png') });
+                    const pk = window.pressKits.find(p => p.id === newPk.id);
+                    if (pk) {
+                        pk.cardImage = canvas.toDataURL('image/png');
+                        window.renderPressKits();
                     }
-                }).catch(() => {
-                    if (typeof window.addPressKit === 'function') window.addPressKit({ artistName: name, bio, genre });
-                });
-            } else if (typeof window.addPressKit === 'function') {
-                window.addPressKit({ artistName: name, bio, genre });
+                }).catch(err => console.warn('Press kit card capture failed (entry still created):', err));
             }
         };
 
