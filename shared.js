@@ -3815,6 +3815,9 @@
             const bandName = (document.getElementById('epk-band-name').value || 'New Artist Unit').toUpperCase();
             const genre = document.getElementById('epk-genre').value || 'Auto-detected frequency signature';
             const artistType = document.getElementById('epk-artist-type').value === 'solo' ? 'Solo Artist' : 'Band/Ensemble';
+            const concept = document.getElementById('epk-concept').value;
+            const themes = document.getElementById('epk-themes').value;
+            const members = document.getElementById('epk-members').value || (artistType === 'Solo Artist' ? '1' : '4');
 
             // Scan sweeps for ~2s, then the card materializes
             setTimeout(() => {
@@ -3822,7 +3825,24 @@
                 scanLine.classList.add('hidden');
 
                 document.getElementById('forged-name').innerText = bandName;
-                document.getElementById('forged-bio').innerText = `"${artistType} — ${genre}. Synthesized from the 528Hz luxury vacuum..."`;
+
+                const quote = concept || themes
+                    ? `"${concept || ''}${concept && themes ? ' — ' : ''}${themes || ''}"`
+                    : `"${artistType} — ${genre}. Synthesized from the 528Hz luxury vacuum..."`;
+                document.getElementById('forged-quote').innerText = quote;
+                document.getElementById('forged-tagline').innerText = '"Feel the pulse. Find your truth."';
+                document.getElementById('forged-genre').innerText = genre;
+                document.getElementById('forged-members').innerText = members;
+
+                // Reasonable-looking stat spread, matching the range used across the app's other cards
+                const resonance = (55 + Math.random() * 35).toFixed(0);
+                const virality = (55 + Math.random() * 35).toFixed(1);
+                const mystery = (60 + Math.random() * 38).toFixed(0);
+                const star = (45 + Math.random() * 50).toFixed(0);
+                document.getElementById('forged-resonance').innerText = resonance;
+                document.getElementById('forged-virality').innerText = virality;
+                document.getElementById('forged-mystery').innerText = mystery;
+                document.getElementById('forged-star').innerText = star;
 
                 const img = document.getElementById('forged-img');
                 const imgPlaceholder = document.getElementById('forged-img-placeholder');
@@ -3840,9 +3860,30 @@
             }, 2000);
         };
 
+        // Exports the rendered card as a real downloadable PNG, pixel-for-pixel
+        // what's on screen — no server round-trip, all done client-side.
+        window.downloadForgedCard = function() {
+            const cardEl = document.getElementById('forged-card');
+            if (!cardEl || typeof html2canvas === 'undefined') {
+                alert('Card export isn\'t available right now — try refreshing the page.');
+                return;
+            }
+            html2canvas(cardEl, { backgroundColor: null, scale: 2 }).then(canvas => {
+                const bandName = (document.getElementById('epk-band-name').value || 'soul-forge-card').trim().replace(/[^a-z0-9]+/gi, '-');
+                const link = document.createElement('a');
+                link.download = bandName + '.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }).catch(err => {
+                console.error('Card export failed:', err);
+                alert('Could not export the card image. Try again.');
+            });
+        };
+
         window.deployForgedArtist = function(btn) {
             const name = document.getElementById('forged-name').innerText;
-            const bio = document.getElementById('forged-bio').innerText;
+            const bioEl = document.getElementById('forged-quote');
+            const bio = bioEl ? bioEl.innerText : '';
             if (btn) {
                 const original = btn.innerText;
                 btn.innerText = '[ DEPLOYED ✅ ]';
