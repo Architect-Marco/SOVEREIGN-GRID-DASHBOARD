@@ -8,7 +8,6 @@
     <script src="https://unpkg.com/wavesurfer.js@7"></script>
     <link rel="stylesheet" href="shared.css">
 </head>
-</head>
 <body class="flex flex-col">
     <div class="scanline"></div>
 
@@ -54,40 +53,32 @@
                     <p class="text-gray-500 text-[10px] uppercase font-black tracking-[0.3em]">Engine: Sovereign V6-AI Hybrid</p>
                 </div>
 
-                <!-- MODE TOGGLE -->
-                <div class="flex gap-2 mb-6">
-                    <button onclick="setCreateMode('simple')" id="create-mode-simple" class="px-6 py-2 rounded-lg bg-[#2fd0ff] text-black text-[10px] font-black uppercase tracking-widest transition-all neon-blue-glow">Simple</button>
-                    <button onclick="setCreateMode('custom')" id="create-mode-custom" class="px-6 py-2 rounded-lg bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">Advanced</button>
-                </div>
-
                 <div class="grid grid-cols-12 gap-8">
                     <!-- LEFT: GENERATION FORM -->
                     <div class="col-span-5 space-y-6">
 
-                        <!-- SIMPLE MODE -->
-                        <div id="create-panel-simple">
-                            <div class="bg-[#0a0a0a] p-10 rounded-3xl border border-white/5 glow-purple">
-                                <h4 class="neon-blue-text text-[10px] font-black uppercase italic mb-4 tracking-widest">Song Description</h4>
-                                <textarea id="simple-prompt" class="w-full h-48 bg-black border border-white/10 rounded-2xl p-8 text-white font-mono text-sm focus:border-pink-500 outline-none leading-relaxed" placeholder="Describe the song you want... e.g. 'An upbeat synthwave anthem about chasing dreams through a neon-lit city, female vocals, driving bassline'"></textarea>
-                                <div class="flex items-center justify-between mt-6">
-                                    <label class="flex items-center gap-3 select-none">
-                                        <span class="text-[10px] font-black uppercase tracking-widest neon-blue-text">Instrumental</span>
-                                        <span onclick="toggleInstrumental('simple')" id="instrumental-toggle-simple" class="w-11 h-6 rounded-full bg-white/10 relative transition-colors cursor-pointer flex-shrink-0">
-                                            <span id="instrumental-knob-simple" class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform"></span>
-                                        </span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
+                        <div id="create-panel-custom" class="space-y-6">
 
-                        <!-- CUSTOM MODE -->
-                        <div id="create-panel-custom" class="hidden-section space-y-6">
-
-                            <!-- QUICK ADD ROW -->
-                            <div class="flex gap-3 flex-wrap">
+                            <!-- QUICK ADD ROW + STUDIO SPECS -->
+                            <div class="flex gap-3 flex-wrap items-stretch">
                                 <button title="Coming soon" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase neon-blue-text transition-colors">+ Audio</button>
                                 <button title="Coming soon" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase neon-blue-text transition-colors">+ Voice <span class="neon-blue-text">New</span></button>
                                 <button title="Coming soon" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase neon-blue-text transition-colors">+ Inspo</button>
+
+                                <!-- STUDIO SPECS (moved beside +Inspo) -->
+                                <div class="bg-[#0a0a0a] px-4 py-2 rounded-full border border-white/5 flex items-center gap-4">
+                                    <span class="neon-blue-text text-[9px] font-black uppercase tracking-widest flex-shrink-0">Studio Specs</span>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-gray-500 text-[8px] font-black uppercase">Res</span>
+                                        <div class="w-10 h-1 bg-white/10 rounded-full overflow-hidden"><div class="h-full bg-[#2fd0ff] neon-blue-glow w-[92%]"></div></div>
+                                        <span class="neon-blue-text text-[8px] font-black">92%</span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-gray-500 text-[8px] font-black uppercase">Atmo</span>
+                                        <div class="w-10 h-1 bg-white/10 rounded-full overflow-hidden"><div class="h-full bg-[#2fd0ff] neon-blue-glow w-[78%]"></div></div>
+                                        <span class="neon-blue-text text-[8px] font-black">78%</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- LYRICS SECTION -->
@@ -200,46 +191,29 @@ Write your lyrics here..."></textarea>
                             </div>
                         </div>
 
-                        <button onclick="generateTrack()" id="generate-btn" class="w-full py-5 bg-black border-2 neon-blue-border neon-blue-text neon-blue-glow font-black uppercase italic tracking-[0.2em] rounded-xl hover:scale-[1.02] transition-all">Create ✨</button>
+                        <button onclick="generateTrack()" id="generate-btn" class="w-full py-5 bg-black border-2 neon-blue-border neon-blue-text neon-blue-glow font-black uppercase italic tracking-[0.2em] rounded-xl hover:scale-[1.02] transition-all">Create</button>
                     </div>
 
-                    <!-- RIGHT: STUDIO SPECS + ARCHIVE + CREATIONS FEED -->
+                    <!-- RIGHT: ARCHIVE + CREATIONS FEED -->
                     <div class="col-span-7 flex flex-col gap-4" style="min-height: 600px;">
-                        <div class="flex gap-4 flex-shrink-0">
-                            <!-- STUDIO SPECS (SHORTENED) -->
-                            <div class="bg-[#0a0a0a] p-3 rounded-2xl border border-white/5 flex-1">
-                                <h5 class="neon-blue-text text-[9px] font-black uppercase mb-2 tracking-widest">Studio Specs</h5>
-                                <div class="space-y-1.5">
-                                    <div class="flex justify-between text-[8px] font-black uppercase">
-                                        <span class="text-gray-400">Resonance</span><span class="neon-blue-text">92%</span>
-                                    </div>
-                                    <div class="h-1 bg-white/5 rounded-full overflow-hidden"><div class="h-full bg-[#2fd0ff] neon-blue-glow w-[92%]"></div></div>
-                                    <div class="flex justify-between text-[8px] font-black uppercase">
-                                        <span class="text-gray-400">Atmosphere</span><span class="neon-blue-text">78%</span>
-                                    </div>
-                                    <div class="h-1 bg-white/5 rounded-full overflow-hidden"><div class="h-full bg-[#2fd0ff] neon-blue-glow w-[78%]"></div></div>
-                                </div>
+                        <!-- ARCHIVE BOX (full width) -->
+                        <div id="archive-box" onclick="window.toggleArchivePanel()" class="bg-[#0a0a0a] p-5 rounded-2xl border border-white/5 flex items-center gap-4 cursor-pointer hover:border-[#2fd0ff]/30 transition-all flex-shrink-0">
+                            <div class="w-12 h-12 rounded-xl bg-black border border-[rgba(47,208,255,0.4)] flex items-center justify-center flex-shrink-0">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
                             </div>
-
-                            <!-- ARCHIVE BOX FOLDER -->
-                            <div id="archive-box" onclick="window.toggleArchivePanel()" class="bg-[#0a0a0a] p-3 rounded-2xl border border-white/5 flex-1 flex items-center gap-3 cursor-pointer hover:border-[#2fd0ff]/30 transition-all">
-                                <div class="w-9 h-9 rounded-lg bg-[rgba(47,208,255,0.1)] flex items-center justify-center flex-shrink-0">
-                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
-                                </div>
-                                <div class="min-w-0">
-                                    <h5 class="neon-blue-text text-[9px] font-black uppercase tracking-widest">Archive</h5>
-                                    <span id="archive-count" class="text-white text-[10px] font-black italic">0 Tracks</span>
-                                </div>
+                            <div class="min-w-0">
+                                <h5 class="neon-blue-text text-[10px] font-black uppercase tracking-widest">Archive</h5>
+                                <span id="archive-count" class="text-white text-sm font-black italic">0 Tracks</span>
                             </div>
                         </div>
 
                         <!-- ARCHIVE PANEL (toggled open by the Archive box above) -->
-                        <div id="archive-panel" class="hidden-section bg-[#0a0a0a] p-4 rounded-2xl border border-white/5 flex-shrink-0">
-                            <div class="flex items-center justify-between mb-3">
-                                <h5 class="neon-blue-text text-[9px] font-black uppercase tracking-widest">Archive Folders</h5>
+                        <div id="archive-panel" class="hidden-section bg-[#0a0a0a] p-5 rounded-2xl border border-white/5 flex-shrink-0">
+                            <div class="flex items-center justify-between mb-4">
+                                <h5 class="neon-blue-text text-[10px] font-black uppercase tracking-widest">Archive Folders</h5>
                                 <div class="relative creation-menu-wrapper">
-                                    <button onclick="event.stopPropagation(); window.toggleArchiveMenu()" title="More options" class="text-gray-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                                    <button onclick="event.stopPropagation(); window.toggleArchiveMenu()" title="More options" class="neon-blue-text hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">
+                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
                                     </button>
                                     <div id="archive-menu" class="hidden absolute right-0 top-9 z-20 w-44 bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
                                         <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); window.createArchiveFolder()" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
@@ -249,12 +223,12 @@ Write your lyrics here..."></textarea>
                                     </div>
                                 </div>
                             </div>
-                            <div id="archive-folder-list" class="space-y-1.5"></div>
+                            <div id="archive-folder-list" class="space-y-2"></div>
                         </div>
 
-                        <div class="bg-[#0a0a0a] p-6 rounded-2xl border border-white/5 flex-1 flex flex-col">
+                        <div class="bg-[#0a0a0a] p-7 rounded-2xl border border-white/5 flex-1 flex flex-col">
                             <h5 class="neon-blue-text text-[10px] font-black uppercase mb-4 tracking-widest">Your Creations</h5>
-                            <div id="creations-list" class="space-y-2 flex-1">
+                            <div id="creations-list" class="space-y-3 flex-1">
                                 <p class="text-gray-600 text-[10px] uppercase tracking-widest text-center py-16 opacity-40">No tracks generated yet</p>
                             </div>
                         </div>
