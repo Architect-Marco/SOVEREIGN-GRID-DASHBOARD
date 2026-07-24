@@ -96,14 +96,14 @@
                                             <button onclick="insertLyricTag('[Bridge]')" class="px-3 py-1 rounded bg-white/5 text-[9px] font-black uppercase text-gray-400 hover:bg-white/10 hover:text-white transition-colors">+ Bridge</button>
                                             <button onclick="insertLyricTag('[Outro]')" class="px-3 py-1 rounded bg-white/5 text-[9px] font-black uppercase text-gray-400 hover:bg-white/10 hover:text-white transition-colors">+ Outro</button>
                                         </div>
-                                        <textarea id="custom-lyrics" class="w-full h-56 bg-black border border-white/10 rounded-2xl p-6 text-white font-mono text-sm focus:border-pink-500 outline-none leading-relaxed" placeholder="[Verse]
+                                        <textarea id="custom-lyrics" class="w-full h-56 bg-black border border-[rgba(47,208,255,0.35)] rounded-2xl p-6 text-white font-mono text-sm focus:border-[#2fd0ff] outline-none leading-relaxed" placeholder="[Verse]
 Write your lyrics here..."></textarea>
                                         <button onclick="helpWriteLyrics()" class="mt-4 flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase neon-blue-text transition-colors">✨ Help me write lyrics</button>
                                     </div>
 
                                     <!-- PROMPT MODE -->
                                     <div id="lyrics-body-prompt" class="hidden-section">
-                                        <textarea id="custom-lyrics-prompt" class="w-full h-32 bg-black border border-white/10 rounded-2xl p-6 text-white text-sm focus:border-pink-500 outline-none leading-relaxed" placeholder="Describe the story or theme you want the lyrics to follow — e.g. 'a bittersweet goodbye at a neon-lit train station'"></textarea>
+                                        <textarea id="custom-lyrics-prompt" class="w-full h-32 bg-black border border-[rgba(47,208,255,0.35)] rounded-2xl p-6 text-white text-sm focus:border-[#2fd0ff] outline-none leading-relaxed" placeholder="Describe the story or theme you want the lyrics to follow — e.g. 'a bittersweet goodbye at a neon-lit train station'"></textarea>
                                     </div>
 
                                     <!-- INSTRUMENTAL MODE -->
@@ -122,7 +122,7 @@ Write your lyrics here..."></textarea>
                                     Styles
                                 </button>
                                 <div id="styles-section-body">
-                                    <textarea id="custom-style" class="w-full h-20 bg-black border border-white/10 rounded-xl px-5 py-3 text-white text-sm focus:border-pink-500 outline-none mb-4" placeholder="e.g. Nu-Gaze, Synthwave, 528Hz Luxury"></textarea>
+                                    <textarea id="custom-style" class="w-full h-20 bg-black border border-[rgba(47,208,255,0.35)] rounded-xl px-5 py-3 text-white text-sm focus:border-[#2fd0ff] outline-none mb-4" placeholder="e.g. Nu-Gaze, Synthwave, 528Hz Luxury"></textarea>
                                     <div class="flex flex-wrap gap-2">
                                         <span onclick="addStyleTag('Nu-Gaze')" class="px-3 py-1.5 rounded-full bg-[rgba(47,208,255,0.1)] border border-[rgba(47,208,255,0.3)] neon-blue-text text-[9px] font-black uppercase cursor-pointer hover:bg-[rgba(47,208,255,0.2)] transition-colors">Nu-Gaze</span>
                                         <span onclick="addStyleTag('Synthwave')" class="px-3 py-1.5 rounded-full bg-[rgba(47,208,255,0.1)] border border-[rgba(47,208,255,0.3)] neon-blue-text text-[9px] font-black uppercase cursor-pointer hover:bg-[rgba(47,208,255,0.2)] transition-colors">Synthwave</span>
@@ -656,6 +656,19 @@ Write your lyrics here..."></textarea>
             <video id="gallery-preview-video" controls class="hidden w-full max-h-[60vh] rounded-xl bg-black"></video>
             <audio id="gallery-preview-audio" controls class="hidden w-full"></audio>
             <img id="gallery-preview-image" class="hidden w-full max-h-[60vh] object-contain rounded-xl">
+        </div>
+    </div>
+
+    <div id="add-to-folder-modal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onclick="if(event.target===this) window.closeAddToFolderModal()">
+        <div class="w-full max-w-sm bg-[#0a0a0a] border-[1.8px] border-[rgba(47,208,255,0.25)] rounded-3xl p-7 shadow-2xl max-h-[80vh] flex flex-col">
+            <div class="flex items-center justify-between mb-4 flex-shrink-0">
+                <h3 class="neon-blue-text text-lg font-black uppercase italic tracking-tight">Add To Folder</h3>
+                <button onclick="window.closeAddToFolderModal()" class="text-gray-500 hover:text-white transition-colors">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <p class="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-3 flex-shrink-0">Choose a destination folder</p>
+            <div id="add-to-folder-list" class="space-y-1 overflow-y-auto"></div>
         </div>
     </div>
 
