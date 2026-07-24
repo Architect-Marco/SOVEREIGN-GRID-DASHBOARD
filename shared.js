@@ -4465,6 +4465,43 @@
             'SYSTEM': 'text-gray-500'
         };
 
+        // === SYNDICATE TEAM SWITCHER (HAN'S SURGICAL UPDATE) ===
+// This links your Vertical List (01-08) to your existing Parley Relay
+window.switchSyndicatePersona = function(agentID) {
+    const teamMapping = {
+        "01": "ORACLE",
+        "02": "OPERATOR",
+        "03": "LEXI-CON",
+        "04": "BOND",
+        "05": "STASIS",
+        "06": "SPARK",
+        "07": "CODEX KEEPER",
+        "08": "K-VOLT"
+    };
+
+    const persona = teamMapping[agentID];
+    const colorClass = RELAY_PERSONA_COLORS[persona] || 'text-white';
+
+    console.log(`[SYSTEM]: Switching context to ${persona}...`);
+
+    // Target your Message Hub (The top box)
+    const messageHub = document.querySelector('.message-content');
+    
+    if (messageHub) {
+        messageHub.innerHTML = `
+            <div class="terminal-entry">
+                <span class="${colorClass}">[ ${persona} ]:</span> 
+                <span class="opacity-80">Channel Secured. Architect, I am standing by for the Groq Neural Link handshake.</span>
+            </div>
+        `;
+    }
+
+    // Trigger your existing Parley Relay logic if needed
+    if (window.relayHistory) {
+        window.relayHistory.push({ persona: persona, text: "System Initialized." });
+    }
+};
+
         // ===== GROQ NEURAL LINK (Parley Relay AI) =====
         // NOTE: the key is intentionally NOT hardcoded here. This file gets pushed to a
         // public GitHub repo — anything typed directly into index.html is visible to
