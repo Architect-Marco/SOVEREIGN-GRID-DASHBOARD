@@ -3978,9 +3978,13 @@
                 }
 
                 // Mirror the same data into the Future Neon overlay so switching
-                // styles doesn't require re-forging. (No quote field here — this
-                // template has no space allocated for one, unlike Neon.)
-                document.getElementById('forged-future-name').innerText = bandName;
+                // styles doesn't require re-forging. This template has no quote box,
+                // so Lyrical Themes fills the extra space instead, using the same
+                // form field that feeds the bio elsewhere.
+                const themesInput = document.getElementById('epk-themes');
+                const themesText = themesInput && themesInput.value.trim() ? themesInput.value.trim() : 'Themes not specified';
+                document.getElementById('forged-future-name-text').innerText = bandName;
+                document.getElementById('forged-future-themes-text').innerText = themesText;
                 document.getElementById('forged-future-resonance').innerText = resonance;
                 document.getElementById('forged-future-virality').innerText = virality;
                 document.getElementById('forged-future-mystery').innerText = mystery;
