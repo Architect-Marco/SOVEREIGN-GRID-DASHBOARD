@@ -4961,4 +4961,22 @@ window.switchSyndicatePersona = function(agentID) {
                     }
                 }
             }, 'dawInit');
+            // === SYNDICATE AUTO-LINKER (FINAL PATCH) ===
+    safeInit(() => {
+        console.log("[SYSTEM]: Patching 3.8MB Monolith UI...");
+        document.querySelectorAll('div, span, h3').forEach(el => {
+            const text = el.innerText.trim();
+            const match = text.match(/^(0[1-8]) \/\//);
+            if (match) {
+                el.onclick = () => window.switchSyndicatePersona(match[1]);
+                el.style.cursor = "pointer";
+                el.style.transition = "0.3s";
+                el.onmouseover = () => el.style.filter = "brightness(1.5)";
+                el.onmouseout = () => el.style.filter = "brightness(1)";
+            }
         });
+    }, 'syndicateAutoLink');
+
+}); // <--- THIS IS THE CRITICAL LINE THAT CLOSES THE ENTIRE SCRIPT    
+        });
+       
