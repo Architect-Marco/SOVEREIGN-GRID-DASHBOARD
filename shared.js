@@ -1301,8 +1301,8 @@
                 list.innerHTML = `<p class="text-gray-600 text-[10px] uppercase tracking-widest text-center py-3 opacity-50">Archive is empty — nothing tucked away yet</p>`;
             } else {
                 list.innerHTML = window.archiveFolders.map(f => `
-                    <div class="rounded-lg overflow-hidden">
-                        <div class="flex items-center gap-3 bg-white/5 px-3 py-2.5 group cursor-pointer" onclick="window.toggleArchiveFolderOpen('${f.id}')">
+                    <div class="rounded-lg">
+                        <div class="flex items-center gap-3 bg-white/5 px-3 py-2.5 group cursor-pointer rounded-lg" onclick="window.toggleArchiveFolderOpen('${f.id}')">
                             <svg id="archive-folder-caret-${f.id}" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-gray-600 flex-shrink-0 transition-transform"><path d="M9 18l6-6-6-6"/></svg>
                             <div class="w-8 h-8 rounded-lg bg-black border border-[rgba(47,208,255,0.4)] flex items-center justify-center flex-shrink-0">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
@@ -1314,20 +1314,34 @@
                             </button>
                             <button onclick="event.stopPropagation(); window.deleteArchiveFolder('${f.id}')" title="Delete folder" class="text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0">✕</button>
                         </div>
-                        <div id="archive-folder-songs-${f.id}" class="hidden bg-black/30 pl-8 pr-3 py-2 space-y-1">
+                        <div id="archive-folder-songs-${f.id}" class="hidden bg-black/30 pl-8 pr-3 py-2.5 space-y-2 rounded-b-lg">
                             ${(f.songs || []).length === 0
                                 ? `<p class="text-gray-700 text-[9px] uppercase tracking-widest py-2">No songs in this folder yet</p>`
                                 : f.songs.map(s => `
-                                    <div class="flex items-center gap-2 py-1.5">
-                                        <span class="text-gray-400 text-[11px] font-bold flex-1 truncate">"${s.title}</span>
-                                        <span class="text-gray-600 text-[9px] flex-shrink-0">${s.duration || ''}</span>
+                                    <div class="flex items-center gap-3 py-1">
+                                        <div class="w-10 h-10 rounded-lg bg-black border border-[rgba(47,208,255,0.4)] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                            ${s.coverArt
+                                                ? `<img src="${s.coverArt}" class="w-full h-full object-cover">`
+                                                : `<svg width="16" height="16" viewBox="0 0 24 24" fill="#2fd0ff"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`}
+                                        </div>
+                                        <span class="text-gray-300 text-xs font-bold flex-1 truncate">${s.title}</span>
+                                        <span class="text-gray-500 text-[10px] font-black uppercase tracking-widest flex-shrink-0">${s.duration || ''}</span>
                                         <div class="relative flex-shrink-0 creation-menu-wrapper">
-                                            <button onclick="event.stopPropagation(); window.toggleFolderSongMenu('${f.id}', '${s.id}')" class="text-gray-600 hover:text-white transition-colors p-1">
-                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                                            <button onclick="event.stopPropagation(); window.toggleFolderSongMenu('${f.id}', '${s.id}')" class="neon-blue-text hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
                                             </button>
-                                            <div id="folder-song-menu-${f.id}-${s.id}" class="hidden absolute right-0 top-7 z-20 w-36 bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
-                                                <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); window.deleteFolderSong('${f.id}', '${s.id}')" class="w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] font-bold text-red-400 hover:bg-red-500/10 transition-colors">
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                                            <div id="folder-song-menu-${f.id}-${s.id}" class="hidden absolute right-0 top-9 z-30 w-44 bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
+                                                <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); window.triggerCoverUpload('${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold tracking-wide text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text flex-shrink-0"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                                    Upload Cover Art
+                                                </button>
+                                                <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); window.putSongBack('${f.id}', '${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold tracking-wide text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text flex-shrink-0"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+                                                    Put Back
+                                                </button>
+                                                <div class="h-px bg-white/10 my-1"></div>
+                                                <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); window.deleteFolderSong('${f.id}', '${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold tracking-wide text-red-400 hover:bg-red-500/10 transition-colors">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="flex-shrink-0"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                                                     Delete Song
                                                 </button>
                                             </div>
@@ -1364,6 +1378,25 @@
             if (!folder) return;
             folder.songs = (folder.songs || []).filter(s => s.id !== songId);
             window.renderArchiveFolders();
+        };
+
+        window.putSongBack = function(folderId, songId) {
+            const folder = window.archiveFolders.find(f => f.id === folderId);
+            if (!folder) return;
+            const song = (folder.songs || []).find(s => s.id === songId);
+            if (!song) return;
+            folder.songs = folder.songs.filter(s => s.id !== songId);
+            window.creations.unshift({
+                id: song.id,
+                title: song.title,
+                src: song.src,
+                duration: song.duration,
+                coverArt: song.coverArt || null,
+                lyrics: song.lyrics || ''
+            });
+            window.renderArchiveFolders();
+            if (typeof window.renderCreations === 'function') window.renderCreations();
+            if (typeof window.saveCreations === 'function') window.saveCreations();
         };
 
         window.createArchiveFolder = function() {
@@ -1427,7 +1460,7 @@
             const folder = window.archiveFolders.find(f => f.id === folderId);
             if (!creation || !folder) return;
             if (!folder.songs) folder.songs = [];
-            folder.songs.unshift({ id: creation.id, title: creation.title, duration: creation.duration, coverArt: creation.coverArt });
+            folder.songs.unshift({ id: creation.id, title: creation.title, duration: creation.duration, coverArt: creation.coverArt, src: creation.src, lyrics: creation.lyrics });
             window.creations = window.creations.filter(c => c.id !== creationId);
             window.renderCreations();
             window.renderArchiveFolders();
@@ -1515,14 +1548,25 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 const creation = window.creations.find(c => c.id === id);
-                if (!creation) return;
-                creation.coverArt = e.target.result;
-                window.renderCreations();
-                window.saveCreations();
-                const galleryItem = window.galleryItems.find(g => g.creationId === id);
-                if (galleryItem) {
-                    galleryItem.coverArt = e.target.result;
-                    if (typeof window.renderGallery === 'function') window.renderGallery();
+                if (creation) {
+                    creation.coverArt = e.target.result;
+                    window.renderCreations();
+                    window.saveCreations();
+                    const galleryItem = window.galleryItems.find(g => g.creationId === id);
+                    if (galleryItem) {
+                        galleryItem.coverArt = e.target.result;
+                        if (typeof window.renderGallery === 'function') window.renderGallery();
+                    }
+                    return;
+                }
+                // Not in Your Creations — check inside archive folders too
+                for (const folder of window.archiveFolders) {
+                    const song = (folder.songs || []).find(s => s.id === id);
+                    if (song) {
+                        song.coverArt = e.target.result;
+                        window.renderArchiveFolders();
+                        break;
+                    }
                 }
             };
             reader.readAsDataURL(file);
