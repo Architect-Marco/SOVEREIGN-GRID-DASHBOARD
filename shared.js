@@ -1184,29 +1184,29 @@
                             <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
                         </button>
                         <div id="creation-menu-${c.id}" class="hidden absolute right-0 top-9 z-20 w-44 bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
-                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); renameCreation('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); renameCreation('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold tracking-wide text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text flex-shrink-0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
                                 Rename
                             </button>
-                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); openLyricsPanel('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg>
+                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); openLyricsPanel('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold tracking-wide text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text flex-shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg>
                                 Lyrics
                             </button>
-                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); triggerCoverUpload('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); triggerCoverUpload('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold tracking-wide text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text flex-shrink-0"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                                 Upload Cover Art
                             </button>
-                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); window.openAddToFolderMenu('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); window.openAddToFolderMenu('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold tracking-wide text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text flex-shrink-0"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
                                 Add to Folder
                             </button>
-                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); window.showSongDetails('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); window.showSongDetails('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold tracking-wide text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text flex-shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
                                 Details Song
                             </button>
                             <div class="h-px bg-white/10 my-1"></div>
-                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); window.deleteCreation('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold text-red-400 hover:bg-red-500/10 transition-colors">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                            <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); window.deleteCreation('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold tracking-wide text-red-400 hover:bg-red-500/10 transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="flex-shrink-0"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                                 Delete
                             </button>
                         </div>
