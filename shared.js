@@ -1083,34 +1083,22 @@
 
         window.generateTrack = function() {
             const btn = document.getElementById('generate-btn');
-            const isSimple = window.createMode === 'simple';
-            const title = isSimple
-                ? (document.getElementById('simple-prompt').value.slice(0, 40) || 'Untitled Session')
-                : (document.getElementById('custom-title').value || 'Untitled Session');
-
-            if (isSimple && !document.getElementById('simple-prompt').value.trim()) {
-                alert('Describe the song you want to create first.');
-                return;
-            }
+            const title = document.getElementById('custom-title').value || 'Untitled Session';
 
             let lyricsForSong = '';
-            let promptForSong = isSimple
-                ? document.getElementById('simple-prompt').value
-                : (document.getElementById('custom-title').value || 'Untitled Session');
-            const isInstrumental = !isSimple && window.lyricsMode === 'instrumental';
-            if (!isSimple) {
-                const lyricsEmpty = window.lyricsMode === 'write'
-                    ? !document.getElementById('custom-lyrics').value.trim()
-                    : window.lyricsMode === 'prompt'
-                        ? !document.getElementById('custom-lyrics-prompt').value.trim()
-                        : false; // instrumental mode needs no lyrics input
-                if (lyricsEmpty) {
-                    alert('Add some lyrics, use a prompt, or switch to Instrumental.');
-                    return;
-                }
-                if (window.lyricsMode === 'write') lyricsForSong = document.getElementById('custom-lyrics').value;
-                if (window.lyricsMode === 'prompt') promptForSong += ' — ' + document.getElementById('custom-lyrics-prompt').value;
+            let promptForSong = document.getElementById('custom-title').value || 'Untitled Session';
+            const isInstrumental = window.lyricsMode === 'instrumental';
+            const lyricsEmpty = window.lyricsMode === 'write'
+                ? !document.getElementById('custom-lyrics').value.trim()
+                : window.lyricsMode === 'prompt'
+                    ? !document.getElementById('custom-lyrics-prompt').value.trim()
+                    : false; // instrumental mode needs no lyrics input
+            if (lyricsEmpty) {
+                alert('Add some lyrics, use a prompt, or switch to Instrumental.');
+                return;
             }
+            if (window.lyricsMode === 'write') lyricsForSong = document.getElementById('custom-lyrics').value;
+            if (window.lyricsMode === 'prompt') promptForSong += ' — ' + document.getElementById('custom-lyrics-prompt').value;
 
             btn.disabled = true;
             btn.innerText = 'FORGING...';
@@ -1133,7 +1121,7 @@
                 window.addCreation(title, lyricsForSong, result.audio);
                 setTimeout(() => {
                     btn.disabled = false;
-                    btn.innerText = 'Create ✨';
+                    btn.innerText = 'Create';
                     btn.classList.remove('opacity-60', 'cursor-not-allowed');
                 }, 1200);
             })
@@ -1141,7 +1129,7 @@
                 console.error('Generation failed:', err);
                 alert('Generation failed: ' + err.message + '\n\n(Backend not deployed yet? Set GENERATION_BACKEND_URL near the top of generateTrack().)');
                 btn.disabled = false;
-                btn.innerText = 'Create ✨';
+                btn.innerText = 'Create';
                 btn.classList.remove('opacity-60', 'cursor-not-allowed');
             });
         };
@@ -1180,19 +1168,20 @@
                 const safeTitle = c.title.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 const coverHtml = c.coverArt
                     ? `<img src="${c.coverArt}" class="w-full h-full object-cover">`
-                    : `<div class="w-full h-full bg-gradient-to-br from-teal-500 to-purple-600 flex items-center justify-center">${CREATION_MUSIC_ICON}</div>`;
+                    : `<div class="w-full h-full bg-black flex items-center justify-center">${CREATION_MUSIC_ICON.replace('fill="white"', 'fill="#2fd0ff"')}</div>`;
                 return `
-                <div class="group flex items-center gap-4 p-3 hover:bg-teal-400/10 rounded-xl transition-all border-b border-white/5">
-                    <div class="relative w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden cursor-pointer" onclick="playCreation('${c.id}')">
+                <div class="group flex items-center gap-4 p-4 hover:bg-teal-400/10 rounded-xl transition-all border border-white/10">
+                    <div class="relative w-14 h-14 rounded-xl border border-[rgba(47,208,255,0.4)] flex-shrink-0 overflow-hidden cursor-pointer" onclick="playCreation('${c.id}')">
                         ${coverHtml}
                     </div>
                     <div class="min-w-0 flex-1 cursor-pointer" onclick="playCreation('${c.id}')">
-                        <div class="text-xs font-bold text-gray-200 group-hover:text-teal-400 italic truncate" id="creation-title-${c.id}">${safeTitle}</div>
+                        <div class="text-sm font-bold text-gray-200 group-hover:text-teal-400 italic truncate" id="creation-title-${c.id}">${safeTitle}</div>
                         <div class="text-[9px] text-gray-600 uppercase font-black tracking-widest mt-0.5">${c.duration} // THE SICK TEAM</div>
                     </div>
+                    <span class="text-gray-500 text-[10px] font-black uppercase tracking-widest flex-shrink-0">${c.duration}</span>
                     <div class="relative flex-shrink-0 creation-menu-wrapper">
-                        <button onclick="event.stopPropagation(); window.toggleCreationMenu('${c.id}')" title="More options" class="text-gray-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                        <button onclick="event.stopPropagation(); window.toggleCreationMenu('${c.id}')" title="More options" class="neon-blue-text hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
                         </button>
                         <div id="creation-menu-${c.id}" class="hidden absolute right-0 top-9 z-20 w-44 bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
                             <button onclick="event.stopPropagation(); window.closeAllCreationMenus(); renameCreation('${c.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-[11px] font-bold text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
@@ -1313,9 +1302,11 @@
             } else {
                 list.innerHTML = window.archiveFolders.map(f => `
                     <div class="rounded-lg overflow-hidden">
-                        <div class="flex items-center gap-2.5 bg-white/5 px-3 py-2 group cursor-pointer" onclick="window.toggleArchiveFolderOpen('${f.id}')">
+                        <div class="flex items-center gap-3 bg-white/5 px-3 py-2.5 group cursor-pointer" onclick="window.toggleArchiveFolderOpen('${f.id}')">
                             <svg id="archive-folder-caret-${f.id}" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-gray-600 flex-shrink-0 transition-transform"><path d="M9 18l6-6-6-6"/></svg>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="text-gray-500 flex-shrink-0"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+                            <div class="w-8 h-8 rounded-lg bg-black border border-[rgba(47,208,255,0.4)] flex items-center justify-center flex-shrink-0">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+                            </div>
                             <span id="archive-folder-name-${f.id}" class="text-gray-300 text-[11px] font-bold flex-1 truncate">${f.name}</span>
                             <span class="text-gray-600 text-[9px] flex-shrink-0">${(f.songs || []).length}</span>
                             <button onclick="event.stopPropagation(); window.renameArchiveFolder('${f.id}')" title="Rename folder" class="text-gray-600 hover:text-white transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0">
