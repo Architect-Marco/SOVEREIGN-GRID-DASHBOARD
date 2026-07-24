@@ -3861,8 +3861,7 @@
             set('forged-title', 'color', s.titleColor);
             set('forged-title', 'fontFamily', s.titleFont);
             set('forged-title', 'textShadow', s.titleShadow);
-            set('forged-star', 'background', s.starBg);
-            set('forged-name-bar', 'background', s.nameBarBg);
+                        set('forged-name-bar', 'background', s.nameBarBg);
             set('forged-name-bar', 'borderTop', s.nameBarBorder);
             set('forged-name-bar', 'borderBottom', s.nameBarBorder);
             set('forged-name', 'color', s.nameColor);
@@ -3939,11 +3938,9 @@
                 const resonance = (55 + Math.random() * 35).toFixed(0);
                 const virality = (55 + Math.random() * 35).toFixed(1);
                 const mystery = (60 + Math.random() * 38).toFixed(0);
-                const star = (45 + Math.random() * 50).toFixed(0);
                 document.getElementById('forged-resonance').innerText = resonance;
                 document.getElementById('forged-virality').innerText = virality;
                 document.getElementById('forged-mystery').innerText = mystery;
-                document.getElementById('forged-star').innerText = star;
 
                 const img = document.getElementById('forged-img');
                 const imgPlaceholder = document.getElementById('forged-img-placeholder');
