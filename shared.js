@@ -1404,13 +1404,22 @@
                 alert('No folders yet — create one first from the Archive box 3-dot menu.');
                 return;
             }
-            const names = window.archiveFolders.map((f, i) => (i + 1) + '. ' + f.name).join('\n');
-            const choice = window.prompt('Add to which folder?\n\n' + names + '\n\nType the number:');
-            if (!choice) return;
-            const idx = parseInt(choice.trim(), 10) - 1;
-            const folder = window.archiveFolders[idx];
-            if (!folder) { alert('Not a valid folder number.'); return; }
-            window.assignCreationToFolder(creationId, folder.id);
+            window._addToFolderCreationId = creationId;
+            const list = document.getElementById('add-to-folder-list');
+            list.innerHTML = window.archiveFolders.map(f => `
+                <div onclick="window.assignCreationToFolder(window._addToFolderCreationId, '${f.id}'); window.closeAddToFolderModal();" class="flex items-center gap-3 px-3 py-2.5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors">
+                    <div class="w-8 h-8 rounded-lg bg-black border border-[rgba(47,208,255,0.4)] flex items-center justify-center flex-shrink-0">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+                    </div>
+                    <span class="text-white text-xs font-bold truncate">${f.name}</span>
+                </div>
+            `).join('');
+            document.getElementById('add-to-folder-modal').classList.remove('hidden');
+        };
+
+        window.closeAddToFolderModal = function() {
+            document.getElementById('add-to-folder-modal').classList.add('hidden');
+            window._addToFolderCreationId = null;
         };
 
         window.assignCreationToFolder = function(creationId, folderId) {
