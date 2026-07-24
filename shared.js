@@ -3948,7 +3948,7 @@
                 const img = document.getElementById('forged-img');
                 const imgPlaceholder = document.getElementById('forged-img-placeholder');
                 if (window.epkPhotoDataUrl) {
-                    img.src = window.epkPhotoDataUrl;
+                    img.style.backgroundImage = `url(${window.epkPhotoDataUrl})`;
                     img.classList.remove('hidden');
                     imgPlaceholder.classList.add('hidden');
                 } else {
@@ -3966,7 +3966,7 @@
                 document.getElementById('forged-gold-members').innerText = members;
                 const goldImg = document.getElementById('forged-gold-img');
                 if (window.epkPhotoDataUrl) {
-                    goldImg.src = window.epkPhotoDataUrl;
+                    goldImg.style.backgroundImage = `url(${window.epkPhotoDataUrl})`;
                     goldImg.classList.remove('hidden');
                 } else {
                     goldImg.classList.add('hidden');
