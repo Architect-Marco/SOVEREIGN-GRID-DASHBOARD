@@ -3868,10 +3868,30 @@
                 stat4Border: '1px solid rgba(255,255,255,0.15)', stat4Color: '#ffffff',
                 taglineColor: '#ffffff',
                 genreColor: '#6b7280'
+            },
+            gold: {
+                // A real metallic gradient (light -> deep gold -> bronze -> light) instead of
+                // a flat mustard tone — this is what actually reads as "gold" vs "yellow".
+                frameBg: 'linear-gradient(135deg, #fdf1b8 0%, #d4af37 22%, #8a6a1f 50%, #d4af37 78%, #fdf1b8 100%)',
+                framePadding: '3px',
+                cardBg: 'linear-gradient(180deg, #14110a, #0a0806)',
+                headerBg: 'linear-gradient(180deg, rgba(212,175,55,0.18), rgba(10,8,6,0.15))',
+                titleColor: '#f0d78c',
+                titleFont: "Georgia, 'Times New Roman', serif",
+                titleShadow: '0 1px 0 #5c4813, 0 0 14px rgba(240,215,140,0.35)',
+                starBg: 'linear-gradient(135deg, #fdf1b8, #d4af37 60%, #8a6a1f)',
+                nameBarBg: 'rgba(212,175,55,0.08)',
+                nameBarBorder: '1px solid rgba(212,175,55,0.35)',
+                nameColor: '#f0d78c',
+                nameShadow: '0 1px 0 #5c4813, 0 0 10px rgba(240,215,140,0.3)',
+                quoteColor: '#c9a876',
+                stat1Border: '1px solid rgba(212,175,55,0.55)', stat1Color: '#f0d78c',
+                stat2Border: '1px solid rgba(212,175,55,0.55)', stat2Color: '#f0d78c',
+                stat3Border: '1px solid rgba(212,175,55,0.55)', stat3Color: '#f0d78c',
+                stat4Border: '1px solid rgba(212,175,55,0.55)', stat4Color: '#f0d78c',
+                taglineColor: '#f0e6d2',
+                genreColor: '#8a7c5a'
             }
-            // Future Neon has no entry here — it's an image-overlay card (like Gold was),
-            // so its colors are hardcoded inline on the overlay elements in soul-forge.html,
-            // not driven by this per-style color table.
         };
 
         window.applyForgeCardStyle = function(styleName) {
@@ -3905,11 +3925,11 @@
             window.applyForgeCardStyle(styleName);
 
             const frame = document.getElementById('forged-card-frame');
-            const future = document.getElementById('forged-card-future');
-            if (frame) frame.classList.toggle('hidden', styleName === 'future');
-            if (future) future.classList.toggle('hidden', styleName !== 'future');
+            const gold = document.getElementById('forged-card-gold');
+            if (frame) frame.classList.toggle('hidden', styleName === 'gold');
+            if (gold) gold.classList.toggle('hidden', styleName !== 'gold');
 
-            ['neon', 'future'].forEach(name => {
+            ['neon', 'gold'].forEach(name => {
                 const btn = document.getElementById('card-style-btn-' + name);
                 if (!btn) return;
                 const ring = ' outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400';
@@ -3977,28 +3997,20 @@
                     imgPlaceholder.classList.remove('hidden');
                 }
 
-                // Mirror the same data into the Future Neon overlay so switching
-                // styles doesn't require re-forging. This template has no quote box,
-                // so Lyrical Themes fills the extra space instead, using the same
-                // form field that feeds the bio elsewhere.
-                const themesInput = document.getElementById('epk-themes');
-                let themesText = themesInput && themesInput.value.trim() ? themesInput.value.trim() : 'Themes not specified';
-                // This template's gap between name and stat boxes is baked into the
-                // background image itself — genuinely small, can't be resized via CSS.
-                // Truncate hard so long input can never overflow into the stat boxes.
-                if (themesText.length > 46) themesText = themesText.slice(0, 44).trim() + '…';
-                document.getElementById('forged-future-name-text').innerText = bandName;
-                document.getElementById('forged-future-themes-text').innerText = themesText;
-                document.getElementById('forged-future-resonance').innerText = resonance;
-                document.getElementById('forged-future-virality').innerText = virality;
-                document.getElementById('forged-future-mystery').innerText = mystery;
-                document.getElementById('forged-future-members').innerText = members;
-                const futureImg = document.getElementById('forged-future-img');
+                // Mirror the same data into the Gold Deluxe overlay so switching
+                // styles doesn't require re-forging.
+                document.getElementById('forged-gold-name').innerText = bandName;
+                document.getElementById('forged-gold-quote').innerText = quote;
+                document.getElementById('forged-gold-resonance').innerText = resonance;
+                document.getElementById('forged-gold-virality').innerText = virality;
+                document.getElementById('forged-gold-mystery').innerText = mystery;
+                document.getElementById('forged-gold-members').innerText = members;
+                const goldImg = document.getElementById('forged-gold-img');
                 if (window.epkPhotoDataUrl) {
-                    futureImg.style.backgroundImage = `url(${window.epkPhotoDataUrl})`;
-                    futureImg.classList.remove('hidden');
+                    goldImg.style.backgroundImage = `url(${window.epkPhotoDataUrl})`;
+                    goldImg.classList.remove('hidden');
                 } else {
-                    futureImg.classList.add('hidden');
+                    goldImg.classList.add('hidden');
                 }
 
                 window.applyForgeCardStyle(window.forgeCardStyle);
@@ -4010,8 +4022,8 @@
         // Exports the rendered card as a real downloadable PNG, pixel-for-pixel
         // what's on screen — no server round-trip, all done client-side.
         window.downloadForgedCard = function() {
-            const cardEl = window.forgeCardStyle === 'future'
-                ? document.getElementById('forged-card-future')
+            const cardEl = window.forgeCardStyle === 'gold'
+                ? document.getElementById('forged-card-gold')
                 : document.getElementById('forged-card-frame');
             if (!cardEl || typeof html2canvas === 'undefined') {
                 alert('Card export isn\'t available right now — try refreshing the page.');
@@ -4031,13 +4043,14 @@
 
         window.deployForgedArtist = function(btn) {
             // Read from the form input directly, not a style-specific card element —
-            // whichever card style (Neon/Future Neon) isn't active is display:none, and
+            // whichever card style (Neon/Gold) isn't active is display:none, and
             // .innerText on a hidden element returns '' in most browsers. That silent
             // empty string was why deploys sometimes seemed to do nothing.
             const nameInput = document.getElementById('epk-band-name');
             const name = (nameInput && nameInput.value ? nameInput.value : 'New Artist Unit').toUpperCase();
-            // Future Neon has no quote field on its template, so bio only comes from Neon's.
-            const quoteEl = window.forgeCardStyle === 'neon' ? document.getElementById('forged-quote') : null;
+            const quoteEl = window.forgeCardStyle === 'gold'
+                ? document.getElementById('forged-gold-quote')
+                : document.getElementById('forged-quote');
             const bio = quoteEl ? quoteEl.innerText : '';
             const genre = document.getElementById('epk-genre') ? (document.getElementById('epk-genre').value || 'Sovereign-tuned frequency signature') : '';
 
@@ -4055,8 +4068,8 @@
             window.addPressKit({ artistName: name, bio, genre });
             const newPk = window.pressKits[0];
 
-            const cardEl = window.forgeCardStyle === 'future'
-                ? document.getElementById('forged-card-future')
+            const cardEl = window.forgeCardStyle === 'gold'
+                ? document.getElementById('forged-card-gold')
                 : document.getElementById('forged-card-frame');
 
             if (cardEl && typeof html2canvas !== 'undefined' && newPk) {
@@ -4464,43 +4477,6 @@
             'STASIS': 'text-gray-400',
             'SYSTEM': 'text-gray-500'
         };
-
-        // === SYNDICATE TEAM SWITCHER (HAN'S SURGICAL UPDATE) ===
-// This links your Vertical List (01-08) to your existing Parley Relay
-window.switchSyndicatePersona = function(agentID) {
-    const teamMapping = {
-        "01": "ORACLE",
-        "02": "OPERATOR",
-        "03": "LEXI-CON",
-        "04": "BOND",
-        "05": "STASIS",
-        "06": "SPARK",
-        "07": "CODEX KEEPER",
-        "08": "K-VOLT"
-    };
-
-    const persona = teamMapping[agentID];
-    const colorClass = RELAY_PERSONA_COLORS[persona] || 'text-white';
-
-    console.log(`[SYSTEM]: Switching context to ${persona}...`);
-
-    // Target your Message Hub (The top box)
-    const messageHub = document.querySelector('.message-content');
-    
-    if (messageHub) {
-        messageHub.innerHTML = `
-            <div class="terminal-entry">
-                <span class="${colorClass}">[ ${persona} ]:</span> 
-                <span class="opacity-80">Channel Secured. Architect, I am standing by for the Groq Neural Link handshake.</span>
-            </div>
-        `;
-    }
-
-    // Trigger your existing Parley Relay logic if needed
-    if (window.relayHistory) {
-        window.relayHistory.push({ persona: persona, text: "System Initialized." });
-    }
-};
 
         // ===== GROQ NEURAL LINK (Parley Relay AI) =====
         // NOTE: the key is intentionally NOT hardcoded here. This file gets pushed to a
@@ -4961,22 +4937,4 @@ window.switchSyndicatePersona = function(agentID) {
                     }
                 }
             }, 'dawInit');
-            // === SYNDICATE AUTO-LINKER (FINAL PATCH) ===
-    safeInit(() => {
-        console.log("[SYSTEM]: Patching 3.8MB Monolith UI...");
-        document.querySelectorAll('div, span, h3').forEach(el => {
-            const text = el.innerText.trim();
-            const match = text.match(/^(0[1-8]) \/\//);
-            if (match) {
-                el.onclick = () => window.switchSyndicatePersona(match[1]);
-                el.style.cursor = "pointer";
-                el.style.transition = "0.3s";
-                el.onmouseover = () => el.style.filter = "brightness(1.5)";
-                el.onmouseout = () => el.style.filter = "brightness(1)";
-            }
         });
-    }, 'syndicateAutoLink');
-
-}); // <--- THIS IS THE CRITICAL LINE THAT CLOSES THE ENTIRE SCRIPT    
-        });
-       
