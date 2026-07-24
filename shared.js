@@ -4938,3 +4938,63 @@
                 }
             }, 'dawInit');
         });
+/* 
+   SOVEREIGN GRID V17.7: MASTER OVERRIDE 
+   ENGINEER: HAN (CDX-07) // CODEX KEEPER
+   STATUS: STANDALONE ENGINE (BULLETPROOF)
+*/
+
+(function() {
+    const PERSONA_DATA = {
+        "01": { name: "ORACLE", color: "#fbbf24", class: "text-yellow-400" },
+        "02": { name: "OPERATOR", color: "#a855f7", class: "text-purple-400" },
+        "03": { name: "LEXI-CON", color: "#ff8c00", class: "lexi-identity-text font-bold" },
+        "04": { name: "BOND", color: "#ffffff", class: "text-white opacity-70" },
+        "05": { name: "STASIS", color: "#9ca3af", class: "text-gray-400" },
+        "06": { name: "SPARK", color: "#d8b4fe", class: "text-purple-300" },
+        "07": { name: "CODEX KEEPER", color: "#ffffff", class: "text-white" },
+        "08": { name: "K-VOLT", color: "#60a5fa", class: "text-blue-400" }
+    };
+
+    // THE BRAIN: Updates the top message hub
+    function injectPersona(id) {
+        const agent = PERSONA_DATA[id];
+        if (!agent) return;
+
+        const hub = document.querySelector('.message-content') || document.querySelector('.manifesto-text') || document.querySelector('#message-box');
+        
+        if (hub) {
+            hub.innerHTML = `
+                <div class="terminal-inject" style="animation: fadeIn 0.4s ease; padding: 10px; border-left: 3px solid ${agent.color};">
+                    <h3 class="${agent.class}" style="letter-spacing: 4px; margin-bottom: 8px; font-size: 1.4rem;">// ${agent.name}_LINK_ACTIVE</h3>
+                    <p style="color: rgba(255,255,255,0.9); font-size: 1.1rem; line-height: 1.6; font-family: 'Rajdhani', sans-serif;">
+                        "Architect, I have secured the frequency. The Sovereign Grid V17.7 is performing at 99.2% efficiency. Standing by for Groq 4.5 logic injection."
+                    </p>
+                    <div style="margin-top: 10px; font-size: 0.7rem; color: #555; letter-spacing: 2px;">STATUS: ONLINE // NODE: SG-${id}</div>
+                </div>
+            `;
+            console.log(`[HAN_LOGIC]: ${agent.name} initialized.`);
+        }
+    }
+
+    // THE HANDS: Listens for clicks on anything starting with "01 //", "02 //", etc.
+    document.addEventListener('click', function(event) {
+        const target = event.target.closest('div, h3, span');
+        if (!target) return;
+
+        const rawText = target.innerText ? target.innerText.trim() : "";
+        const match = rawText.match(/^(0[1-8])\s*\/\//);
+
+        if (match) {
+            console.log("[HAN_LOGIC]: Architect selected Node " + match[1]);
+            injectPersona(match[1]);
+            
+            // Visual pulse effect on click
+            target.style.transition = "0.2s";
+            target.style.color = "#00f2ff";
+            setTimeout(() => { target.style.color = ""; }, 300);
+        }
+    }, true); // 'true' ensures we override other scripts
+
+    console.log("[HAN_LOGIC]: Sovereign Override Engine Active.");
+})();
