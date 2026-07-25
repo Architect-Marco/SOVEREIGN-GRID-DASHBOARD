@@ -59,18 +59,6 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                             <input type="text" id="home-search-input" placeholder="Search pages, tools, media, artists..." class="w-full bg-[#0a0a0a] border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-[11px] text-white placeholder-gray-600 outline-none focus:border-white/40 transition-all" oninput="if(this.value.trim()){ document.getElementById('app-menu-modal').classList.remove('hidden'); window.filterAppMenu(this.value); } else { document.getElementById('app-menu-modal').classList.add('hidden'); }" onkeydown="if(event.key==='Enter') window.runHomeSearch()">
                         </div>
-                        <div class="flex justify-end items-center gap-2 mt-4">
-                            <button onclick="document.getElementById('home-hero-upload-input').click()" title="Upload" class="social-btn">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-                            </button>
-                            <input type="file" id="home-hero-upload-input" accept="image/*" class="hidden" onchange="if(typeof window.handleHomeHeroUpload==='function') window.handleHomeHeroUpload(event)">
-                            <button onclick="window.deleteHomeHeroContent()" title="Delete" class="social-btn hover:text-red-400">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-                            </button>
-                            <button onclick="window.openSocialLinksModal()" title="Edit social links" class="social-btn">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
-                            </button>
-                        </div>
                     </div>
                 </div>
 
@@ -110,6 +98,16 @@
                                 <a href="#" id="social-link-tiktok" target="_blank" rel="noopener" class="social-btn" title="TikTok"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2h3.2c.3 1.9 1.6 3.4 3.8 3.7v3.3c-1.4 0-2.7-.4-3.8-1.1v6.6a5.5 5.5 0 1 1-5.5-5.5c.3 0 .6 0 .9.1v3.3a2.2 2.2 0 1 0 1.6 2.1V2z"/></svg></a>
                                 <a href="#" id="social-link-youtube" target="_blank" rel="noopener" class="social-btn" title="YouTube"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12s0-3.4-.4-5a2.8 2.8 0 0 0-2-2C17.9 4.5 12 4.5 12 4.5s-5.9 0-7.6.5a2.8 2.8 0 0 0-2 2C2 8.6 2 12 2 12s0 3.4.4 5a2.8 2.8 0 0 0 2 2c1.7.5 7.6.5 7.6.5s5.9 0 7.6-.5a2.8 2.8 0 0 0 2-2c.4-1.6.4-5 .4-5zM10 15V9l5 3z"/></svg></a>
                                 <a href="#" id="social-link-suno" target="_blank" rel="noopener" class="social-btn" title="Suno"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></a>
+                                <button onclick="document.getElementById('home-hero-upload-input').click()" title="Upload" class="social-btn">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                                </button>
+                                <input type="file" id="home-hero-upload-input" accept="image/*" class="hidden" onchange="if(typeof window.handleHomeHeroUpload==='function') window.handleHomeHeroUpload(event)">
+                                <button onclick="window.deleteHomeHeroContent()" title="Delete" class="social-btn hover:text-red-400">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                                </button>
+                                <button onclick="window.openSocialLinksModal()" title="Edit social links" class="social-btn">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+                                </button>
                             </div>
                             <!-- COMPACT GRID RANKING BADGE -->
                             <div class="flex items-center gap-2 bg-black border neon-red-border rounded-lg px-3 py-2 flex-shrink-0" title="Grid Ranking: Dominant / 87 Vibe">
