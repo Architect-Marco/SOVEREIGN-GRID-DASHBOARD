@@ -3877,8 +3877,12 @@
 
                 document.getElementById('forged-name').innerText = bandName;
 
+                // Quote pulls from Concept ONLY — Themes gets its own tag line below the
+                // name (see forged-themes below), so folding it into the quote too would
+                // print the same text twice on the card. Concept missing but Themes filled
+                // still falls back to Themes here since there'd be nothing else to show.
                 const quote = concept || themes
-                    ? `"${concept || ''}${concept && themes ? ' — ' : ''}${themes || ''}"`
+                    ? `"${concept || themes}"`
                     : `"${artistType} — ${genre}. Synthesized from the 528Hz luxury vacuum..."`;
                 document.getElementById('forged-quote').innerText = quote;
                 document.getElementById('forged-tagline').innerText = '"Feel the pulse. Find your truth."';
@@ -3910,7 +3914,9 @@
                 // Hidden entirely when the field is empty, rather than showing filler text.
                 const themesInput = document.getElementById('epk-themes');
                 const themesEl = document.getElementById('forged-themes');
-                if (themesInput && themesInput.value.trim()) {
+                // If Concept was empty, the quote above already fell back to showing
+                // Themes verbatim — so skip the tag line here too, or it'd repeat.
+                if (themesInput && themesInput.value.trim() && concept.trim()) {
                     let themesText = themesInput.value.trim();
                     if (themesText.length > 50) themesText = themesText.slice(0, 48).trim() + '…';
                     themesEl.innerText = themesText;
