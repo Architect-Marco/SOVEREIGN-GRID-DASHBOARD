@@ -4008,9 +4008,9 @@
                 futureImg.src = window.epkPhotoDataUrl;
                 futureImg.classList.remove('hidden');
                 } else if (futureImg) {
-                futureImg.classList.add('hidden');
-            
-
+                    futureImg.classList.add('hidden');
+                }
+                                    
                 window.applyForgeCardStyle(window.forgeCardStyle);
                 card.classList.remove('hidden');
                 requestAnimationFrame(() => card.classList.add('materialize'));
