@@ -260,15 +260,15 @@
         window.initSplitterWaves = function() {
             if (window.waves.vocals) return;
             const config = (id, color) => ({
-                container: `#wave-${id}`, waveColor: 'rgba(255,255,255,0.15)', progressColor: color,
-                cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 44, normalize: true
+                container: `#wave-${id}`, waveColor: 'rgba(47,208,255,0.28)', progressColor: color,
+                cursorWidth: 0, barWidth: 1, barGap: 1, barRadius: 0, responsive: true, height: 36, normalize: true
             });
-            window.waves.instrumental = WaveSurfer.create(config('instrumental', '#e5e7eb'));
-            window.waves.vocals = WaveSurfer.create(config('vocals', '#e5e7eb'));
-            window.waves.bass = WaveSurfer.create(config('bass', '#e5e7eb'));
-            window.waves.others = WaveSurfer.create(config('others', '#e5e7eb'));
-            window.waves['master-before'] = WaveSurfer.create({ container: '#wave-master-before', waveColor: 'rgba(255,255,255,0.12)', progressColor: '#9ca3af', cursorColor: '#ffffff', barWidth: 2, barRadius: 3, responsive: true, height: 56, normalize: true });
-            window.waves['master-after'] = WaveSurfer.create({ container: '#wave-master-after', waveColor: 'rgba(255,255,255,0.12)', progressColor: '#e5e7eb', cursorColor: '#ffffff', barWidth: 2, barRadius: 3, responsive: true, height: 56, normalize: true });
+            window.waves.instrumental = WaveSurfer.create(config('instrumental', '#2fd0ff'));
+            window.waves.vocals = WaveSurfer.create(config('vocals', '#2fd0ff'));
+            window.waves.bass = WaveSurfer.create(config('bass', '#2fd0ff'));
+            window.waves.others = WaveSurfer.create(config('others', '#2fd0ff'));
+            window.waves['master-before'] = WaveSurfer.create({ container: '#wave-master-before', waveColor: 'rgba(47,208,255,0.22)', progressColor: '#7fe3ff', cursorColor: '#2fd0ff', barWidth: 1, barGap: 1, barRadius: 0, responsive: true, height: 56, normalize: true });
+            window.waves['master-after'] = WaveSurfer.create({ container: '#wave-master-after', waveColor: 'rgba(47,208,255,0.22)', progressColor: '#2fd0ff', cursorColor: '#2fd0ff', barWidth: 1, barGap: 1, barRadius: 0, responsive: true, height: 56, normalize: true });
 
             // Live functional metering — wired to real Web Audio analysis (see initMasteringMeters below)
             window.initMasteringMeters();
