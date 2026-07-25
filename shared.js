@@ -271,7 +271,7 @@
             window.waves['master-after'] = WaveSurfer.create({ container: '#wave-master-after', waveColor: 'rgba(47,208,255,0.22)', progressColor: '#2fd0ff', cursorColor: '#2fd0ff', barWidth: 1, barGap: 1, barRadius: 0, responsive: true, height: 56, normalize: true });
 
             // Live functional metering — wired to real Web Audio analysis (see initMasteringMeters below)
-            window.initMasteringMeters();
+            try { window.initMasteringMeters(); } catch (err) { console.warn('Mastering meters skipped:', err); }
 
             // Master-before/after individual play/stop icon + label sync, plus their own time readouts
             ['master-before', 'master-after'].forEach(id => {
@@ -375,7 +375,7 @@
                 if (ig) ig.innerText = isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--';
                 if (igText) igText.innerText = 'Integrated: ' + (isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--') + ' LUFS';
                 const needle = document.getElementById('meter-loudness-needle');
-                if (needle) needle.style.left = clampPct(dbToPct(truePeakDb, -60)) + '%';
+                if (needle) needle.style.width = clampPct(dbToPct(truePeakDb, -60)) + '%';
             }
         };
 
@@ -426,8 +426,8 @@
                 if (shortTermVal) shortTermVal.innerText = fmtDb(rmsDb);
                 if (shortTermText) shortTermText.innerText = 'Short-term: ' + fmtDb(rmsDb) + ' LUFS';
                 if (outputCurrent) outputCurrent.innerText = fmtDb(peakDb) + ' dB';
-                if (outputNeedle) outputNeedle.style.left = clampPct(dbToPct(peakDb, -60)) + '%';
-                if (loudnessNeedle && key === 'master-after') loudnessNeedle.style.left = clampPct(dbToPct(rmsDb, -60)) + '%';
+                if (outputNeedle) outputNeedle.style.width = clampPct(dbToPct(peakDb, -60)) + '%';
+                if (loudnessNeedle && key === 'master-after') loudnessNeedle.style.width = clampPct(dbToPct(rmsDb, -60)) + '%';
 
                 window.masteringLiveState.rafId = requestAnimationFrame(tick);
             };
@@ -637,15 +637,25 @@
         });
 
         window.handleSplitUpload = function(event) {
-            const file = event.target.files[0];
-            if (file) {
+            try {
+                const file = event.target.files && event.target.files[0];
+                if (!file) return;
                 window.currentMasterUrl = URL.createObjectURL(file);
                 const btn = document.getElementById('split-btn');
-                btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                btn.innerText = "START SPLIT ✨";
+                if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); btn.innerText = "START SPLIT ✨"; }
                 const nameEl = document.getElementById('splitter-filename');
-                if (nameEl) nameEl.innerText = file.name;
-                alert("Master track uplinked to the lab!");
+                if (nameEl) { nameEl.innerText = file.name; nameEl.classList.add('neon-blue-text'); }
+                const uploadBtn = document.getElementById('splitter-upload-label');
+                if (uploadBtn) {
+                    const original = uploadBtn.innerText;
+                    uploadBtn.innerText = 'Uplinked ✓';
+                    setTimeout(() => { uploadBtn.innerText = original; }, 1800);
+                }
+            } catch (err) {
+                console.error('handleSplitUpload failed:', err);
+            } finally {
+                // Reset so selecting the SAME file again still fires onchange next time
+                event.target.value = '';
             }
         };
 
@@ -833,13 +843,42 @@
             const slot = preset && preset.slots[slotIndex];
             const plugin = slot && window.SOVEREIGN_12_PLUGINS.find(p => p.id === slot.pluginId);
             if (!plugin) return;
-            const name = prompt('Name this preset:', plugin.name + ' Preset');
-            if (!name) return;
-            const params = mfxGetParams(presetId, slotIndex, plugin);
-            window.mfxSavedPresets.push({ name, pluginId: plugin.id, params: { ...params }, savedAt: Date.now() });
-            try { localStorage.setItem('sbn-mastering-fx-presets', JSON.stringify(window.mfxSavedPresets)); } catch (e) {}
             document.querySelectorAll('.mfx-preset-menu').forEach(menu => menu.classList.add('hidden'));
-            alert('Preset "' + name + '" saved ✨');
+            window.mfxPendingSave = { presetId, slotIndex, plugin };
+            const modal = document.getElementById('mfx-save-preset-modal');
+            const input = document.getElementById('mfx-preset-name-input');
+            if (input) input.value = plugin.name + ' Preset';
+            if (modal) modal.classList.remove('hidden');
+            if (input) { input.focus(); input.select(); }
+        };
+
+        window.mfxCancelSavePreset = function() {
+            const modal = document.getElementById('mfx-save-preset-modal');
+            if (modal) modal.classList.add('hidden');
+            window.mfxPendingSave = null;
+        };
+
+        window.mfxConfirmSavePreset = function() {
+            const pending = window.mfxPendingSave;
+            if (!pending) return;
+            const input = document.getElementById('mfx-preset-name-input');
+            const name = input && input.value.trim();
+            if (!name) { if (input) input.focus(); return; }
+            const params = mfxGetParams(pending.presetId, pending.slotIndex, pending.plugin);
+            window.mfxSavedPresets.push({ name, pluginId: pending.plugin.id, params: { ...params }, savedAt: Date.now() });
+            try { localStorage.setItem('sbn-mastering-fx-presets', JSON.stringify(window.mfxSavedPresets)); } catch (e) {}
+            const modal = document.getElementById('mfx-save-preset-modal');
+            if (modal) modal.classList.add('hidden');
+            window.mfxPendingSave = null;
+
+            // Inline confirmation flash on the knob card that was saved, no blocking alert
+            const knobId = `mfxknob-${pending.presetId}-${pending.slotIndex}`;
+            const anyKnob = document.getElementById(knobId + '-' + pending.plugin.values[0][0]);
+            const card = anyKnob && anyKnob.closest('.bg-black\\/40');
+            if (card) {
+                card.style.boxShadow = '0 0 0 1px rgba(47,208,255,0.6), 0 0 20px rgba(47,208,255,0.25)';
+                setTimeout(() => { card.style.boxShadow = ''; }, 900);
+            }
         };
 
         document.addEventListener('click', (e) => {
