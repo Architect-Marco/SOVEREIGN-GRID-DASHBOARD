@@ -3917,9 +3917,7 @@
                 // If Concept was empty, the quote above already fell back to showing
                 // Themes verbatim — so skip the tag line here too, or it'd repeat.
                 if (themesInput && themesInput.value.trim() && concept.trim()) {
-                    let themesText = themesInput.value.trim();
-                    if (themesText.length > 50) themesText = themesText.slice(0, 48).trim() + '…';
-                    themesEl.innerText = themesText;
+                    themesEl.innerText = themesInput.value.trim();
                     themesEl.classList.remove('hidden');
                 } else {
                     themesEl.classList.add('hidden');
