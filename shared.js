@@ -3845,81 +3845,8 @@
         // (never CSS gradient-clip text) — html2canvas silently drops gradient-clipped
         // text when exporting, which is why the downloaded card used to lose its title
         // and band name. Solid colors export exactly as they render on screen.
-        window.forgeCardStyle = window.forgeCardStyle || 'neon';
-
-        const FORGE_CARD_STYLES = {
-            neon: {
-                frameBg: 'rgba(168,85,247,0.45)',
-                framePadding: '1.8px',
-                cardBg: '#0a0a10',
-                headerBg: 'linear-gradient(180deg, rgba(88,28,135,0.35), rgba(10,10,16,0.2))',
-                titleColor: '#a855f7',
-                titleFont: "'JetBrains Mono', monospace",
-                titleShadow: 'none',
-                starBg: '#facc15',
-                nameBarBg: 'rgba(168,85,247,0.08)',
-                nameBarBorder: '1px solid rgba(168,85,247,0.2)',
-                nameColor: '#ec4899',
-                nameShadow: 'none',
-                quoteColor: '#93c5fd',
-                stat1Border: '1px solid rgba(45,212,191,0.4)', stat1Color: '#2dd4bf',
-                stat2Border: '1px solid rgba(236,72,153,0.4)', stat2Color: '#ec4899',
-                stat3Border: '1px solid rgba(168,85,247,0.4)', stat3Color: '#a855f7',
-                stat4Border: '1px solid rgba(255,255,255,0.15)', stat4Color: '#ffffff',
-                taglineColor: '#ffffff',
-                genreColor: '#6b7280'
-            }
-            // Future Neon has no entry here — it's an image-overlay card (like Gold was),
-            // so its colors are hardcoded inline on the overlay elements in soul-forge.html,
-            // not driven by this per-style color table.
-        };
-
-        window.applyForgeCardStyle = function(styleName) {
-            const s = FORGE_CARD_STYLES[styleName] || FORGE_CARD_STYLES.neon;
-            const set = (id, prop, val) => { const el = document.getElementById(id); if (el) el.style[prop] = val; };
-
-            set('forged-card-frame', 'background', s.frameBg);
-            set('forged-card-frame', 'padding', s.framePadding);
-            set('forged-card', 'background', s.cardBg);
-            set('forged-header-bar', 'background', s.headerBg);
-            set('forged-title', 'color', s.titleColor);
-            set('forged-title', 'fontFamily', s.titleFont);
-            set('forged-title', 'textShadow', s.titleShadow);
-                        set('forged-name-bar', 'background', s.nameBarBg);
-            set('forged-name-bar', 'borderTop', s.nameBarBorder);
-            set('forged-name-bar', 'borderBottom', s.nameBarBorder);
-            set('forged-name', 'color', s.nameColor);
-            set('forged-name', 'fontFamily', s.titleFont);
-            set('forged-name', 'textShadow', s.nameShadow);
-            set('forged-quote', 'color', s.quoteColor);
-            set('forged-stat-box-1', 'border', s.stat1Border); set('forged-resonance', 'color', s.stat1Color);
-            set('forged-stat-box-2', 'border', s.stat2Border); set('forged-virality', 'color', s.stat2Color);
-            set('forged-stat-box-3', 'border', s.stat3Border); set('forged-mystery', 'color', s.stat3Color);
-            set('forged-stat-box-4', 'border', s.stat4Border); set('forged-members', 'color', s.stat4Color);
-            set('forged-tagline', 'color', s.taglineColor);
-            set('forged-genre', 'color', s.genreColor);
-        };
-
-        window.setForgeCardStyle = function(styleName) {
-            window.forgeCardStyle = styleName;
-            window.applyForgeCardStyle(styleName);
-
-            const frame = document.getElementById('forged-card-frame');
-            const future = document.getElementById('forged-card-future');
-            if (frame) frame.classList.toggle('hidden', styleName === 'future');
-            if (future) future.classList.toggle('hidden', styleName !== 'future');
-
-            ['neon', 'future'].forEach(name => {
-                const btn = document.getElementById('card-style-btn-' + name);
-                if (!btn) return;
-                const ring = ' outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400';
-                if (name === styleName) {
-                    btn.className = 'px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all bg-purple-500/15 border-purple-500/50 text-purple-300' + ring;
-                } else {
-                    btn.className = 'px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all bg-white/5 border-white/15 text-gray-500' + ring;
-                }
-            });
-        };
+        // (This card design's colors are hardcoded inline in soul-forge.html directly —
+        // no style-switching system needed now that Future Neon has been removed.)
 
         window.forgeMyArtist = function() {
             const placeholder = document.getElementById('forge-placeholder');
@@ -3977,31 +3904,11 @@
                     imgPlaceholder.classList.remove('hidden');
                 }
 
-                // Mirror the same data into the Future Neon overlay so switching
-                // styles doesn't require re-forging. This template has no quote box,
-                // so Lyrical Themes fills the extra space instead, using the same
-                // form field that feeds the bio elsewhere.
+                // Lyrical Themes line, shown under the band name
                 const themesInput = document.getElementById('epk-themes');
-                let themesText = themesInput && themesInput.value.trim() ? themesInput.value.trim() : 'Themes not specified';
-                // This template's gap between name and stat boxes is baked into the
-                // background image itself — genuinely small, can't be resized via CSS.
-                // Truncate hard so long input can never overflow into the stat boxes.
-                if (themesText.length > 46) themesText = themesText.slice(0, 44).trim() + '…';
-                document.getElementById('forged-future-name-text').innerText = bandName;
-                document.getElementById('forged-future-themes-text').innerText = themesText;
-                document.getElementById('forged-future-resonance').innerText = resonance;
-                document.getElementById('forged-future-virality').innerText = virality;
-                document.getElementById('forged-future-mystery').innerText = mystery;
-                document.getElementById('forged-future-members').innerText = members;
-                const futureImg = document.getElementById('forged-future-img');
-                if (window.epkPhotoDataUrl) {
-                    futureImg.style.backgroundImage = `url(${window.epkPhotoDataUrl})`;
-                    futureImg.classList.remove('hidden');
-                } else {
-                    futureImg.classList.add('hidden');
-                }
+                const themesText = themesInput && themesInput.value.trim() ? themesInput.value.trim() : 'Themes not specified';
+                document.getElementById('forged-themes').innerText = themesText;
 
-                window.applyForgeCardStyle(window.forgeCardStyle);
                 card.classList.remove('hidden');
                 requestAnimationFrame(() => card.classList.add('materialize'));
             }, 2000);
@@ -4010,9 +3917,7 @@
         // Exports the rendered card as a real downloadable PNG, pixel-for-pixel
         // what's on screen — no server round-trip, all done client-side.
         window.downloadForgedCard = function() {
-            const cardEl = window.forgeCardStyle === 'future'
-                ? document.getElementById('forged-card-future')
-                : document.getElementById('forged-card-frame');
+            const cardEl = document.getElementById('forged-card-frame');
             if (!cardEl || typeof html2canvas === 'undefined') {
                 alert('Card export isn\'t available right now — try refreshing the page.');
                 return;
@@ -4030,14 +3935,11 @@
         };
 
         window.deployForgedArtist = function(btn) {
-            // Read from the form input directly, not a style-specific card element —
-            // whichever card style (Neon/Future Neon) isn't active is display:none, and
-            // .innerText on a hidden element returns '' in most browsers. That silent
-            // empty string was why deploys sometimes seemed to do nothing.
+            // Read from the form input directly, not the card's own text elements —
+            // simpler and avoids ever depending on element visibility/state.
             const nameInput = document.getElementById('epk-band-name');
             const name = (nameInput && nameInput.value ? nameInput.value : 'New Artist Unit').toUpperCase();
-            // Future Neon has no quote field on its template, so bio only comes from Neon's.
-            const quoteEl = window.forgeCardStyle === 'neon' ? document.getElementById('forged-quote') : null;
+            const quoteEl = document.getElementById('forged-quote');
             const bio = quoteEl ? quoteEl.innerText : '';
             const genre = document.getElementById('epk-genre') ? (document.getElementById('epk-genre').value || 'Sovereign-tuned frequency signature') : '';
 
@@ -4055,9 +3957,7 @@
             window.addPressKit({ artistName: name, bio, genre });
             const newPk = window.pressKits[0];
 
-            const cardEl = window.forgeCardStyle === 'future'
-                ? document.getElementById('forged-card-future')
-                : document.getElementById('forged-card-frame');
+            const cardEl = document.getElementById('forged-card-frame');
 
             if (cardEl && typeof html2canvas !== 'undefined' && newPk) {
                 html2canvas(cardEl, { backgroundColor: null, scale: 2 }).then(canvas => {
