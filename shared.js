@@ -3990,6 +3990,12 @@
                 themesDisplay.style.whiteSpace = 'normal'; // Allows text to wrap
                 themesDisplay.style.height = 'auto'; // Allows container to grow
                 themesDisplay.style.display = 'block'; // Ensures it doesn't stay inline
+                    // SYMBOLIC LINK TO SONIC PURGE HUB
+                const lyricHub = document.getElementById('lyric-content');
+                if (lyricHub) {
+                lyricHub.innerText = themesText; 
+                lyricHub.parentElement.style.display = 'block';
+                }
                 document.getElementById('forged-future-resonance').innerText = resonance;
                 document.getElementById('forged-future-virality').innerText = virality;
                 document.getElementById('forged-future-mystery').innerText = mystery;
@@ -4924,5 +4930,40 @@
                         setTimeout(window.initDawWaves, 300);
                     }
                 }
+
+                    /* === SESSION 6: SYNDICATE TERMINAL AUTO-HOOK === */
+document.querySelectorAll('.syndicate-list-item, [data-persona-id]').forEach(btn => {
+    btn.addEventListener('click', function() {
+        // Look for ID in data attribute or first part of text
+        const id = this.getAttribute('data-persona-id') || (this.innerText && this.innerText.split('\n')[0]);
+        if (id && typeof window.switchSyndicatePersona === 'function') {
+            window.switchSyndicatePersona(id);
+        }
+    });
+});
+
+window.switchSyndicatePersona = function(id) {
+    const hub = document.getElementById('lyric-content');
+    if (!hub) return;
+
+    // FREQUENCY LAYERING (528Hz)
+    const manifests = {
+        "01": "ORACLE: Strategic Intelligence. Gateway Node Secure. Scanning future timelines...",
+        "02": "OPERATOR: Tactical Command. All systems green. Sovereign Grid V17.7 is stable.",
+        "03": "LEXI-CON: 528Hz Luxury. Purging the basics. I don't follow trends, I set the frequency. 🍭",
+        "07": "HAN: Logic & Surgical Modular Code. Build #120 baseline verified.",
+        "08": "K-VOLT: Broadcast Control. WKOR 107.9 FM. Signal strength: MAXIMUM."
+    };
+
+    // Clean the ID (remove '0' prefix if necessary or match exactly)
+    const cleanId = id.toString().replace(/[^0-9]/g, '').padStart(2, '0'); 
+    const message = manifests[cleanId] || manifests[id] || "NODE " + id + ": Identity confirmed. Standing by.";
+    
+    hub.innerText = message;
+    hub.style.color = "#00f2ff";
+    hub.style.textShadow = "0 0 10px #00f2ff";
+    
+    console.log("SYNDICATE BRIDGE: Node " + id + " broadcasting to Soul Forge.");
+};
             }, 'dawInit');
         });
