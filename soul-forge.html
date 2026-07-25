@@ -192,44 +192,61 @@
                                  The "frame" div uses a gradient background + padding to fake a metallic border —
                                  border-image doesn't play well with rounded corners in html2canvas, this does. -->
                             <div id="result-card" class="hidden opacity-0 transform scale-95 transition-all duration-700 w-full">
-                                <div id="forged-card-frame" class="w-full rounded-2xl shadow-2xl" style="padding:1.8px; background:rgba(168,85,247,0.45);">
-                                <div id="forged-card" class="w-full rounded-2xl overflow-hidden" style="background:#0a0a10;">
-                                    <div id="forged-header-bar" class="px-5 py-4 text-center" style="background:linear-gradient(180deg, rgba(88,28,135,0.35), rgba(10,10,16,0.2));">
-                                        <span id="forged-title" class="text-2xl font-black uppercase italic tracking-tight" style="color:#a855f7;">Soul Forge</span>
+                                <!-- FUTURE NEON / HYBRID SOVEREIGN CARD (Build #121)
+                                     Double-ring cyan frame, header image, liquid-CSS bio block, bottom stat row.
+                                     Every color below is solid (never gradient-clip text) — html2canvas drops
+                                     gradient-clipped text silently on export, so solid #2fd0ff is used throughout. -->
+                                <div id="forged-card-frame" class="w-full rounded-[26px]" style="padding:2px; background:#2fd0ff; box-shadow:0 0 0 1px #000 inset, 0 0 22px rgba(47,208,255,0.55), 0 0 55px rgba(47,208,255,0.25);">
+                                <div class="w-full rounded-[24px]" style="padding:6px; background:#000000;">
+                                <div id="forged-card" class="w-full rounded-2xl overflow-hidden border" style="background:#000000; border-color:rgba(47,208,255,0.5);">
+
+                                    <div id="forged-header-bar" class="px-5 py-4 text-center border-b" style="border-color:rgba(47,208,255,0.35);">
+                                        <span id="forged-title" class="text-xl font-black uppercase italic tracking-[0.25em]" style="color:#2fd0ff; text-shadow:0 0 10px rgba(47,208,255,0.8);">Soul Forge</span>
                                     </div>
-                                    <div class="relative">
-                                        <div id="forged-img" class="w-full h-64 hidden" style="background-size:cover; background-position:center;"></div>
-                                        <div id="forged-img-placeholder" class="w-full h-64 flex items-center justify-center bg-black/40">
+
+                                    <div class="relative px-4 pt-4">
+                                        <div id="forged-img" class="w-full h-64 hidden rounded-xl" style="background-size:cover; background-position:center;"></div>
+                                        <div id="forged-img-placeholder" class="w-full h-64 rounded-xl flex items-center justify-center" style="background:rgba(47,208,255,0.05); border:1px dashed rgba(47,208,255,0.25);">
                                             <span class="text-4xl opacity-30">🎵</span>
                                         </div>
-                                                                            </div>
-                                    <div id="forged-name-bar" class="px-5 py-3.5 text-center" style="background:rgba(168,85,247,0.08); border-top:1px solid rgba(168,85,247,0.2); border-bottom:1px solid rgba(168,85,247,0.2);">
-                                        <span id="forged-name" class="text-lg font-black uppercase italic tracking-tight" style="color:#ec4899;">NEW ARTIST UNIT</span>
-                                        <div id="forged-themes" class="italic text-[10px] mt-1 truncate" style="color:#93c5fd; opacity:0.8;">Lyrical themes...</div>
                                     </div>
-                                    <div class="px-5 py-4">
-                                        <p id="forged-quote" class="italic text-xs leading-relaxed text-center" style="color:#93c5fd;">"Synthesized from the 528Hz luxury vacuum..."</p>
+
+                                    <div id="forged-name-bar" class="px-6 pt-4 pb-2 text-center">
+                                        <span id="forged-name" class="text-2xl font-black italic tracking-tight lowercase" style="color:#2fd0ff; text-shadow:0 0 10px rgba(47,208,255,0.7);">new artist unit</span>
+                                        <div id="forged-themes" class="text-[10px] font-black uppercase tracking-widest mt-1 truncate" style="color:#2fd0ff; opacity:0.75;">Lyrical themes...</div>
                                     </div>
-                                    <div class="grid grid-cols-4 gap-2 px-5 pb-4">
-                                        <div id="forged-stat-box-1" class="rounded-lg py-2.5 text-center" style="border:1px solid rgba(45,212,191,0.4);">
-                                            <div id="forged-resonance" class="font-black text-base" style="color:#2dd4bf;">--</div>
-                                            <div class="text-gray-500 text-[7px] uppercase font-black tracking-widest mt-0.5">Resonance</div>
+
+                                    <div class="px-7 pb-3">
+                                        <p id="forged-quote" class="font-bold italic text-[12px] leading-relaxed text-center" style="color:#2fd0ff;">"Synthesized from the 528Hz luxury vacuum..."</p>
+                                    </div>
+
+                                    <p id="forged-genre" class="font-bold text-[10px] text-center pb-3 px-6 truncate" style="color:#2fd0ff; opacity:0.65;">Cinematic Liquid Funk infused with ...</p>
+
+                                    <div class="grid grid-cols-4 gap-1 px-5 pb-4 pt-1">
+                                        <div id="forged-stat-box-1" class="rounded-lg py-2 text-center">
+                                            <div id="forged-resonance" class="font-black text-xl italic" style="color:#2fd0ff; text-shadow:0 0 8px rgba(47,208,255,0.6);">--</div>
+                                            <div class="text-[7px] font-black uppercase tracking-widest mt-1" style="color:#2fd0ff; opacity:0.7;">Resonance</div>
                                         </div>
-                                        <div id="forged-stat-box-2" class="rounded-lg py-2.5 text-center" style="border:1px solid rgba(236,72,153,0.4);">
-                                            <div id="forged-virality" class="font-black text-base" style="color:#ec4899;">--</div>
-                                            <div class="text-gray-500 text-[7px] uppercase font-black tracking-widest mt-0.5">Virality</div>
+                                        <div id="forged-stat-box-2" class="rounded-lg py-2 text-center">
+                                            <div id="forged-virality" class="font-black text-xl italic" style="color:#2fd0ff; text-shadow:0 0 8px rgba(47,208,255,0.6);">--</div>
+                                            <div class="text-[7px] font-black uppercase tracking-widest mt-1" style="color:#2fd0ff; opacity:0.7;">Virality</div>
                                         </div>
-                                        <div id="forged-stat-box-3" class="rounded-lg py-2.5 text-center" style="border:1px solid rgba(168,85,247,0.4);">
-                                            <div id="forged-mystery" class="font-black text-base" style="color:#a855f7;">--</div>
-                                            <div class="text-gray-500 text-[7px] uppercase font-black tracking-widest mt-0.5">Mystery</div>
+                                        <div id="forged-stat-box-3" class="rounded-lg py-2 text-center">
+                                            <div id="forged-mystery" class="font-black text-xl italic" style="color:#2fd0ff; text-shadow:0 0 8px rgba(47,208,255,0.6);">--</div>
+                                            <div class="text-[7px] font-black uppercase tracking-widest mt-1" style="color:#2fd0ff; opacity:0.7;">Mystery</div>
                                         </div>
-                                        <div id="forged-stat-box-4" class="rounded-lg py-2.5 text-center" style="border:1px solid rgba(255,255,255,0.15);">
-                                            <div id="forged-members" class="font-black text-base" style="color:#ffffff;">--</div>
-                                            <div class="text-gray-500 text-[7px] uppercase font-black tracking-widest mt-0.5">Members</div>
+                                        <div id="forged-stat-box-4" class="rounded-lg py-2 text-center">
+                                            <div id="forged-members" class="font-black text-xl italic" style="color:#2fd0ff; text-shadow:0 0 8px rgba(47,208,255,0.6);">--</div>
+                                            <div class="text-[7px] font-black uppercase tracking-widest mt-1" style="color:#2fd0ff; opacity:0.7;">Members</div>
                                         </div>
                                     </div>
-                                    <p id="forged-tagline" class="font-black italic text-xs text-center pb-3" style="color:#ffffff;">"Feel the pulse. Find your truth."</p>
-                                    <p id="forged-genre" class="text-gray-500 text-[10px] text-center pb-4 px-5 truncate">Cinematic Liquid Funk infused with ...</p>
+
+                                    <div class="border-t px-5 py-4 text-center" style="border-color:rgba(47,208,255,0.35);">
+                                        <p id="forged-tagline" class="font-black italic text-[11px] tracking-wide" style="color:#2fd0ff; text-shadow:0 0 8px rgba(47,208,255,0.6);">"Feel the pulse. Find your truth."</p>
+                                        <p class="text-[8px] font-black uppercase tracking-[0.3em] mt-1.5" style="color:#2fd0ff; opacity:0.55;">Human. Machine. United</p>
+                                    </div>
+
+                                </div>
                                 </div>
                                 </div>
 
