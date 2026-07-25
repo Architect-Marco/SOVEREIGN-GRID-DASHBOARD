@@ -664,10 +664,14 @@
                 const btn = document.getElementById('split-btn');
                 if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); btn.innerText = "START SPLIT ✨"; }
                 if (nameEl) { nameEl.innerText = file.name; nameEl.classList.add('neon-blue-text'); }
-                // Paint the waveform immediately so there's visual confirmation the upload worked —
-                // "Start Split" still runs the forging pass that unlocks per-stem download/playback state
+                // Paint the waveform immediately so there's visual confirmation the upload worked.
+                // Double rAF ensures the container has finished laying out before WaveSurfer
+                // measures it — loading immediately on the same tick as a DOM update is a classic
+                // cause of a wave rendering as a flat/invisible line.
                 if (typeof STEM_IDS !== 'undefined') {
-                    STEM_IDS.forEach(id => { if (window.waves[id]) window.waves[id].load(window.currentMasterUrl); });
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        STEM_IDS.forEach(id => { if (window.waves[id]) window.waves[id].load(window.currentMasterUrl); });
+                    }));
                 }
                 const uploadBtn = document.getElementById('splitter-upload-label');
                 if (uploadBtn) {
@@ -690,11 +694,13 @@
             await new Promise(r => setTimeout(r, 2000));
             STEM_IDS.forEach(id => {
                 if(window.waves[id]) {
-                    window.waves[id].load(window.currentMasterUrl);
+                    // NOTE: waves are already loaded with the master URL from handleSplitUpload —
+                    // reloading the identical blob URL again here was causing the waveform to
+                    // flash and then vanish (a redundant double-decode racing itself).
+                    // Start Split now only sets up the download links + does the forging animation.
                     const dl = document.getElementById('dl-' + id);
                     if(dl) { dl.href = window.currentMasterUrl; }
-                    // Flash each stem lane so it's obvious Start Split actually finished —
-                    // otherwise there's no visible change since the wave already shows on upload
+                    // Flash each stem lane so it's obvious Start Split actually finished
                     const row = document.getElementById('node-' + id);
                     if (row) {
                         row.style.boxShadow = 'inset 0 0 0 1px rgba(47,208,255,0.6)';
