@@ -374,6 +374,7 @@
                 if (tp) tp.innerText = fmtDb(truePeakDb);
                 if (ig) ig.innerText = isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--';
                 if (igText) igText.innerText = 'Integrated: ' + (isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--') + ' LUFS';
+                window.mfxStaticLoudness = { truePeakDb };
                 const needle = document.getElementById('meter-loudness-needle');
                 if (needle) needle.style.width = clampPct(dbToPct(truePeakDb, -60)) + '%';
             }
@@ -440,6 +441,23 @@
                 try { window.masteringLiveState.analyser.disconnect(); } catch (e) {}
             }
             window.masteringLiveState = { rafId: null, analyser: null, key: null };
+
+            // Go idle: Output Level drops to 0 / -inf; the loudness bar falls back
+            // to the static whole-file True Peak reading instead of freezing on
+            // the last live blip from when playback stopped.
+            const outputNeedle = document.getElementById('output-level-needle');
+            const outputCurrent = document.getElementById('output-current-db');
+            const shortTermVal = document.getElementById('meter-shortterm');
+            const shortTermText = document.getElementById('meter-shortterm-text');
+            const loudnessNeedle = document.getElementById('meter-loudness-needle');
+            if (outputNeedle) outputNeedle.style.width = '0%';
+            if (outputCurrent) outputCurrent.innerText = '-inf dB';
+            if (shortTermVal) shortTermVal.innerText = '-inf';
+            if (shortTermText) shortTermText.innerText = 'Short-term: -inf LUFS';
+            if (loudnessNeedle) {
+                const restoreDb = window.mfxStaticLoudness ? window.mfxStaticLoudness.truePeakDb : -Infinity;
+                loudnessNeedle.style.width = clampPct(dbToPct(restoreDb, -60)) + '%';
+            }
         };
 
         window.updateSplitterPlayIcon = function() {
@@ -639,11 +657,14 @@
         window.handleSplitUpload = function(event) {
             try {
                 const file = event.target.files && event.target.files[0];
-                if (!file) return;
+                const nameEl = document.getElementById('splitter-filename');
+                if (!file) {
+                    if (nameEl) { nameEl.innerText = 'No file detected — try again'; nameEl.classList.add('text-red-400'); setTimeout(() => nameEl.classList.remove('text-red-400'), 2000); }
+                    return;
+                }
                 window.currentMasterUrl = URL.createObjectURL(file);
                 const btn = document.getElementById('split-btn');
                 if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); btn.innerText = "START SPLIT ✨"; }
-                const nameEl = document.getElementById('splitter-filename');
                 if (nameEl) { nameEl.innerText = file.name; nameEl.classList.add('neon-blue-text'); }
                 const uploadBtn = document.getElementById('splitter-upload-label');
                 if (uploadBtn) {
@@ -739,12 +760,34 @@
             return window.masteringFxParams[presetId][slotIndex];
         }
 
+        window.MFX_ENUM_OPTIONS = {
+            'SOURCE': ['Bass/Kick', 'Kick', 'Bass', 'Full Mix', 'External'],
+            'COLOR': ['Warm', 'Bright', 'Vintage', 'Clean', 'Dark'],
+            'TEXTURE': ['Silk', 'Crisp', 'Smooth', 'Airy', 'Vintage'],
+            'SPEED': ['Fast', 'Medium', 'Slow']
+        };
+
         function renderMasteringKnob(presetId, slotIndex, plugin, label, defaultStr) {
             const parsed = dawParseParamValue(defaultStr);
             const knobId = `mfxknob-${presetId}-${slotIndex}-${label}`;
-            if (!parsed) {
+            const enumOptions = window.MFX_ENUM_OPTIONS[label];
+
+            if (!parsed && enumOptions) {
+                const state = mfxGetParams(presetId, slotIndex, plugin);
+                const currentVal = state[label] !== undefined ? state[label] : defaultStr;
+                const idx = Math.max(0, enumOptions.indexOf(currentVal));
+                const deg = -135 + (idx / (enumOptions.length - 1)) * 270;
                 return `
                 <div class="flex flex-col items-center gap-1">
+                    <div id="${knobId}" class="mfx-knob relative w-7 h-7 rounded-full bg-black border-2 border-[rgba(47,208,255,0.4)] cursor-ns-resize select-none" onmousedown="event.stopPropagation(); window.mfxEnumDrag(event,'${presetId}',${slotIndex},'${label}')" ontouchstart="event.stopPropagation(); window.mfxEnumDrag(event,'${presetId}',${slotIndex},'${label}')">
+                        <div id="${knobId}-ind" class="absolute top-0.5 left-1/2 w-0.5 h-2.5 bg-[#2fd0ff] origin-bottom" style="transform:translateX(-50%) rotate(${deg}deg);"></div>
+                    </div>
+                    <span class="text-[7px] font-black uppercase text-gray-600 tracking-wide">${label}</span>
+                    <button id="${knobId}-val" onclick="event.stopPropagation(); window.mfxEnumCycle('${presetId}',${slotIndex},'${label}',1)" class="w-11 bg-black/60 border border-white/10 rounded text-[8px] text-center neon-blue-text font-bold px-0.5 py-0.5 truncate hover:border-[#2fd0ff] transition-colors">${currentVal}</button>
+                </div>`;
+            }
+            if (!parsed) {
+                return `<div class="flex flex-col items-center gap-1">
                     <div class="neon-blue-text opacity-40">${KNOB_ICON}</div>
                     <span class="text-[7px] font-black uppercase text-gray-600 tracking-wide">${label}</span>
                 </div>`;
@@ -762,6 +805,58 @@
                 <input type="text" id="${knobId}-val" value="${parsed.format(currentVal)}" onclick="event.stopPropagation()" onchange="window.mfxTypeValue(event,'${presetId}',${slotIndex},'${label}')" class="w-11 bg-black/60 border border-white/10 rounded text-[8px] text-center neon-blue-text font-bold px-0.5 py-0.5 outline-none focus:border-[#2fd0ff]">
             </div>`;
         }
+
+        window.mfxEnumCycle = function(presetId, slotIndex, label, dir) {
+            const preset = window.masteringPresets.find(p => p.id === presetId);
+            const slot = preset && preset.slots[slotIndex];
+            const plugin = slot && window.SOVEREIGN_12_PLUGINS.find(p => p.id === slot.pluginId);
+            if (!plugin) return;
+            const options = window.MFX_ENUM_OPTIONS[label];
+            if (!options) return;
+            const state = mfxGetParams(presetId, slotIndex, plugin);
+            const current = state[label] !== undefined ? state[label] : options[0];
+            let idx = options.indexOf(current);
+            idx = (idx + dir + options.length) % options.length;
+            state[label] = options[idx];
+            window.mfxUpdateEnumVisual(presetId, slotIndex, label, options[idx], options);
+        };
+
+        window.mfxUpdateEnumVisual = function(presetId, slotIndex, label, value, options) {
+            const idx = Math.max(0, options.indexOf(value));
+            const deg = -135 + (idx / (options.length - 1)) * 270;
+            const knobId = `mfxknob-${presetId}-${slotIndex}-${label}`;
+            const ind = document.getElementById(knobId + '-ind');
+            if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+            const valBtn = document.getElementById(knobId + '-val');
+            if (valBtn) valBtn.innerText = value;
+        };
+
+        window.mfxEnumDrag = function(e, presetId, slotIndex, label) {
+            e.preventDefault();
+            const options = window.MFX_ENUM_OPTIONS[label];
+            if (!options) return;
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
+            let lastStepY = startY;
+            const STEP_PX = 26;
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const delta = lastStepY - clientY;
+                if (Math.abs(delta) >= STEP_PX) {
+                    window.mfxEnumCycle(presetId, slotIndex, label, delta > 0 ? 1 : -1);
+                    lastStepY = clientY;
+                }
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
 
         window.mfxKnobDrag = function(e, presetId, slotIndex, label) {
             e.preventDefault();
@@ -881,6 +976,62 @@
             }
         };
 
+        // --- Load Preset ---
+        window.mfxOpenLoadPreset = function(presetId, slotIndex) {
+            const preset = window.masteringPresets.find(p => p.id === presetId);
+            const slot = preset && preset.slots[slotIndex];
+            const plugin = slot && window.SOVEREIGN_12_PLUGINS.find(p => p.id === slot.pluginId);
+            if (!plugin) return;
+            document.querySelectorAll('.mfx-preset-menu').forEach(menu => menu.classList.add('hidden'));
+            window.mfxPendingLoad = { presetId, slotIndex, plugin };
+            window.mfxRenderLoadList(plugin.id);
+            const modal = document.getElementById('mfx-load-preset-modal');
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.mfxRenderLoadList = function(pluginId) {
+            const list = document.getElementById('mfx-load-preset-list');
+            if (!list) return;
+            const entries = window.mfxSavedPresets
+                .map((p, idx) => ({ p, idx }))
+                .filter(entry => entry.p.pluginId === pluginId);
+            list.innerHTML = entries.length ? entries.map(({ p, idx }) => `
+                <div class="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg hover:bg-white/5 transition-colors group">
+                    <button onclick="window.mfxApplyPreset(${idx})" class="flex-1 text-left text-xs font-bold text-gray-200 hover:text-[#2fd0ff] transition-colors truncate">${p.name}</button>
+                    <button onclick="window.mfxDeletePreset(${idx})" class="text-gray-600 hover:text-red-400 transition-colors text-xs px-1" title="Delete">✕</button>
+                </div>`).join('') : `<div class="text-center text-gray-600 text-xs py-8">No saved presets for this plugin yet.</div>`;
+        };
+
+        window.mfxApplyPreset = function(globalIdx) {
+            const pending = window.mfxPendingLoad;
+            const saved = window.mfxSavedPresets[globalIdx];
+            if (!pending || !saved) return;
+            const state = mfxGetParams(pending.presetId, pending.slotIndex, pending.plugin);
+            Object.keys(saved.params).forEach(label => {
+                state[label] = saved.params[label];
+                const defaultStr = (pending.plugin.values.find(v => v[0] === label) || [])[1];
+                const parsed = dawParseParamValue(defaultStr);
+                if (parsed) {
+                    window.mfxUpdateKnobVisual(pending.presetId, pending.slotIndex, label, state[label], parsed);
+                } else if (window.MFX_ENUM_OPTIONS[label]) {
+                    window.mfxUpdateEnumVisual(pending.presetId, pending.slotIndex, label, state[label], window.MFX_ENUM_OPTIONS[label]);
+                }
+            });
+            window.mfxCloseLoadPreset();
+        };
+
+        window.mfxDeletePreset = function(globalIdx) {
+            window.mfxSavedPresets.splice(globalIdx, 1);
+            try { localStorage.setItem('sbn-mastering-fx-presets', JSON.stringify(window.mfxSavedPresets)); } catch (e) {}
+            if (window.mfxPendingLoad) window.mfxRenderLoadList(window.mfxPendingLoad.plugin.id);
+        };
+
+        window.mfxCloseLoadPreset = function() {
+            const modal = document.getElementById('mfx-load-preset-modal');
+            if (modal) modal.classList.add('hidden');
+            window.mfxPendingLoad = null;
+        };
+
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.mfx-preset-menu') && !e.target.closest('[onclick*="toggleMfxPresetMenu"]')) {
                 document.querySelectorAll('.mfx-preset-menu').forEach(menu => menu.classList.add('hidden'));
@@ -928,10 +1079,14 @@
                         <span class="neon-blue-text text-[11px] font-black italic">${plugin.name.toUpperCase()}</span>
                         <div class="relative">
                             <button onclick="event.stopPropagation(); window.toggleMfxPresetMenu('${presetId}', ${slotIndex}, event)" class="text-gray-500 hover:text-white transition-colors px-1 text-sm leading-none" title="Save preset">⋯</button>
-                            <div id="mfx-preset-menu-${presetId}-${slotIndex}" class="mfx-preset-menu hidden absolute z-20 top-5 right-0 bg-black border border-white/10 rounded-lg overflow-hidden w-32 shadow-xl">
-                                <button onclick="event.stopPropagation(); window.mfxSavePreset('${presetId}', ${slotIndex})" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-gray-300 hover:bg-white/10 transition-colors">
+                            <div id="mfx-preset-menu-${presetId}-${slotIndex}" class="mfx-preset-menu hidden absolute z-20 top-5 right-0 bg-black border border-white/10 rounded-lg overflow-hidden w-36 shadow-xl">
+                                <button onclick="event.stopPropagation(); window.mfxSavePreset('${presetId}', ${slotIndex})" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-gray-300 hover:bg-white/10 transition-colors border-b border-white/5">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
                                     Save Preset
+                                </button>
+                                <button onclick="event.stopPropagation(); window.mfxOpenLoadPreset('${presetId}', ${slotIndex})" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-gray-300 hover:bg-white/10 transition-colors">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                                    Load Preset
                                 </button>
                             </div>
                         </div>
