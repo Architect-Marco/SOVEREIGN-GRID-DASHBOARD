@@ -79,7 +79,7 @@
 
                         <!-- STACK: MUSIC -->
                         <div id="node-instrumental" class="stem-row flex items-stretch border-b border-white/5">
-                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-2.5 px-5 py-4 border-r border-white/5">
+                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-2 px-5 py-2 border-r border-white/5">
                                 <span class="neon-blue-text text-sm font-bold">Music</span>
                                 <div class="flex items-center gap-3">
                                     <input type="range" min="0" max="100" value="80" oninput="window.setStemVolume('instrumental', this.value)" class="w-20 h-1 accent-[#2fd0ff]">
@@ -103,7 +103,7 @@
 
                         <!-- STACK: VOCAL -->
                         <div id="node-vocals" class="stem-row flex items-stretch border-b border-white/5">
-                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-2.5 px-5 py-4 border-r border-white/5">
+                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-2 px-5 py-2 border-r border-white/5">
                                 <span class="neon-blue-text text-sm font-bold">Vocal</span>
                                 <div class="flex items-center gap-3">
                                     <input type="range" min="0" max="100" value="80" oninput="window.setStemVolume('vocals', this.value)" class="w-20 h-1 accent-[#2fd0ff]">
@@ -127,7 +127,7 @@
 
                         <!-- STACK: BASS -->
                         <div id="node-bass" class="stem-row flex items-stretch border-b border-white/5">
-                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-2.5 px-5 py-4 border-r border-white/5">
+                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-2 px-5 py-2 border-r border-white/5">
                                 <span class="neon-blue-text text-sm font-bold">Bass</span>
                                 <div class="flex items-center gap-3">
                                     <input type="range" min="0" max="100" value="80" oninput="window.setStemVolume('bass', this.value)" class="w-20 h-1 accent-[#2fd0ff]">
@@ -151,7 +151,7 @@
 
                         <!-- STACK: DRUMS -->
                         <div id="node-others" class="stem-row flex items-stretch">
-                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-2.5 px-5 py-4 border-r border-white/5">
+                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-2 px-5 py-2 border-r border-white/5">
                                 <span class="neon-blue-text text-sm font-bold">Drums</span>
                                 <div class="flex items-center gap-3">
                                     <input type="range" min="0" max="100" value="80" oninput="window.setStemVolume('others', this.value)" class="w-20 h-1 accent-[#2fd0ff]">
@@ -235,8 +235,8 @@
 
                         <div class="md:col-span-7 space-y-5">
                             <!-- ORIGINAL SOURCE -->
-                            <div class="bg-[#0a0a0a] mastering-bezel p-5 rounded-3xl">
-                                <div class="flex justify-between items-center mb-3">
+                            <div class="bg-[#0a0a0a] mastering-bezel p-4 rounded-3xl">
+                                <div class="flex justify-between items-center mb-2">
                                     <span class="neon-blue-text text-sm font-bold">Original Source</span>
                                     <div class="flex items-center gap-4">
                                         <button onclick="playMasterCompare('before')" id="btn-master-before" class="flex items-center gap-1.5 neon-blue-text hover:text-[#2fd0ff] transition-colors text-[10px] font-black uppercase tracking-widest"><span id="icon-master-before"></span><span id="label-master-before">Play</span></button>
@@ -245,8 +245,8 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div id="wave-master-before" class="wave-container"></div>
-                                <div class="flex justify-between text-gray-600 text-[9px] font-bold mt-2">
+                                <div id="wave-master-before" class="wave-container" style="height:56px; overflow:hidden;"></div>
+                                <div class="flex justify-between text-gray-600 text-[9px] font-bold mt-1.5">
                                     <span>0:00</span><span>0:28</span><span>0:56</span><span>1:24</span><span>1:52</span>
                                 </div>
                                 <div class="flex justify-between text-gray-700 text-[9px] font-bold mt-0.5">
@@ -255,8 +255,8 @@
                             </div>
 
                             <!-- MASTERED RESULT -->
-                            <div class="bg-[#0a0a0a] mastering-bezel p-5 rounded-3xl">
-                                <div class="flex justify-between items-center mb-3">
+                            <div class="bg-[#0a0a0a] mastering-bezel p-4 rounded-3xl">
+                                <div class="flex justify-between items-center mb-2">
                                     <span class="neon-blue-text text-sm font-bold">Mastered Result</span>
                                     <div class="flex items-center gap-4">
                                         <button onclick="playMasterCompare('after')" id="btn-master-after" class="flex items-center gap-1.5 neon-blue-text hover:text-[#2fd0ff] transition-colors text-[10px] font-black uppercase tracking-widest"><span id="icon-master-after"></span><span id="label-master-after">Play</span></button>
@@ -265,8 +265,8 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div id="wave-master-after" class="wave-container"></div>
-                                <div class="flex justify-between text-gray-600 text-[9px] font-bold mt-2">
+                                <div id="wave-master-after" class="wave-container" style="height:56px; overflow:hidden;"></div>
+                                <div class="flex justify-between text-gray-600 text-[9px] font-bold mt-1.5">
                                     <span>0:00</span><span>0:28</span><span>0:56</span><span>1:24</span><span>1:52</span>
                                 </div>
                                 <div class="flex justify-between text-gray-700 text-[9px] font-bold mt-0.5">
@@ -281,17 +281,17 @@
                                     <div class="grid grid-cols-3 gap-3 text-center mb-4">
                                         <div>
                                             <div class="neon-blue-text text-[9px] uppercase font-black tracking-widest">True Peak</div>
-                                            <div class="neon-blue-text text-xl font-black mt-1">-62.0</div>
+                                            <div id="meter-true-peak" class="neon-blue-text text-xl font-black mt-1">--</div>
                                             <div class="neon-blue-text opacity-60 text-[9px] uppercase font-black tracking-widest">dBTP</div>
                                         </div>
                                         <div>
                                             <div class="neon-blue-text text-[9px] uppercase font-black tracking-widest">Integrated</div>
-                                            <div class="neon-blue-text text-xl font-black mt-1">—</div>
+                                            <div id="meter-integrated" class="neon-blue-text text-xl font-black mt-1">—</div>
                                             <div class="neon-blue-text opacity-60 text-[9px] uppercase font-black tracking-widest">LUFS</div>
                                         </div>
                                         <div>
                                             <div class="text-gray-500 text-[9px] uppercase font-black tracking-widest">Short-term</div>
-                                            <div class="text-white text-xl font-black mt-1">-84.7</div>
+                                            <div id="meter-shortterm" class="text-white text-xl font-black mt-1">-inf</div>
                                             <div class="text-gray-600 text-[9px] uppercase font-black tracking-widest">LUFS</div>
                                         </div>
                                     </div>
@@ -299,13 +299,14 @@
                                         <div class="absolute inset-y-0 left-0 bg-white/10" style="width:70%"></div>
                                         <div class="absolute inset-y-0 bg-yellow-500/60" style="left:70%; width:15%"></div>
                                         <div class="absolute inset-y-0 bg-red-500/60" style="left:85%; width:15%"></div>
+                                        <div id="meter-loudness-needle" class="absolute inset-y-0 w-0.5 bg-[#2fd0ff] neon-blue-glow transition-all duration-100" style="left:0%;"></div>
                                     </div>
                                     <div class="flex justify-between neon-blue-text opacity-70 text-[9px] font-bold">
                                         <span>-60</span><span>-40</span><span>-20</span><span>-14</span>
                                         <span class="text-yellow-400 border border-yellow-400 rounded px-1">-9</span><span>0</span>
                                     </div>
                                     <div class="flex justify-between text-[10px] font-bold mt-3">
-                                        <span class="text-gray-500">Short-term: -84.7 LUFS</span><span class="neon-blue-text">Integrated: -- LUFS</span>
+                                        <span id="meter-shortterm-text" class="text-gray-500">Short-term: -inf LUFS</span><span id="meter-integrated-text" class="neon-blue-text">Integrated: -- LUFS</span>
                                     </div>
                                 </div>
 
@@ -316,12 +317,13 @@
                                         <div class="absolute inset-y-0 left-0 bg-white/10" style="width:80%"></div>
                                         <div class="absolute inset-y-0 bg-yellow-500/60" style="left:80%; width:15%"></div>
                                         <div class="absolute inset-y-0 bg-red-500/60" style="left:95%; width:5%"></div>
+                                        <div id="output-level-needle" class="absolute inset-y-0 w-0.5 bg-[#2fd0ff] neon-blue-glow transition-all duration-100" style="left:0%;"></div>
                                     </div>
                                     <div class="flex justify-between neon-blue-text opacity-70 text-[9px] font-bold">
                                         <span>-60</span><span>-40</span><span>-20</span>
                                         <span class="text-yellow-400 border border-yellow-400 rounded px-1">-10</span><span>0</span>
                                     </div>
-                                    <div class="neon-blue-text text-[10px] font-bold mt-3">Current: <span class="neon-blue-text">-inf dB</span></div>
+                                    <div class="neon-blue-text text-[10px] font-bold mt-3">Current: <span id="output-current-db" class="neon-blue-text">-inf dB</span></div>
                                     <div class="mt-3 space-y-1.5 text-[9px] font-bold">
                                         <div class="flex justify-between items-center">
                                             <span class="flex items-center gap-1.5 neon-blue-text"><span class="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>Good</span>
