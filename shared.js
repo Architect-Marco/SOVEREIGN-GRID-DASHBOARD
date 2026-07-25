@@ -261,14 +261,17 @@
             if (window.waves.vocals) return;
             const config = (id, color) => ({
                 container: `#wave-${id}`, waveColor: 'rgba(255,255,255,0.15)', progressColor: color,
-                cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 88, normalize: true
+                cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 44, normalize: true
             });
             window.waves.instrumental = WaveSurfer.create(config('instrumental', '#e5e7eb'));
             window.waves.vocals = WaveSurfer.create(config('vocals', '#e5e7eb'));
             window.waves.bass = WaveSurfer.create(config('bass', '#e5e7eb'));
             window.waves.others = WaveSurfer.create(config('others', '#e5e7eb'));
-            window.waves['master-before'] = WaveSurfer.create({ container: '#wave-master-before', waveColor: 'rgba(255,255,255,0.12)', progressColor: '#9ca3af', cursorColor: '#ffffff', barWidth: 2, barRadius: 3, responsive: true, height: 96, normalize: true });
-            window.waves['master-after'] = WaveSurfer.create({ container: '#wave-master-after', waveColor: 'rgba(255,255,255,0.12)', progressColor: '#e5e7eb', cursorColor: '#ffffff', barWidth: 2, barRadius: 3, responsive: true, height: 96, normalize: true });
+            window.waves['master-before'] = WaveSurfer.create({ container: '#wave-master-before', waveColor: 'rgba(255,255,255,0.12)', progressColor: '#9ca3af', cursorColor: '#ffffff', barWidth: 2, barRadius: 3, responsive: true, height: 56, normalize: true });
+            window.waves['master-after'] = WaveSurfer.create({ container: '#wave-master-after', waveColor: 'rgba(255,255,255,0.12)', progressColor: '#e5e7eb', cursorColor: '#ffffff', barWidth: 2, barRadius: 3, responsive: true, height: 56, normalize: true });
+
+            // Live functional metering — wired to real Web Audio analysis (see initMasteringMeters below)
+            window.initMasteringMeters();
 
             // Master-before/after individual play/stop icon + label sync, plus their own time readouts
             ['master-before', 'master-after'].forEach(id => {
@@ -301,6 +304,142 @@
                 window.splitterIsPlaying = false;
                 window.updateSplitterPlayIcon();
             });
+        };
+
+        // ============================================================
+        // FUNCTIONAL METERING — real Web Audio analysis for the
+        // Mastering Suite's True Peak / Integrated / Short-term / Output Level
+        // (Integrated LUFS is an RMS-based approximation, not full K-weighting —
+        // close enough for A/B mixing decisions, labeled as live-computed.)
+        // ============================================================
+        function dbFromLinear(x) { return x <= 0 ? -Infinity : 20 * Math.log10(x); }
+        function clampPct(p) { return Math.max(0, Math.min(100, p)); }
+        function dbToPct(db, floor) {
+            if (!isFinite(db)) return 0;
+            const clamped = Math.max(floor, Math.min(0, db));
+            return ((clamped - floor) / (0 - floor)) * 100;
+        }
+        function fmtDb(db) { return isFinite(db) ? db.toFixed(1) : '-inf'; }
+
+        function ensureMasteringAudioCtx() {
+            if (!window.masteringAudioCtx) {
+                window.masteringAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return window.masteringAudioCtx;
+        }
+
+        window.initMasteringMeters = function() {
+            const before = window.waves['master-before'];
+            const after = window.waves['master-after'];
+            if (!before || !after) return;
+
+            after.on('ready', () => window.computeStaticLoudness('master-after'));
+            before.on('ready', () => window.computeStaticLoudness('master-before'));
+
+            ['master-before', 'master-after'].forEach(key => {
+                const w = window.waves[key];
+                if (!w) return;
+                w.on('play', () => window.startMasteringLiveMeter(key));
+                w.on('pause', () => window.stopMasteringLiveMeter());
+                w.on('finish', () => window.stopMasteringLiveMeter());
+            });
+        };
+
+        // Whole-file pass: True Peak + Integrated LUFS (approx), run once the buffer decodes
+        window.computeStaticLoudness = function(key) {
+            const w = window.waves[key];
+            if (!w || typeof w.getDecodedData !== 'function') return;
+            const buffer = w.getDecodedData();
+            if (!buffer) return;
+
+            let peak = 0, sumSquares = 0, sampleCount = 0;
+            for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+                const data = buffer.getChannelData(ch);
+                const step = Math.max(1, Math.floor(data.length / 200000)); // keep it fast on mobile
+                for (let i = 0; i < data.length; i += step) {
+                    const abs = Math.abs(data[i]);
+                    if (abs > peak) peak = abs;
+                    sumSquares += data[i] * data[i];
+                    sampleCount++;
+                }
+            }
+            const rms = sampleCount ? Math.sqrt(sumSquares / sampleCount) : 0;
+            const truePeakDb = dbFromLinear(peak);
+            const integratedLufs = rms > 0 ? (20 * Math.log10(rms) - 0.691) : -Infinity;
+
+            if (key === 'master-after') {
+                const tp = document.getElementById('meter-true-peak');
+                const ig = document.getElementById('meter-integrated');
+                const igText = document.getElementById('meter-integrated-text');
+                if (tp) tp.innerText = fmtDb(truePeakDb);
+                if (ig) ig.innerText = isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--';
+                if (igText) igText.innerText = 'Integrated: ' + (isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--') + ' LUFS';
+                const needle = document.getElementById('meter-loudness-needle');
+                if (needle) needle.style.left = clampPct(dbToPct(truePeakDb, -60)) + '%';
+            }
+        };
+
+        // Live pass while a stem is actually playing: Short-term LUFS + Output Level
+        window.masteringLiveState = { rafId: null, analyser: null, key: null };
+
+        window.startMasteringLiveMeter = function(key) {
+            window.stopMasteringLiveMeter();
+            const w = window.waves[key];
+            if (!w || typeof w.getMediaElement !== 'function') return;
+            const mediaEl = w.getMediaElement();
+            if (!mediaEl) return;
+
+            const ctx = ensureMasteringAudioCtx();
+            if (ctx.state === 'suspended') ctx.resume();
+
+            // A media element can only ever get ONE MediaElementSource — cache it on the element
+            mediaEl.__masteringSource = mediaEl.__masteringSource || ctx.createMediaElementSource(mediaEl);
+            const source = mediaEl.__masteringSource;
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 1024;
+            source.connect(analyser);
+            analyser.connect(ctx.destination);
+
+            window.masteringLiveState = { analyser, key, rafId: null };
+
+            const data = new Uint8Array(analyser.fftSize);
+            const shortTermVal = document.getElementById('meter-shortterm');
+            const shortTermText = document.getElementById('meter-shortterm-text');
+            const outputCurrent = document.getElementById('output-current-db');
+            const outputNeedle = document.getElementById('output-level-needle');
+            const loudnessNeedle = document.getElementById('meter-loudness-needle');
+
+            const tick = () => {
+                if (window.masteringLiveState.analyser !== analyser) return; // superseded by a newer play
+                analyser.getByteTimeDomainData(data);
+                let sumSquares = 0, peak = 0;
+                for (let i = 0; i < data.length; i++) {
+                    const v = (data[i] - 128) / 128;
+                    sumSquares += v * v;
+                    const abs = Math.abs(v);
+                    if (abs > peak) peak = abs;
+                }
+                const rms = Math.sqrt(sumSquares / data.length);
+                const rmsDb = dbFromLinear(rms);
+                const peakDb = dbFromLinear(peak);
+
+                if (shortTermVal) shortTermVal.innerText = fmtDb(rmsDb);
+                if (shortTermText) shortTermText.innerText = 'Short-term: ' + fmtDb(rmsDb) + ' LUFS';
+                if (outputCurrent) outputCurrent.innerText = fmtDb(peakDb) + ' dB';
+                if (outputNeedle) outputNeedle.style.left = clampPct(dbToPct(peakDb, -60)) + '%';
+                if (loudnessNeedle && key === 'master-after') loudnessNeedle.style.left = clampPct(dbToPct(rmsDb, -60)) + '%';
+
+                window.masteringLiveState.rafId = requestAnimationFrame(tick);
+            };
+            tick();
+        };
+
+        window.stopMasteringLiveMeter = function() {
+            if (window.masteringLiveState.rafId) cancelAnimationFrame(window.masteringLiveState.rafId);
+            if (window.masteringLiveState.analyser) {
+                try { window.masteringLiveState.analyser.disconnect(); } catch (e) {}
+            }
+            window.masteringLiveState = { rafId: null, analyser: null, key: null };
         };
 
         window.updateSplitterPlayIcon = function() {
@@ -571,6 +710,109 @@
             return values.map(v => `<span class="bg-black/50 border border-white/10 rounded px-1.5 py-0.5 text-[8px] font-black text-gray-400">${v[1]}</span>`).join('');
         }
 
+        // ============================================================
+        // MASTERING KNOBS — draggable (turn) + directly typeable, same
+        // engine as the DAW plugin detail knobs (dawParseParamValue)
+        // ============================================================
+        window.masteringFxParams = window.masteringFxParams || {}; // { presetId: { slotIndex: { label: value } } }
+
+        function mfxGetParams(presetId, slotIndex, plugin) {
+            window.masteringFxParams[presetId] = window.masteringFxParams[presetId] || {};
+            if (!window.masteringFxParams[presetId][slotIndex]) {
+                const initial = {};
+                plugin.values.forEach(([label, defaultStr]) => {
+                    const parsed = dawParseParamValue(defaultStr);
+                    initial[label] = parsed ? parsed.value : defaultStr;
+                });
+                window.masteringFxParams[presetId][slotIndex] = initial;
+            }
+            return window.masteringFxParams[presetId][slotIndex];
+        }
+
+        function renderMasteringKnob(presetId, slotIndex, plugin, label, defaultStr) {
+            const parsed = dawParseParamValue(defaultStr);
+            const knobId = `mfxknob-${presetId}-${slotIndex}-${label}`;
+            if (!parsed) {
+                return `
+                <div class="flex flex-col items-center gap-1">
+                    <div class="neon-blue-text opacity-40">${KNOB_ICON}</div>
+                    <span class="text-[7px] font-black uppercase text-gray-600 tracking-wide">${label}</span>
+                </div>`;
+            }
+            const state = mfxGetParams(presetId, slotIndex, plugin);
+            const currentVal = state[label] !== undefined ? state[label] : parsed.value;
+            const pct = (currentVal - parsed.min) / (parsed.max - parsed.min);
+            const deg = -135 + pct * 270;
+            return `
+            <div class="flex flex-col items-center gap-1">
+                <div id="${knobId}" class="mfx-knob relative w-7 h-7 rounded-full bg-black border-2 border-[rgba(47,208,255,0.4)] cursor-ns-resize select-none" onmousedown="event.stopPropagation(); window.mfxKnobDrag(event,'${presetId}',${slotIndex},'${label}')" ontouchstart="event.stopPropagation(); window.mfxKnobDrag(event,'${presetId}',${slotIndex},'${label}')">
+                    <div id="${knobId}-ind" class="absolute top-0.5 left-1/2 w-0.5 h-2.5 bg-[#2fd0ff] origin-bottom" style="transform:translateX(-50%) rotate(${deg}deg);"></div>
+                </div>
+                <span class="text-[7px] font-black uppercase text-gray-600 tracking-wide">${label}</span>
+                <input type="text" id="${knobId}-val" value="${parsed.format(currentVal)}" onclick="event.stopPropagation()" onchange="window.mfxTypeValue(event,'${presetId}',${slotIndex},'${label}')" class="w-11 bg-black/60 border border-white/10 rounded text-[8px] text-center neon-blue-text font-bold px-0.5 py-0.5 outline-none focus:border-[#2fd0ff]">
+            </div>`;
+        }
+
+        window.mfxKnobDrag = function(e, presetId, slotIndex, label) {
+            e.preventDefault();
+            const preset = window.masteringPresets.find(p => p.id === presetId);
+            const slot = preset && preset.slots[slotIndex];
+            const plugin = slot && window.SOVEREIGN_12_PLUGINS.find(p => p.id === slot.pluginId);
+            if (!plugin) return;
+            const defaultStr = (plugin.values.find(v => v[0] === label) || [])[1];
+            const parsed = dawParseParamValue(defaultStr);
+            if (!parsed) return;
+            const state = mfxGetParams(presetId, slotIndex, plugin);
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
+            const startVal = state[label] !== undefined ? state[label] : parsed.value;
+            const range = parsed.max - parsed.min;
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const deltaY = startY - clientY;
+                const sensitivity = range / 150;
+                let newVal = startVal + deltaY * sensitivity;
+                newVal = Math.max(parsed.min, Math.min(parsed.max, newVal));
+                state[label] = newVal;
+                window.mfxUpdateKnobVisual(presetId, slotIndex, label, newVal, parsed);
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
+        window.mfxUpdateKnobVisual = function(presetId, slotIndex, label, value, parsed) {
+            const pct = (value - parsed.min) / (parsed.max - parsed.min);
+            const deg = -135 + pct * 270;
+            const knobId = `mfxknob-${presetId}-${slotIndex}-${label}`;
+            const ind = document.getElementById(knobId + '-ind');
+            if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+            const valInput = document.getElementById(knobId + '-val');
+            if (valInput) valInput.value = parsed.format(value);
+        };
+
+        window.mfxTypeValue = function(e, presetId, slotIndex, label) {
+            const preset = window.masteringPresets.find(p => p.id === presetId);
+            const slot = preset && preset.slots[slotIndex];
+            const plugin = slot && window.SOVEREIGN_12_PLUGINS.find(p => p.id === slot.pluginId);
+            if (!plugin) return;
+            const defaultStr = (plugin.values.find(v => v[0] === label) || [])[1];
+            const parsed = dawParseParamValue(defaultStr);
+            const state = mfxGetParams(presetId, slotIndex, plugin);
+            if (!parsed) return;
+            const raw = parseFloat(e.target.value);
+            if (isNaN(raw)) { e.target.value = parsed.format(state[label]); return; }
+            const clamped = Math.max(parsed.min, Math.min(parsed.max, raw));
+            state[label] = clamped;
+            window.mfxUpdateKnobVisual(presetId, slotIndex, label, clamped, parsed);
+        };
+
         function renderSlot(presetId, slotIndex, slot) {
             const plugin = slot.pluginId ? window.SOVEREIGN_12_PLUGINS.find(p => p.id === slot.pluginId) : null;
 
@@ -589,11 +831,7 @@
                 </div>`;
             }
 
-            const knobs = plugin.values.map(v => `
-                <div class="flex flex-col items-center gap-1">
-                    <div class="neon-blue-text">${KNOB_ICON}</div>
-                    <span class="text-[7px] font-black uppercase text-gray-600 tracking-wide">${v[0]}</span>
-                </div>`).join('');
+            const knobs = plugin.values.map(v => renderMasteringKnob(presetId, slotIndex, plugin, v[0], v[1])).join('');
 
             return `
             <div class="mb-3">
