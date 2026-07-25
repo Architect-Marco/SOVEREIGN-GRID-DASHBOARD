@@ -367,17 +367,15 @@
             const truePeakDb = dbFromLinear(peak);
             const integratedLufs = rms > 0 ? (20 * Math.log10(rms) - 0.691) : -Infinity;
 
-            if (key === 'master-after') {
-                const tp = document.getElementById('meter-true-peak');
-                const ig = document.getElementById('meter-integrated');
-                const igText = document.getElementById('meter-integrated-text');
-                if (tp) tp.innerText = fmtDb(truePeakDb);
-                if (ig) ig.innerText = isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--';
-                if (igText) igText.innerText = 'Integrated: ' + (isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--') + ' LUFS';
-                window.mfxStaticLoudness = { truePeakDb };
-                const needle = document.getElementById('meter-loudness-needle');
-                if (needle) needle.style.width = clampPct(dbToPct(truePeakDb, -60)) + '%';
-            }
+            const tp = document.getElementById('meter-true-peak');
+            const ig = document.getElementById('meter-integrated');
+            const igText = document.getElementById('meter-integrated-text');
+            if (tp) tp.innerText = fmtDb(truePeakDb);
+            if (ig) ig.innerText = isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--';
+            if (igText) igText.innerText = 'Integrated: ' + (isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--') + ' LUFS';
+            window.mfxStaticLoudness = { truePeakDb };
+            const needle = document.getElementById('meter-loudness-needle');
+            if (needle) needle.style.width = clampPct(dbToPct(truePeakDb, -60)) + '%';
         };
 
         // Live pass while a stem is actually playing: Short-term LUFS + Output Level
@@ -666,6 +664,11 @@
                 const btn = document.getElementById('split-btn');
                 if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); btn.innerText = "START SPLIT ✨"; }
                 if (nameEl) { nameEl.innerText = file.name; nameEl.classList.add('neon-blue-text'); }
+                // Paint the waveform immediately so there's visual confirmation the upload worked —
+                // "Start Split" still runs the forging pass that unlocks per-stem download/playback state
+                if (typeof STEM_IDS !== 'undefined') {
+                    STEM_IDS.forEach(id => { if (window.waves[id]) window.waves[id].load(window.currentMasterUrl); });
+                }
                 const uploadBtn = document.getElementById('splitter-upload-label');
                 if (uploadBtn) {
                     const original = uploadBtn.innerText;
@@ -1309,6 +1312,13 @@
             if (!file) return;
             window.initSplitterWaves(); // safe no-op if already initialized — guarantees waves exist before we use them
             window.currentMasteringUrl = URL.createObjectURL(file);
+            // Clear stale readouts immediately so nothing "sticks" from a previous upload
+            // while the fresh file decodes (computeStaticLoudness fills these back in on 'ready')
+            ['meter-true-peak', 'meter-integrated'].forEach(id => { const el = document.getElementById(id); if (el) el.innerText = '--'; });
+            const igText = document.getElementById('meter-integrated-text');
+            if (igText) igText.innerText = 'Integrated: -- LUFS';
+            const needle = document.getElementById('meter-loudness-needle');
+            if (needle) needle.style.width = '0%';
             if (window.waves['master-before']) window.waves['master-before'].load(window.currentMasteringUrl);
         };
 
