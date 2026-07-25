@@ -3981,25 +3981,35 @@
                 // styles doesn't require re-forging. This template has no quote box,
                 // so Lyrical Themes fills the extra space instead, using the same
                 // form field that feeds the bio elsewhere.
+               // === SESSION 6: SOVEREIGN HYBRID INJECTION ===
                 const themesInput = document.getElementById('epk-themes');
                 let themesText = themesInput && themesInput.value.trim() ? themesInput.value.trim() : 'Themes not specified';
-                // This template's gap between name and stat boxes is baked into the
-                // background image itself — genuinely small, can't be resized via CSS.
-                // Truncate hard so long input can never overflow into the stat boxes.
-                if (themesText.length > 46) themesText = themesText.slice(0, 44).trim() + '…';
+
+                // 1. TRUNCATION PURGE: We removed the .slice(0, 44) to allow UNLIMITED length.
+
+                // 2. THE IDENTITY BRIDGE
                 document.getElementById('forged-future-name-text').innerText = bandName;
-                document.getElementById('forged-future-themes-text').innerText = themesText;
+
+                // 3. THE EXPANSION HUB: Direct the long bio to our new Liquid container
+                const lyricHub = document.getElementById('lyric-content');
+                if (lyricHub) {
+                lyricHub.innerText = themesText; 
+                }
+
+                // 4. STAT CALIBRATION
                 document.getElementById('forged-future-resonance').innerText = resonance;
                 document.getElementById('forged-future-virality').innerText = virality;
                 document.getElementById('forged-future-mystery').innerText = mystery;
                 document.getElementById('forged-future-members').innerText = members;
+
+                // 5. IMAGE HANDSHAKE: Switching to .src for the new Hybrid layout
                 const futureImg = document.getElementById('forged-future-img');
-                if (window.epkPhotoDataUrl) {
-                    futureImg.style.backgroundImage = `url(${window.epkPhotoDataUrl})`;
-                    futureImg.classList.remove('hidden');
-                } else {
-                    futureImg.classList.add('hidden');
-                }
+                if (window.epkPhotoDataUrl && futureImg) {
+                futureImg.src = window.epkPhotoDataUrl;
+                futureImg.classList.remove('hidden');
+                } else if (futureImg) {
+                futureImg.classList.add('hidden');
+            
 
                 window.applyForgeCardStyle(window.forgeCardStyle);
                 card.classList.remove('hidden');
