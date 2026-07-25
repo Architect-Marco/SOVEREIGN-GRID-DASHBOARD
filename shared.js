@@ -813,6 +813,41 @@
             window.mfxUpdateKnobVisual(presetId, slotIndex, label, clamped, parsed);
         };
 
+        // --- Save Preset (⋯) menu, sitting above the knob row ---
+        window.mfxSavedPresets = (() => {
+            try { return JSON.parse(localStorage.getItem('sbn-mastering-fx-presets') || '[]'); } catch (e) { return []; }
+        })();
+
+        window.toggleMfxPresetMenu = function(presetId, slotIndex, event) {
+            if (event) event.stopPropagation();
+            const id = `mfx-preset-menu-${presetId}-${slotIndex}`;
+            document.querySelectorAll('.mfx-preset-menu').forEach(menu => {
+                if (menu.id !== id) menu.classList.add('hidden');
+            });
+            const menu = document.getElementById(id);
+            if (menu) menu.classList.toggle('hidden');
+        };
+
+        window.mfxSavePreset = function(presetId, slotIndex) {
+            const preset = window.masteringPresets.find(p => p.id === presetId);
+            const slot = preset && preset.slots[slotIndex];
+            const plugin = slot && window.SOVEREIGN_12_PLUGINS.find(p => p.id === slot.pluginId);
+            if (!plugin) return;
+            const name = prompt('Name this preset:', plugin.name + ' Preset');
+            if (!name) return;
+            const params = mfxGetParams(presetId, slotIndex, plugin);
+            window.mfxSavedPresets.push({ name, pluginId: plugin.id, params: { ...params }, savedAt: Date.now() });
+            try { localStorage.setItem('sbn-mastering-fx-presets', JSON.stringify(window.mfxSavedPresets)); } catch (e) {}
+            document.querySelectorAll('.mfx-preset-menu').forEach(menu => menu.classList.add('hidden'));
+            alert('Preset "' + name + '" saved ✨');
+        };
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.mfx-preset-menu') && !e.target.closest('[onclick*="toggleMfxPresetMenu"]')) {
+                document.querySelectorAll('.mfx-preset-menu').forEach(menu => menu.classList.add('hidden'));
+            }
+        });
+
         function renderSlot(presetId, slotIndex, slot) {
             const plugin = slot.pluginId ? window.SOVEREIGN_12_PLUGINS.find(p => p.id === slot.pluginId) : null;
 
@@ -852,7 +887,15 @@
                 <div class="bg-black/40 border border-white/5 rounded-xl p-3">
                     <div class="flex items-center justify-between mb-2">
                         <span class="neon-blue-text text-[11px] font-black italic">${plugin.name.toUpperCase()}</span>
-                        <div class="flex gap-1">${renderMiniValues(plugin.values)}</div>
+                        <div class="relative">
+                            <button onclick="event.stopPropagation(); window.toggleMfxPresetMenu('${presetId}', ${slotIndex}, event)" class="text-gray-500 hover:text-white transition-colors px-1 text-sm leading-none" title="Save preset">⋯</button>
+                            <div id="mfx-preset-menu-${presetId}-${slotIndex}" class="mfx-preset-menu hidden absolute z-20 top-5 right-0 bg-black border border-white/10 rounded-lg overflow-hidden w-32 shadow-xl">
+                                <button onclick="event.stopPropagation(); window.mfxSavePreset('${presetId}', ${slotIndex})" class="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-gray-300 hover:bg-white/10 transition-colors">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                                    Save Preset
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[8px] font-black uppercase text-gray-600 tracking-widest">Sovereign Dynamics</span>
