@@ -3716,6 +3716,76 @@
             } catch (err) { console.error('Could not load avatar:', err); }
         };
 
+        // BAND CARDS (Home overview) — the two old baked-image Soul Forge cards were
+        // replaced with empty upload boxes so a freshly forged card can be dropped in.
+        // Clicking a box uploads directly into that slot; the icons above the search
+        // bar act on whichever slot is open first (upload) or clear both (delete).
+        window.handleBandCardUpload = function(idx, event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try { localStorage.setItem('sbn-band-card-' + idx, e.target.result); } catch (err) { console.error('Could not save band card image:', err); }
+                window.applyBandCardImage(idx, e.target.result);
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.applyBandCardImage = function(idx, dataUrl) {
+            const img = document.getElementById('band-card-' + idx + '-img');
+            const empty = document.getElementById('band-card-' + idx + '-empty');
+            if (!img || !empty) return;
+            img.src = dataUrl;
+            img.classList.remove('hidden');
+            empty.classList.add('hidden');
+        };
+
+        window.clearBandCardImage = function(idx) {
+            const img = document.getElementById('band-card-' + idx + '-img');
+            const empty = document.getElementById('band-card-' + idx + '-empty');
+            if (img) { img.classList.add('hidden'); img.removeAttribute('src'); }
+            if (empty) empty.classList.remove('hidden');
+            try { localStorage.removeItem('sbn-band-card-' + idx); } catch (err) { console.error('Could not clear band card image:', err); }
+        };
+
+        window.loadBandCardImages = function() {
+            [1, 2].forEach(idx => {
+                try {
+                    const saved = localStorage.getItem('sbn-band-card-' + idx);
+                    if (saved) window.applyBandCardImage(idx, saved);
+                } catch (err) { console.error('Could not load band card image:', err); }
+            });
+        };
+
+        // The upload icon above the search bar fills whichever card box is still
+        // empty (card 1 first, then card 2) rather than forcing the user to scroll
+        // down and click a specific box.
+        window.handleHomeHeroUpload = function(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const emptySlot = !document.getElementById('band-card-1-empty')?.classList.contains('hidden') ? 1
+                : !document.getElementById('band-card-2-empty')?.classList.contains('hidden') ? 2
+                : 1; // both filled — overwrite the first slot
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try { localStorage.setItem('sbn-band-card-' + emptySlot, e.target.result); } catch (err) { console.error('Could not save band card image:', err); }
+                window.applyBandCardImage(emptySlot, e.target.result);
+            };
+            reader.readAsDataURL(file);
+        };
+
+        // Clears both band card slots back to empty upload boxes.
+        window.deleteHomeHeroContent = function() {
+            window.clearBandCardImage(1);
+            window.clearBandCardImage(2);
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', window.loadBandCardImages);
+        } else {
+            window.loadBandCardImages();
+        }
+
         window.handlePlayerIconUpload = function(event) {
             const file = event.target.files && event.target.files[0];
             if (!file) return;
