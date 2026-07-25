@@ -3904,9 +3904,12 @@
                     imgPlaceholder.classList.remove('hidden');
                 }
 
-                // Lyrical Themes line, shown under the band name
+                // Lyrical Themes line, shown under the band name — kept short on purpose
+                // (this is a one-line tag, not a second bio) so it can't ever end up
+                // duplicating the quote paragraph below it if someone pastes in something long.
                 const themesInput = document.getElementById('epk-themes');
-                const themesText = themesInput && themesInput.value.trim() ? themesInput.value.trim() : 'Themes not specified';
+                let themesText = themesInput && themesInput.value.trim() ? themesInput.value.trim() : 'Themes not specified';
+                if (themesText.length > 50) themesText = themesText.slice(0, 48).trim() + '…';
                 document.getElementById('forged-themes').innerText = themesText;
 
                 card.classList.remove('hidden');
