@@ -3983,12 +3983,13 @@
                 // form field that feeds the bio elsewhere.
                 const themesInput = document.getElementById('epk-themes');
                 let themesText = themesInput && themesInput.value.trim() ? themesInput.value.trim() : 'Themes not specified';
-                // This template's gap between name and stat boxes is baked into the
-                // background image itself — genuinely small, can't be resized via CSS.
-                // Truncate hard so long input can never overflow into the stat boxes.
-                if (themesText.length > 46) themesText = themesText.slice(0, 44).trim() + '…';
+               // FUTURE NEON: VERTICAL EXPANSION ACTIVATED
                 document.getElementById('forged-future-name-text').innerText = bandName;
-                document.getElementById('forged-future-themes-text').innerText = themesText;
+                const themesDisplay = document.getElementById('forged-future-themes-text');
+                themesDisplay.innerText = themesText; // Full text injected here
+                themesDisplay.style.whiteSpace = 'normal'; // Allows text to wrap
+                themesDisplay.style.height = 'auto'; // Allows container to grow
+                themesDisplay.style.display = 'block'; // Ensures it doesn't stay inline
                 document.getElementById('forged-future-resonance').innerText = resonance;
                 document.getElementById('forged-future-virality').innerText = virality;
                 document.getElementById('forged-future-mystery').innerText = mystery;
