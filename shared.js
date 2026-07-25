@@ -374,8 +374,8 @@
             if (ig) ig.innerText = isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--';
             if (igText) igText.innerText = 'Integrated: ' + (isFinite(integratedLufs) ? integratedLufs.toFixed(1) : '--') + ' LUFS';
             window.mfxStaticLoudness = { truePeakDb };
-            const needle = document.getElementById('meter-loudness-needle');
-            if (needle) needle.style.width = clampPct(dbToPct(truePeakDb, -60)) + '%';
+            // Note: the LED bar itself stays at 0% here on purpose — it only lights up once
+            // playback actually starts (see startMasteringLiveMeter), not just on file load.
         };
 
         // Live pass while a stem is actually playing: Short-term LUFS + Output Level
@@ -693,9 +693,17 @@
                     window.waves[id].load(window.currentMasterUrl);
                     const dl = document.getElementById('dl-' + id);
                     if(dl) { dl.href = window.currentMasterUrl; }
+                    // Flash each stem lane so it's obvious Start Split actually finished —
+                    // otherwise there's no visible change since the wave already shows on upload
+                    const row = document.getElementById('node-' + id);
+                    if (row) {
+                        row.style.boxShadow = 'inset 0 0 0 1px rgba(47,208,255,0.6)';
+                        setTimeout(() => { row.style.boxShadow = ''; }, 900);
+                    }
                 }
             });
             btn.innerText = "COMPLETE ✨";
+            setTimeout(() => { if (btn) btn.innerText = "RE-SPLIT"; }, 2200);
         };
 
         // ============================================================
