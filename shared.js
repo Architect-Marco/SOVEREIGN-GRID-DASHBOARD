@@ -3907,10 +3907,17 @@
                 // Lyrical Themes line, shown under the band name — kept short on purpose
                 // (this is a one-line tag, not a second bio) so it can't ever end up
                 // duplicating the quote paragraph below it if someone pastes in something long.
+                // Hidden entirely when the field is empty, rather than showing filler text.
                 const themesInput = document.getElementById('epk-themes');
-                let themesText = themesInput && themesInput.value.trim() ? themesInput.value.trim() : 'Themes not specified';
-                if (themesText.length > 50) themesText = themesText.slice(0, 48).trim() + '…';
-                document.getElementById('forged-themes').innerText = themesText;
+                const themesEl = document.getElementById('forged-themes');
+                if (themesInput && themesInput.value.trim()) {
+                    let themesText = themesInput.value.trim();
+                    if (themesText.length > 50) themesText = themesText.slice(0, 48).trim() + '…';
+                    themesEl.innerText = themesText;
+                    themesEl.classList.remove('hidden');
+                } else {
+                    themesEl.classList.add('hidden');
+                }
 
                 card.classList.remove('hidden');
                 requestAnimationFrame(() => card.classList.add('materialize'));
