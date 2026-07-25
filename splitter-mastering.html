@@ -79,7 +79,7 @@
 
                         <!-- STACK: MUSIC -->
                         <div id="node-instrumental" class="stem-row flex items-center border-b border-white/5">
-                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-1.5 px-5 py-1.5 border-r border-white/5">
+                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-1 px-5 py-1 border-r border-white/5">
                                 <span class="neon-blue-text text-sm font-bold">Music</span>
                                 <div class="flex items-center gap-3">
                                     <input type="range" min="0" max="100" value="80" oninput="window.setStemVolume('instrumental', this.value)" class="w-20 h-1 accent-[#2fd0ff]">
@@ -98,12 +98,12 @@
                                     </div>
                                 </div>
                             </div>
-                            <div id="wave-instrumental" class="wave-stem-container flex-1" style="background:rgba(255,255,255,0.03);"></div>
+                            <div id="wave-instrumental" class="wave-stem-container flex-1" style="background:rgba(255,255,255,0.03); height:36px; display:flex; align-items:center; overflow:hidden;"></div>
                         </div>
 
                         <!-- STACK: VOCAL -->
                         <div id="node-vocals" class="stem-row flex items-center border-b border-white/5">
-                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-1.5 px-5 py-1.5 border-r border-white/5">
+                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-1 px-5 py-1 border-r border-white/5">
                                 <span class="neon-blue-text text-sm font-bold">Vocal</span>
                                 <div class="flex items-center gap-3">
                                     <input type="range" min="0" max="100" value="80" oninput="window.setStemVolume('vocals', this.value)" class="w-20 h-1 accent-[#2fd0ff]">
@@ -122,12 +122,12 @@
                                     </div>
                                 </div>
                             </div>
-                            <div id="wave-vocals" class="wave-stem-container flex-1" style="background:rgba(255,255,255,0.03);"></div>
+                            <div id="wave-vocals" class="wave-stem-container flex-1" style="background:rgba(255,255,255,0.03); height:36px; display:flex; align-items:center; overflow:hidden;"></div>
                         </div>
 
                         <!-- STACK: BASS -->
                         <div id="node-bass" class="stem-row flex items-center border-b border-white/5">
-                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-1.5 px-5 py-1.5 border-r border-white/5">
+                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-1 px-5 py-1 border-r border-white/5">
                                 <span class="neon-blue-text text-sm font-bold">Bass</span>
                                 <div class="flex items-center gap-3">
                                     <input type="range" min="0" max="100" value="80" oninput="window.setStemVolume('bass', this.value)" class="w-20 h-1 accent-[#2fd0ff]">
@@ -146,12 +146,12 @@
                                     </div>
                                 </div>
                             </div>
-                            <div id="wave-bass" class="wave-stem-container flex-1" style="background:rgba(255,255,255,0.03);"></div>
+                            <div id="wave-bass" class="wave-stem-container flex-1" style="background:rgba(255,255,255,0.03); height:36px; display:flex; align-items:center; overflow:hidden;"></div>
                         </div>
 
                         <!-- STACK: DRUMS -->
                         <div id="node-others" class="stem-row flex items-center">
-                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-1.5 px-5 py-1.5 border-r border-white/5">
+                            <div class="w-44 flex-shrink-0 flex flex-col justify-center gap-1 px-5 py-1 border-r border-white/5">
                                 <span class="neon-blue-text text-sm font-bold">Drums</span>
                                 <div class="flex items-center gap-3">
                                     <input type="range" min="0" max="100" value="80" oninput="window.setStemVolume('others', this.value)" class="w-20 h-1 accent-[#2fd0ff]">
@@ -170,7 +170,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div id="wave-others" class="wave-stem-container flex-1" style="background:rgba(255,255,255,0.03);"></div>
+                            <div id="wave-others" class="wave-stem-container flex-1" style="background:rgba(255,255,255,0.03); height:36px; display:flex; align-items:center; overflow:hidden;"></div>
                         </div>
 
                         <!-- UNIFIED PLAYHEAD: one continuous line + floating time badge across all 4 tracks -->
@@ -212,8 +212,8 @@
                 </div>
 
                 <!-- MASTERING SUITE -->
-                <div class="mt-8">
-                    <div class="flex justify-between items-end mb-6">
+                <div class="mt-3">
+                    <div class="flex justify-between items-end mb-4">
                         <div class="text-left">
                             <h2 class="text-3xl font-black uppercase italic tracking-tighter">Mastering <span class="neon-blue-text">Suite</span></h2>
                             <p class="text-gray-500 text-[10px] uppercase tracking-[0.3em] font-black opacity-60">Engine: Sovereign Dynamics Chain</p>
