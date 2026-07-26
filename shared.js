@@ -4664,6 +4664,33 @@
         };
 
         // 6.7 RADIO STATION
+
+        // --- RADIO SYNC (pushes the On Air queue to WKOR/CDFM's public sites) ---
+        // Fill these in after deploying the Cloudflare Worker (see RADIO-SYNC-SETUP.md).
+        // Until RADIO_SYNC_URL is set, sync silently no-ops — nothing else changes.
+        window.RADIO_SYNC_URL = '';       // e.g. 'https://radio-sync.yoursubdomain.workers.dev'
+        window.RADIO_SYNC_SECRET = '';    // the same SYNC_SECRET you set on the Worker
+
+        let _radioSyncTimer = null;
+        window.syncStationPlaylist = function() {
+            if (!window.RADIO_SYNC_URL) return; // not configured yet
+            clearTimeout(_radioSyncTimer);
+            // Debounced so dragging tracks around doesn't fire a request per pixel.
+            _radioSyncTimer = setTimeout(() => {
+                fetch(window.RADIO_SYNC_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-sync-secret': window.RADIO_SYNC_SECRET,
+                    },
+                    body: JSON.stringify({
+                        tracks: window.stationTracks,
+                        isLive: window.stationIsLive,
+                    }),
+                }).catch(err => console.error('Radio sync failed:', err));
+            }, 800);
+        };
+
         window.stationTracks = [
             { id: 'st1', title: 'The Signal Filter" - Teaser 1', artist: 'djpolo', art: null },
             { id: 'st2', title: 'The Python Strike" Teaser', artist: 'djpolo', art: null }
@@ -4694,6 +4721,7 @@
             const statTracks = document.getElementById('station-stat-tracks');
             if (statTracks) statTracks.innerText = window.stationTracks.length;
             try { localStorage.setItem('sbn-station-tracks', JSON.stringify(window.stationTracks)); } catch (err) { console.error('Could not save station tracks:', err); }
+            window.syncStationPlaylist();
         };
 
         // Real playback for the On Air queue: only tracks with a real `src`
@@ -4766,14 +4794,70 @@
             window.renderStationTracks();
         };
 
+        // Reads a File as base64 (no data:URL prefix), for sending to the upload Worker.
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1] || '');
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(file);
+            });
+        }
+
         window.handleStationTrackUpload = function(event) {
             const files = Array.from(event.target.files || []);
-            files.forEach(file => {
-                const name = file.name.replace(/\.[^/.]+$/, '');
-                window.stationTracks.push({ id: 'st-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), title: name, artist: 'djpolo', art: null });
-            });
-            window.renderStationTracks();
             event.target.value = '';
+
+            if (!window.RADIO_SYNC_URL) {
+                alert('Radio sync isn\'t configured yet (RADIO_SYNC_URL is empty in shared.js) — uploaded songs need that to actually publish. See RADIO-SYNC-SETUP.md.');
+                return;
+            }
+
+            files.forEach(async file => {
+                const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
+                const trackId = 'st-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+                const folder = 'WKOR'; // "+ Add Music" always files into WKOR for now
+
+                // Optimistic row so the upload feels immediate — swapped to real data (or an error state) below.
+                window.stationTracks.push({ id: trackId, title: cleanTitle, artist: 'Uploading…', art: null });
+                window.renderStationTracks();
+
+                try {
+                    const contentBase64 = await readFileAsBase64(file);
+                    const resp = await fetch(window.RADIO_SYNC_URL + '/upload-track', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-sync-secret': window.RADIO_SYNC_SECRET,
+                        },
+                        body: JSON.stringify({ folder, filename: file.name, contentBase64 }),
+                    });
+                    const result = await resp.json();
+                    const track = window.stationTracks.find(t => t.id === trackId);
+                    if (!resp.ok || !result.ok) throw new Error(result.error || ('HTTP ' + resp.status));
+
+                    if (track) {
+                        track.artist = 'djpolo';
+                        track.src = result.path; // e.g. "WKOR/My Song.mp3" — same format the Library already uses
+                    }
+
+                    // Register it in the Library too, so it's reusable via "+ From Library" in future sessions.
+                    if (!window.libraryTracks.some(t => t.src === result.path)) {
+                        window.libraryTracks.push({ station: folder, slot: window.libraryTracks.filter(t => t.station === folder).length, title: cleanTitle, duration: '', src: result.path, custom: true });
+                        try {
+                            const custom = window.libraryTracks.filter(t => t.custom);
+                            localStorage.setItem('sbn-library-tracks-custom', JSON.stringify(custom));
+                        } catch (err) { console.error('Could not save custom library tracks:', err); }
+                    }
+
+                    window.renderStationTracks(); // also persists + fires the WKOR/CDFM sync
+                } catch (err) {
+                    console.error('Track upload failed:', err);
+                    const track = window.stationTracks.find(t => t.id === trackId);
+                    if (track) track.artist = 'Upload failed — ' + (err.message || 'see console');
+                    window.renderStationTracks();
+                }
+            });
         };
 
         window.triggerTrackArtUpload = function(id) {
@@ -4830,6 +4914,7 @@
         window.toggleAirStatus = function() {
             window.stationIsLive = !window.stationIsLive;
             window.applyAirStatus();
+            window.syncStationPlaylist();
         };
 
         window.shareStation = function(btn) {
@@ -4898,6 +4983,13 @@
                 window.updateStationCharCount(document.getElementById('station-bio-input').value);
                 const savedTracks = JSON.parse(localStorage.getItem('sbn-station-tracks') || 'null');
                 if (savedTracks && savedTracks.length) window.stationTracks = savedTracks;
+                const savedLibraryTracks = JSON.parse(localStorage.getItem('sbn-library-tracks-custom') || 'null');
+                if (Array.isArray(savedLibraryTracks) && savedLibraryTracks.length) {
+                    // Append custom uploads on top of the hardcoded base catalog, skipping any dupes.
+                    savedLibraryTracks.forEach(t => {
+                        if (!window.libraryTracks.some(x => x.src === t.src)) window.libraryTracks.push(t);
+                    });
+                }
                 window.renderStationTracks();
                 window.applyAirStatus();
             } catch (err) { console.error('Could not load station data:', err); }
