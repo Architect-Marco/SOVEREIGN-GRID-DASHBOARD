@@ -6,8 +6,8 @@
         .nav-active { border-left: 3px solid #a855f7; background: rgba(168, 85, 247, 0.1); color: white !important; }
         .hidden-section { display: none !important; }
         .tab-active { border-bottom: 2px solid #a855f7; color: #a855f7 !important; }
-        .wave-container { height: 150px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 12px; overflow: hidden; margin-top: 8px; }
-        .wave-stem-container { height: 88px; overflow: hidden; }
+        .wave-container { height: 56px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 12px; overflow: hidden; margin-top: 8px; }
+        .wave-stem-container { height: 36px; overflow: hidden; display: flex; align-items: center; }
         .stem-menu { min-width: 8rem; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 10px; }
@@ -292,46 +292,3 @@
         .daw-arrangement-scroll::-webkit-scrollbar-track { background:#0a0a0a; }
         .daw-arrangement-scroll::-webkit-scrollbar-thumb { background:#2fd0ff !important; border-radius:10px; border:2px solid #0a0a0a; }
         .daw-grid-wrapper { padding-bottom:14px; }
-        /* === SOVEREIGN DIAMOND SIGNATURE (V128) === */
-.sovereign-diamond {
-    position: relative;
-    background: conic-gradient(from 180deg at 50% 50%, #002a2d 0deg, #00f2ff 90deg, #008188 180deg, #00f2ff 270deg, #002a2d 360deg);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    width: 50px;
-    height: 50px;
-    transform: rotate(45deg);
-    box-shadow: 0 0 15px #00f2ff, inset 0 0 10px rgba(255,255,255,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 20px auto; /* Centers it in the container */
-    overflow: visible;
-}
-
-/* THE ELECTRIC WISPS */
-.sovereign-diamond::before {
-    content: '';
-    position: absolute;
-    width: 150%;
-    height: 150%;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(0,242,255,0.3) 0%, rgba(0,0,0,0) 70%);
-    filter: blur(8px);
-    animation: energy-wisp 5s infinite linear;
-    z-index: -1;
-}
-
-@keyframes energy-wisp {
-    0% { transform: scale(1) rotate(0deg); opacity: 0.4; }
-    50% { transform: scale(1.3) rotate(180deg); opacity: 0.7; }
-    100% { transform: scale(1) rotate(360deg); opacity: 0.4; }
-}
-
-.diamond-value {
-    transform: rotate(-45deg); /* Flips the text back to horizontal */
-    color: #ffffff;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 900;
-    font-size: 1.2rem;
-    text-shadow: 0 0 10px #00f2ff;
-}
