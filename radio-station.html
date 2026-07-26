@@ -2,94 +2,381 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sovereign Grid - Radio Station</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBN // RADIO STATION V7.7</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7"></script>
     <link rel="stylesheet" href="shared.css">
-    <style>
-        :root { --neon-teal: #008080; --neon-glow: #00f3ff; }
-        body { background: #000; color: #fff; font-family: 'Inter', sans-serif; display: flex; margin: 0; }
-        
-        /* SIDEBAR (Match your screenshot) */
-        .sidebar { width: 250px; background: #0a0a0a; border-right: 1px solid #1a1a1a; height: 100vh; padding: 20px; }
-        .sidebar h2 { color: #8a2be2; font-size: 0.8rem; letter-spacing: 2px; }
-        .nav-item { padding: 15px 0; color: #666; text-decoration: none; display: block; font-size: 0.9rem; text-transform: uppercase; }
-        .nav-item.active { color: #fff; text-shadow: 0 0 10px var(--neon-glow); }
-
-        /* MAIN CONTENT */
-        .main-content { flex: 1; padding: 40px; background: #050505; }
-        .station-header { display: flex; gap: 30px; margin-bottom: 40px; }
-        .cover-art { width: 200px; height: 200px; border: 1px solid #333; display: flex; align-items: center; justify-content: center; background: #111; border-radius: 10px; }
-        
-        .form-group { margin-bottom: 20px; }
-        label { display: block; color: #444; font-size: 0.7rem; margin-bottom: 8px; text-transform: uppercase; }
-        input, textarea { 
-            width: 100%; background: #0a0a0a; border: 1px solid #222; color: #fff; 
-            padding: 12px; border-radius: 5px; font-family: inherit; 
-        }
-        
-        /* THE SAVE BUTTON (The "Teal" button from your screenshot) */
-        .btn-save { 
-            background: var(--neon-teal); border: none; color: #000; font-weight: bold;
-            padding: 15px 40px; border-radius: 5px; cursor: pointer; float: right;
-            text-transform: uppercase; transition: 0.3s;
-        }
-        .btn-save:hover { background: var(--neon-glow); box-shadow: 0 0 20px var(--neon-glow); }
-    </style>
 </head>
-<body>
+<body class="flex flex-col">
+    <div class="scanline"></div>
 
-    <nav class="sidebar">
-        <h2 style="color:#fff">THE SICK TEAM</h2>
-        <p style="font-size:0.6rem; color:var(--neon-glow)">SOVEREIGN GRID</p>
-        <a href="index.html" class="nav-item">Home</a>
-        <a href="splitter-mastering.html" class="nav-item">Splitter / Mastering</a>
-        <a href="daw.html" class="nav-item">DAW</a>
-        <a href="radio-station.html" class="nav-item active">Radio Station</a>
-    </nav>
+    <div class="flex flex-1 overflow-hidden">
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col flex-shrink-0 h-full">
+            <div class="p-8 border-b border-white/5 mb-4">
+                <div class="text-purple-500 font-black text-xl uppercase tracking-tighter italic">THE SICK TEAM</div>
+                <div class="text-[9px] text-gray-600 uppercase font-black tracking-[0.4em] mt-1">Sovereign Grid</div>
+            </div>
+            <nav class="flex-1 px-4 space-y-2">
+                <div onclick="switchView('home')" id="nav-home" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">HOME</div>
+                <div onclick="switchView('create')" id="nav-create" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">CREATE</div>
+                <div onclick="switchView('splitter')" id="nav-splitter" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">SPLITTER / MASTERING</div>
+                <div onclick="switchView('daw')" id="nav-daw" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">DAW</div>
+                <div onclick="switchView('epk')" id="nav-epk" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">EPK SOUL FORGE</div>
+                <div onclick="switchView('gallery')" id="nav-gallery" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">GALLERY</div>
+                <div onclick="switchView('station')" id="nav-station" class="nav-item nav-active flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">RADIO STATION</div>
+            </nav>
+            <div class="p-6 border-t border-white/5">
+                <div class="bg-white/5 p-4 rounded-xl flex items-center gap-3">
+                    <div id="sidebar-avatar" onclick="document.getElementById('avatar-upload-input').click()" class="upload-avatar w-8 h-8 rounded-md bg-purple-500 flex items-center justify-center font-black text-[10px] cursor-pointer relative flex-shrink-0" title="Upload profile photo">
+                        <span class="upload-fallback">DM</span>
+                        <div class="upload-overlay absolute inset-0 rounded-md bg-black/60 flex items-center justify-center">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black uppercase">MARCO</div>
+                        <div class="text-[8px] text-gray-500 uppercase">Architect</div>
+                    </div>
+                </div>
+                <input type="file" id="avatar-upload-input" accept="image/*" class="hidden" onchange="handleAvatarUpload(event)">
+            </div>
+        </aside>
 
-    <main class="main-content">
-        <div class="station-header">
-            <div class="cover-art">📷</div>
-            <div>
-                <h1 id="display-name">107.9 W-K-O-R FM - Broadcast</h1>
-                <p style="color:#666; max-width: 500px;">Broadcasting live from the epicenter of the Aetherwave Syndicate. WKOR 107.9 is the pulse of the global grid.</p>
+        <!-- MAIN VIEW AREA -->
+        <main class="flex-1 overflow-y-auto p-12 bg-[#050505]">
+            
+            <div id="view-station" class="view-content max-w-6xl">
+
+                <!-- SECTION HEADER -->
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="neon-blue-text text-lg font-black uppercase italic tracking-tighter">Radio Profile</h2>
+                    <button class="text-gray-500 hover:text-white transition-colors px-2" title="More options">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    </button>
+                </div>
+
+                <!-- PROFILE ROW: COVER + NAME/BIO BOX + STATUS PANEL -->
+                <div class="flex items-start gap-6 flex-wrap mb-8">
+
+                    <!-- COVER ART -->
+                    <div class="flex-shrink-0 w-64">
+                        <div id="station-cover" onclick="document.getElementById('station-cover-input').click()" class="upload-avatar w-64 h-64 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-gray-500 cursor-pointer relative" title="Upload station cover">
+                            <svg class="upload-fallback" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            <span class="upload-fallback text-[8px] font-black uppercase tracking-widest mt-1">Cover</span>
+                            <div class="upload-overlay absolute inset-0 rounded-2xl bg-black/60 flex items-center justify-center">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            </div>
+                        </div>
+                        <input type="file" id="station-cover-input" accept="image/*" class="hidden" onchange="window.handleStationCoverUpload(event)">
+                        <div id="station-genres" class="flex gap-1.5 flex-wrap mt-3"></div>
+                    </div>
+
+                    <!-- NAME / BIO BOX -->
+                    <div class="flex-1 min-w-[280px] self-stretch bg-[#0a0a0a] noir-bezel rounded-xl p-5 flex flex-col">
+                        <h1 id="station-name-display" class="text-xl font-black uppercase italic tracking-tighter neon-blue-text border-b border-white/10 pb-3 mb-3">107.9 W-K-O-R FM - Broadcast</h1>
+                        <p id="station-bio-display" class="text-gray-400 text-[13px] leading-relaxed flex-1 whitespace-pre-line">107.9 W-K-O-R FM — THE SICK TEAM BROADCAST. Broadcasting live from the epicenter of the Aetherwave Syndicate. WKOR 107.9 is the pulse of the global grid.</p>
+                        <div id="station-bio-charcount" class="text-right text-gray-600 text-[9px] font-black uppercase tracking-widest mt-2">0 / 240</div>
+                    </div>
+
+                    <!-- STATUS + INFO PANEL -->
+                    <div class="w-full lg:w-64 flex-shrink-0 space-y-4">
+
+                        <!-- STATION STATUS -->
+                        <div class="bg-[#0a0a0a] noir-bezel rounded-xl p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-gray-500 text-[9px] font-black uppercase tracking-widest">Station Status</span>
+                                <button onclick="window.toggleStationEdit()" id="station-edit-btn" class="px-3 py-1.5 border border-white/20 text-gray-300 rounded text-[9px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all whitespace-nowrap">Edit Station</button>
+                            </div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span id="station-live-badge" class="flex items-center gap-1.5 bg-black border neon-red-border neon-red-text text-[9px] font-black pl-2 pr-3 py-1.5 rounded-full uppercase tracking-widest">
+                                    <span class="w-1.5 h-1.5 rounded-full neon-red-dot animate-pulse"></span>Live
+                                </span>
+                                <span class="flex items-center gap-1.5 text-gray-400 text-[10px] font-bold">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+                                    <span id="station-listener-count">0</span>&nbsp;Listening
+                                </span>
+                            </div>
+                            <button onclick="window.toggleAirStatus()" id="station-air-btn" class="w-full flex items-center justify-center gap-2 py-2.5 bg-black border-2 neon-red-border neon-red-text rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all">
+                                <svg id="station-air-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+                                <span id="station-air-label">On Air</span>
+                            </button>
+                        </div>
+
+                        <!-- STATION INFO -->
+                        <div class="bg-[#0a0a0a] noir-bezel rounded-xl p-4 space-y-2.5">
+                            <span class="text-gray-500 text-[9px] font-black uppercase tracking-widest block mb-1">Station Info</span>
+                            <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Station ID</span><span class="neon-blue-text font-bold">WKOR-FM-001</span></div>
+                            <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Owner</span><span class="neon-blue-text font-bold">The Sick Team</span></div>
+                            <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Created</span><span class="neon-blue-text font-bold">Jun 11, 2025</span></div>
+                            <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Location</span><span class="neon-blue-text font-bold">Sovereign Grid</span></div>
+                            <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Frequency</span><span class="neon-blue-text font-bold">107.9 FM</span></div>
+                            <div class="flex items-center justify-between text-[10px]">
+                                <span class="text-gray-500 uppercase font-black tracking-widest">Signal</span>
+                                <div class="flex items-center gap-1.5">
+                                    <div class="flex gap-[2px]">
+                                        <span class="w-1 h-2.5 neon-blue-dot rounded-sm"></span><span class="w-1 h-2.5 neon-blue-dot rounded-sm"></span><span class="w-1 h-2.5 neon-blue-dot rounded-sm"></span><span class="w-1 h-2.5 neon-blue-dot rounded-sm"></span><span class="w-1 h-2.5 neon-blue-dot rounded-sm"></span><span class="w-1 h-2.5 neon-blue-dot rounded-sm"></span><span class="w-1 h-2.5 neon-blue-dot rounded-sm"></span><span class="w-1 h-2.5 neon-blue-dot rounded-sm"></span><span class="w-1 h-2.5 neon-blue-dot rounded-sm"></span><span class="w-1 h-2.5 bg-white/20 rounded-sm"></span>
+                                    </div>
+                                    <span class="neon-blue-text font-bold">98%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EDIT FORM -->
+                <div id="station-edit-form" class="hidden-section bg-[#0a0a0a] noir-bezel p-8 rounded-2xl mb-8 space-y-4">
+                    <div>
+                        <label class="text-gray-500 text-[9px] font-black uppercase tracking-widest block mb-2">Station Name</label>
+                        <input type="text" id="station-name-input" value="107.9 W-K-O-R FM - Broadcast" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-teal-400">
+                    </div>
+                    <div>
+                        <label class="text-gray-500 text-[9px] font-black uppercase tracking-widest block mb-2">Description</label>
+                        <textarea id="station-bio-input" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-gray-300 text-sm h-28 outline-none focus:border-teal-400">107.9 W-K-O-R FM — THE SICK TEAM BROADCAST. Broadcasting live from the epicenter of the Aetherwave Syndicate. WKOR 107.9 is the pulse of the global grid.</textarea>
+                    </div>
+                    <div>
+                        <label class="text-gray-500 text-[9px] font-black uppercase tracking-widest block mb-2">Genres (comma separated)</label>
+                        <input type="text" id="station-genres-input" value="Electronic, Techno, House, Funk, Parody / Comedy" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-teal-400">
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button onclick="window.toggleStationEdit()" class="flex-1 py-3 bg-white/5 border border-white/10 rounded-lg text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-white/10">Cancel</button>
+                        <button onclick="window.saveStationChanges()" class="flex-1 py-3 bg-teal-400 text-black rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-teal-300">Save Changes 💾</button>
+                    </div>
+                </div>
+
+                <!-- STATION TRACKS -->
+                <div class="bg-[#0a0a0a] noir-bezel rounded-3xl p-8">
+                    <div class="flex items-center justify-between flex-wrap gap-3 mb-1">
+                        <h3 class="neon-blue-text text-lg font-black uppercase italic tracking-tighter">Station Tracks</h3>
+                        <div class="flex gap-2">
+                            <button onclick="document.getElementById('station-track-input').click()" class="px-4 py-2 bg-white/5 border border-[rgba(47,208,255,0.4)] rounded-lg text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-white/10 transition-all">+ Add Music</button>
+                            <button onclick="window.openLibraryPicker()" class="px-4 py-2 bg-white/5 border border-[rgba(47,208,255,0.4)] rounded-lg text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-white/10 transition-all">+ From Library</button>
+                            <input type="file" id="station-track-input" accept="audio/*" multiple class="hidden" onchange="window.handleStationTrackUpload(event)">
+                            <input type="file" id="station-track-art-input" accept="image/*" class="hidden" onchange="window.handleStationTrackArtUpload(event)">
+                            <button onclick="window.shareStation(this)" class="px-4 py-2 bg-white/5 border border-[rgba(47,208,255,0.4)] rounded-lg text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-white/10 transition-all">⇗ Share</button>
+                        </div>
+                    </div>
+                    <p class="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-6">Upload to add, tap ✕ to remove a track.</p>
+                    <div id="station-track-list" class="space-y-1"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- THE CENTERED NOIR FOOTER -->
+    <footer class="h-20 bg-[#0a0a0a] border-t border-white/5 px-8 flex items-center justify-between">
+        
+        <!-- LEFT: TRACK DATA (w-72 keeps it balanced) -->
+        <div class="flex items-center gap-4 w-72">
+            <div id="player-icon-box" onclick="document.getElementById('player-icon-input').click()" class="upload-avatar w-10 h-10 flex items-center justify-center neon-blue-text flex-shrink-0 relative cursor-pointer" title="Upload track art">
+                <svg class="upload-fallback" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 15.5v2a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3v3zM3 15.5v2a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3v3z"/></svg>
+                <div class="upload-overlay absolute inset-0 flex items-center justify-center">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                </div>
+            </div>
+            <input type="file" id="player-icon-input" accept="image/*" class="hidden" onchange="handlePlayerIconUpload(event)">
+            <div class="overflow-hidden">
+                <div id="player-title" class="text-[11px] font-black uppercase italic tracking-tighter truncate neon-blue-text">Awaiting Uplink...</div>
+                <div id="player-artist" class="text-[9px] text-zinc-600 uppercase font-black tracking-widest">The Sick Team Official</div>
             </div>
         </div>
 
-        <div class="form-group">
-            <label>Station Name</label>
-            <input type="text" id="station-name" value="107.9 W-K-O-R FM - Broadcast">
+        <!-- CENTER: THE HEARTBEAT (Controls & Bar) -->
+        <div class="flex-1 flex flex-col items-center justify-center gap-2">
+            <!-- CONTROLS -->
+            <div class="flex items-center gap-10 neon-blue-text cursor-pointer">
+                <span onclick="prevTrack()" class="hover:text-[#2fd0ff] transition-colors" title="Previous">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+                </span>
+                <span onclick="togglePlay()" id="player-play" class="neon-blue-text hover:scale-110 transition-transform">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                </span>
+                <span onclick="nextTrack()" class="hover:text-[#2fd0ff] transition-colors" title="Next">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 6v12l8.5-6z"/></svg>
+                </span>
+            </div>
+
+            <!-- THE PROGRESS LINE + TIMERS -->
+            <div class="flex items-center gap-3 w-full max-w-[550px]">
+                <span id="player-current-time" class="text-[10px] font-bold text-gray-500 tabular-nums w-9 text-right flex-shrink-0">0:00</span>
+                <div class="flex-1 h-1 bg-white/5 rounded-full overflow-hidden cursor-pointer relative" id="player-scrub">
+                    <div id="footerProgress" class="h-full bg-[#2fd0ff] neon-blue-glow transition-all duration-100 ease-linear" style="width: 0%"></div>
+                </div>
+                <span id="player-duration" class="text-[10px] font-bold text-gray-500 tabular-nums w-9 flex-shrink-0">0:00</span>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label>Description</label>
-            <textarea id="station-desc" rows="4">Broadcasting live from the epicenter of the Aetherwave Syndicate. WKOR 107.9 is the pulse of the global grid.</textarea>
+        <!-- RIGHT: LIVE EQ + NODE VERSION (w-72 keeps it balanced) -->
+        <div class="w-72 flex flex-col items-end justify-center gap-1">
+            <canvas id="eqCanvas" width="220" height="28" class="flex-shrink-0"></canvas>
+            <div class="text-right neon-blue-text opacity-40 text-[9px] font-black italic leading-tight">
+                SBN MASTER V7.7.9 // NOIR SECTOR
+            </div>
         </div>
+    </footer>
 
-        <div class="form-group">
-            <label>Genres (Comma Separated)</label>
-            <input type="text" id="station-genres" value="Electronic, Techno, House, Funk, Parody / Comedy">
+    <!-- APP MENU (9-dot icon on Home) -->
+    <div id="app-menu-modal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onclick="if(event.target===this) window.toggleAppMenu()">
+        <div class="w-full max-w-md bg-[#0a0a0a] noir-bezel rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="neon-blue-text text-lg font-black uppercase italic tracking-tighter">Menu</h3>
+                <button onclick="window.toggleAppMenu()" class="text-gray-500 hover:text-white transition-colors">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div id="app-menu-grid" class="grid grid-cols-3 gap-3">
+                <button onclick="window.goToMenuView('home')" class="app-menu-tile flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all" data-label="home">
+                    <div class="w-11 h-11 rounded-xl bg-[rgba(47,208,255,0.08)] border border-[rgba(47,208,255,0.4)] flex items-center justify-center neon-blue-text"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>
+                    <span class="text-[9px] text-gray-300 font-black uppercase tracking-widest text-center">Home</span>
+                </button>
+                <button onclick="window.goToMenuView('create')" class="app-menu-tile flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all" data-label="create forge">
+                    <div class="w-11 h-11 rounded-xl bg-[rgba(47,208,255,0.08)] border border-[rgba(47,208,255,0.4)] flex items-center justify-center neon-blue-text"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5z"/></svg></div>
+                    <span class="text-[9px] text-gray-300 font-black uppercase tracking-widest text-center">Create</span>
+                </button>
+                <button onclick="window.goToMenuView('splitter')" class="app-menu-tile flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all" data-label="splitter mastering">
+                    <div class="w-11 h-11 rounded-xl bg-[rgba(47,208,255,0.08)] border border-[rgba(47,208,255,0.4)] flex items-center justify-center neon-blue-text"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V9M4 5V3M12 21v-4M12 13V3M20 21v-8M20 9V3"/><circle cx="4" cy="7" r="2"/><circle cx="12" cy="17" r="2"/><circle cx="20" cy="11" r="2"/></svg></div>
+                    <span class="text-[9px] text-gray-300 font-black uppercase tracking-widest text-center">Splitter / Mastering</span>
+                </button>
+                <button onclick="window.goToMenuView('daw')" class="app-menu-tile flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all" data-label="daw">
+                    <div class="w-11 h-11 rounded-xl bg-[rgba(47,208,255,0.08)] border border-[rgba(47,208,255,0.4)] flex items-center justify-center neon-blue-text"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 14v3M12 8v9M17 11v6"/></svg></div>
+                    <span class="text-[9px] text-gray-300 font-black uppercase tracking-widest text-center">DAW</span>
+                </button>
+                <button onclick="window.goToMenuView('epk')" class="app-menu-tile flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all" data-label="epk soul forge">
+                    <div class="w-11 h-11 rounded-xl bg-[rgba(47,208,255,0.08)] border border-[rgba(47,208,255,0.4)] flex items-center justify-center neon-blue-text"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+                    <span class="text-[9px] text-gray-300 font-black uppercase tracking-widest text-center">EPK Soul Forge</span>
+                </button>
+                <button onclick="window.goToMenuView('gallery')" class="app-menu-tile flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all" data-label="gallery">
+                    <div class="w-11 h-11 rounded-xl bg-[rgba(47,208,255,0.08)] border border-[rgba(47,208,255,0.4)] flex items-center justify-center neon-blue-text"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+                    <span class="text-[9px] text-gray-300 font-black uppercase tracking-widest text-center">Gallery</span>
+                </button>
+                <button onclick="window.goToMenuView('station')" class="app-menu-tile flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all" data-label="radio station">
+                    <div class="w-11 h-11 rounded-xl bg-[rgba(47,208,255,0.08)] border border-[rgba(47,208,255,0.4)] flex items-center justify-center neon-blue-text"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9M19.1 4.9C23 8.8 23 15.2 19.1 19.1M7.8 16.2C5.6 14 5.6 10 7.8 7.8M16.2 7.8C18.4 10 18.4 14 16.2 16.2"/><circle cx="12" cy="12" r="2"/></svg></div>
+                    <span class="text-[9px] text-gray-300 font-black uppercase tracking-widest text-center">Radio Station</span>
+                </button>
+            </div>
+            <p id="app-menu-empty" class="hidden text-gray-600 text-[10px] uppercase tracking-widest text-center py-8 opacity-50">No match found</p>
         </div>
+    </div>
 
-        <button class="btn-save" onclick="triggerSync()">Save Changes 💾</button>
-    </main>
+    <!-- PARLEY RELAY — floating chat widget (NOIR SECTOR COMMAND) -->
+    <div id="relay-widget" class="fixed bottom-24 right-6 w-[26rem] z-40">
+        <div class="flex flex-col h-[500px] bg-[#050505] border border-teal-900/40 rounded-lg overflow-hidden shadow-2xl font-mono">
 
-    <!-- LOAD THE DISPATCHER -->
-    <script src="js/broadcast-sync.js"></script>
-    <script>
-        async function triggerSync() {
-            const name = document.getElementById('station-name').value;
-            const desc = document.getElementById('station-desc').value;
-            
-            const payload = {
-                station_name: name,
-                description: desc,
-                last_updated: new Date().toLocaleString()
-            };
+            <!-- HEADER: TACTICAL OVERLAY -->
+            <div class="flex items-center justify-between px-4 py-2 bg-black border-b border-teal-900/40 cursor-pointer select-none" onclick="toggleRelayMinimize()">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full neon-blue-dot animate-pulse"></span>
+                    <span class="neon-blue-text text-[10px] tracking-[0.2em] font-bold">PARLEY RELAY</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="event.stopPropagation(); window.configureGroqKey()" id="relay-key-btn" class="relative neon-blue-text hover:text-[#2fd0ff] transition-colors" title="Configure Neural Link (Groq API key)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                        <span id="relay-key-status-dot" class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                    </button>
+                    <button onclick="event.stopPropagation(); toggleRelayMute()" id="relay-mute-btn" class="neon-blue-text hover:text-[#2fd0ff] transition-colors" title="Mute/Unmute">
+                        <svg id="relay-mute-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>
+                    </button>
+                    <button onclick="event.stopPropagation(); toggleRelayMinimize()" class="neon-blue-text hover:text-[#2fd0ff] transition-colors" title="Minimize">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                </div>
+            </div>
 
-            // Call the Dispatcher Brain
-            console.log("Initiating Sovereign Sync...");
-            await SovereignDispatcher.syncStation('WKOR-107.9-FM', payload);
-        }
-    </script>
+            <!-- PROFILE BOX (only visible while the relay is open) -->
+            <div class="flex items-center gap-3 px-4 py-2.5 border-b border-teal-900/40 bg-black/60">
+                <div id="relay-profile-photo" onclick="document.getElementById('relay-profile-input').click()" class="upload-avatar w-12 h-12 rounded-lg bg-white/5 border border-teal-900/50 flex items-center justify-center text-teal-700 cursor-pointer relative flex-shrink-0" title="Upload profile photo">
+                    <svg class="upload-fallback" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <div class="upload-overlay absolute inset-0 rounded-lg bg-black/60 flex items-center justify-center">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    </div>
+                </div>
+                <input type="file" id="relay-profile-input" accept="image/*" class="hidden" onchange="window.handleRelayProfileUpload(event)">
+                <span class="neon-blue-text text-[9px] uppercase font-black tracking-widest flex-1">Lexi Con Your Chat Companion</span>
+                <button id="relay-profile-remove-btn" onclick="window.removeRelayProfilePhoto()" class="hidden text-teal-800 hover:text-red-400 transition-colors flex-shrink-0" title="Remove profile photo">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- 1. CHAT HISTORY: DATA STREAM -->
+            <div id="relay-feed" class="flex-grow overflow-y-auto p-4 space-y-4 text-xs leading-relaxed"></div>
+
+            <!-- 2. TACTICAL PREVIEW SHELF (STAGING AREA) -->
+            <div id="relay-media-shelf" class="hidden border-t border-teal-500/20 bg-teal-900/5 p-3 relative animate-fade-in">
+                <div class="relative w-24 h-24 rounded-sm border border-teal-400/30 bg-black overflow-hidden group">
+                    <img id="relay-preview-img" src="" class="hidden w-full h-full object-cover opacity-80">
+                    <video id="relay-preview-vid" src="" loop muted autoplay class="hidden w-full h-full object-cover opacity-80"></video>
+                    <button onclick="window.purgeRelayMedia()" class="absolute top-1 right-1 bg-black/80 border border-teal-500/40 text-teal-400 rounded-full p-1 hover:bg-teal-500 hover:text-black transition-all">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                    <div class="absolute bottom-0 inset-x-0 bg-teal-900/60 text-[8px] text-center text-teal-200 py-0.5 font-bold uppercase tracking-tighter">Staged_Signal</div>
+                </div>
+            </div>
+
+            <!-- 3. INPUT MODULE: INJECTION LAYER -->
+            <div class="p-3 bg-black border-t border-teal-900/40">
+                <div class="flex items-center gap-3">
+                    <button onclick="document.getElementById('relay-file-upload').click()" class="text-teal-600 hover:text-teal-400 transition-colors flex-shrink-0" title="Attach media">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                    </button>
+                    <input type="file" id="relay-file-upload" class="hidden" accept="image/*,video/*" onchange="window.stageRelayMedia(this)">
+
+                    <input type="text" id="relay-input" placeholder="Transmit to the Family..." class="flex-1 bg-[#080808] border border-teal-900/60 rounded px-3 py-2 text-[11px] text-white placeholder:text-teal-900 focus:outline-none focus:border-teal-400 transition-all" onkeydown="if(event.key==='Enter') sendRelayMessage()">
+
+                    <button onclick="sendRelayMessage()" class="neon-blue-text hover:text-[#2fd0ff] transform hover:scale-110 transition-all flex-shrink-0" title="Transmit">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Minimized bubble -->
+    <div id="relay-bubble" class="hidden-section fixed bottom-24 right-6 z-40">
+        <button onclick="toggleRelayMinimize()" class="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border-[1.8px] border-[rgba(47,208,255,0.4)] flex items-center justify-center shadow-2xl hover:scale-105 transition-transform neon-blue-text neon-blue-glow">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        </button>
+    </div>
+
+    <!-- Hidden file input, shared across all creation cards -->
+    <input type="file" id="cover-upload-input" accept="image/*" class="hidden" onchange="handleCoverUpload(event)">
+
+    <!-- LYRICS SLIDE-IN PANEL -->
+    <div id="lyrics-panel-backdrop" onclick="closeLyricsPanel()" class="hidden-section fixed inset-0 bg-black/50 z-40"></div>
+    <div id="lyrics-panel" class="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-[#0a0a0a] border-l border-white/10 z-50 transform translate-x-full transition-transform duration-300 ease-out shadow-2xl">
+        <div class="flex items-center justify-between p-6 border-b border-white/10">
+            <h3 class="text-pink-500 text-[11px] font-black uppercase italic tracking-widest">Lyrics</h3>
+            <button onclick="closeLyricsPanel()" class="text-gray-500 hover:text-white transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="p-6 space-y-5 overflow-y-auto" style="height: calc(100% - 73px);">
+            <div class="flex items-center gap-3">
+                <div id="lyrics-panel-cover" class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-purple-600 to-pink-500 flex items-center justify-center"></div>
+                <div class="min-w-0">
+                    <div id="lyrics-panel-title" class="text-sm font-bold text-white italic truncate"></div>
+                    <div id="lyrics-panel-meta" class="text-[9px] text-gray-600 uppercase font-black tracking-widest mt-0.5"></div>
+                </div>
+            </div>
+            <textarea id="lyrics-panel-textarea" class="w-full h-96 bg-black border border-white/10 rounded-2xl p-5 text-white font-mono text-sm outline-none focus:border-pink-500 leading-relaxed" placeholder="No lyrics yet — write some and save..."></textarea>
+            <button onclick="saveLyricsPanel()" class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-black font-black uppercase italic tracking-widest rounded-xl">Save Lyrics</button>
+        </div>
+    </div>
+
+    <!-- LIBRARY PICKER — add a real track from WKOR/CDFM to the On Air queue -->
+    <div id="library-picker-modal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onclick="if(event.target===this) window.closeLibraryPicker()">
+        <div class="w-full max-w-2xl bg-[#0a0a0a] border-[1.8px] border-[rgba(47,208,255,0.25)] rounded-3xl p-7 shadow-2xl max-h-[80vh] flex flex-col">
+            <div class="flex items-center justify-between mb-4 flex-shrink-0">
+                <h3 class="neon-blue-text text-lg font-black uppercase italic tracking-tight">Add From Library</h3>
+                <button onclick="window.closeLibraryPicker()" class="text-gray-500 hover:text-white transition-colors">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <p class="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-3 flex-shrink-0">Pick a real track from WKOR / CDFM — it actually plays once queued</p>
+            <div id="library-picker-list" class="space-y-1 overflow-y-auto overflow-x-auto"></div>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
 </body>
 </html>
