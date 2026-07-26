@@ -3938,16 +3938,16 @@
             strip.innerHTML = cards.map(item => {
                 if (item.type === 'folder') {
                     return `
-                    <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-32 h-32 rounded-xl bg-black/30 border border-white/5 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[rgba(47,208,255,0.4)] transition-colors">
+                    <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-48 h-48 rounded-xl bg-black/30 border border-white/5 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[rgba(47,208,255,0.4)] transition-colors">
                         <span class="neon-blue-text">${GALLERY_ICON_FOLDER}</span>
                         <span class="text-[8px] text-gray-400 font-bold text-center px-2 truncate w-full">${item.name}</span>
                     </div>`;
                 }
                 const isSelected = item.name === window.gallerySelectedName;
                 const icon = item.type === 'video' ? GALLERY_ICON_VIDEO : (item.type === 'audio' ? GALLERY_ICON_AUDIO : GALLERY_ICON_IMAGE);
-                const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:112%;background-position:center;` : '';
+                const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:120%;background-position:center;` : '';
                 return `
-                <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-32 h-40 rounded-xl bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all relative overflow-hidden" style="${coverStyle}">
+                <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-48 h-60 rounded-xl bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all relative overflow-hidden" style="${coverStyle}">
                     ${!item.coverArt ? '<span class="neon-blue-text opacity-70">' + icon + '</span>' : ''}
                     ${item.type === 'video' || item.type === 'audio' ? '<span class="absolute bottom-2 left-2 right-2 text-[7px] text-gray-400 font-bold truncate bg-black/60 px-1.5 py-0.5 rounded">' + item.name + '</span>' : ''}
                 </div>`;
