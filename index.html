@@ -1,1 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOVEREIGN GRID V20.0</title>
+    <link rel="stylesheet" href="css/shared.css">
+    <style>
+        :root { --neon-blue: #00f3ff; --teal-glow: #00ffcc; }
+        body { background: #000; color: white; font-family: 'Courier New', monospace; margin: 0; text-align: center; }
+        .diamond-container { margin-top: 50px; }
+        .sovereign-diamond {
+            width: 60px; height: 60px; border: 2px solid var(--teal-glow);
+            transform: rotate(45deg); margin: 0 auto;
+            box-shadow: 0 0 20px var(--teal-glow); animation: pulse 3s infinite;
+        }
+        .sovereign-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px; padding: 40px; max-width: 1100px; margin: 0 auto;
+        }
+        .node-card {
+            border: 1px solid rgba(0, 243, 255, 0.2); background: #050505;
+            padding: 25px; text-decoration: none; color: inherit; transition: 0.3s;
+        }
+        .node-card:hover { border-color: var(--neon-blue); transform: translateY(-5px); box-shadow: 0 0 20px rgba(0, 243, 255, 0.1); }
+        .node-card h2 { color: var(--neon-blue); font-size: 1.2rem; }
+        @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; transform: rotate(45deg) scale(1.05); } }
+    </style>
+</head>
+<body>
 
+    <div class="diamond-container">
+        <div class="sovereign-diamond"></div>
+        <h1 style="letter-spacing: 8px;">SOVEREIGN GRID</h1>
+        <p style="color: var(--neon-blue); font-size: 0.7rem;">DECENTRALIZED V20.0 // ARCHITECT MARCO</p>
+    </div>
+
+    <main class="sovereign-grid">
+        <a href="splitter-mastering.html" class="node-card">
+            <h2>01. STUDIO</h2>
+            <p>AI Mastering & LED Peak Monitoring.</p>
+        </a>
+        <a href="broadcast.html" class="node-card">
+            <h2>02. STATION</h2>
+            <p>Global Broadcast Dispatcher (API Sync).</p>
+        </a>
+        <a href="magazine.html" class="node-card">
+            <h2>03. ARCHIVE</h2>
+            <p>Sovereign Magazine & Intel.</p>
+        </a>
+    </main>
+
+    <script src="js/shared.js"></script>
+</body>
+</html>
