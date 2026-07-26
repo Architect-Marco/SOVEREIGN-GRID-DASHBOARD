@@ -1472,46 +1472,6 @@
             sbnAudio.currentTime = ratio * sbnAudio.duration;
         });
 
-        // 5b. THE FORGE (Create) — UI skeleton with simulated generation
-        window.createMode = 'simple';
-        window.instrumentalState = { simple: false, custom: false };
-
-        window.setCreateMode = function(mode) {
-            window.createMode = mode;
-            const isSimple = mode === 'simple';
-            document.getElementById('create-panel-simple').classList.toggle('hidden-section', !isSimple);
-            document.getElementById('create-panel-custom').classList.toggle('hidden-section', isSimple);
-
-            const simpleBtn = document.getElementById('create-mode-simple');
-            const customBtn = document.getElementById('create-mode-custom');
-            if (isSimple) {
-                simpleBtn.classList.add('bg-[#2fd0ff]', 'text-black', 'neon-blue-glow');
-                simpleBtn.classList.remove('bg-white/5', 'text-gray-500');
-                customBtn.classList.add('bg-white/5', 'text-gray-500');
-                customBtn.classList.remove('bg-[#2fd0ff]', 'text-black', 'neon-blue-glow');
-            } else {
-                customBtn.classList.add('bg-[#2fd0ff]', 'text-black', 'neon-blue-glow');
-                customBtn.classList.remove('bg-white/5', 'text-gray-500');
-                simpleBtn.classList.add('bg-white/5', 'text-gray-500');
-                simpleBtn.classList.remove('bg-[#2fd0ff]', 'text-black', 'neon-blue-glow');
-            }
-        };
-
-        window.toggleInstrumental = function(scope) {
-            window.instrumentalState[scope] = !window.instrumentalState[scope];
-            const toggle = document.getElementById('instrumental-toggle-' + scope);
-            const knob = document.getElementById('instrumental-knob-' + scope);
-            if (window.instrumentalState[scope]) {
-                toggle.classList.add('bg-[#2fd0ff]', 'neon-blue-glow');
-                toggle.classList.remove('bg-white/10');
-                knob.style.transform = 'translateX(20px)';
-            } else {
-                toggle.classList.remove('bg-[#2fd0ff]', 'neon-blue-glow');
-                toggle.classList.add('bg-white/10');
-                knob.style.transform = 'translateX(0)';
-            }
-        };
-
         window.insertLyricTag = function(tag) {
             const textarea = document.getElementById('custom-lyrics');
             if (!textarea) return;
@@ -3985,7 +3945,7 @@
                 }
                 const isSelected = item.name === window.gallerySelectedName;
                 const icon = item.type === 'video' ? GALLERY_ICON_VIDEO : (item.type === 'audio' ? GALLERY_ICON_AUDIO : GALLERY_ICON_IMAGE);
-                const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:cover;background-position:center;` : '';
+                const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:112%;background-position:center;` : '';
                 return `
                 <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-32 h-40 rounded-xl bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all relative overflow-hidden" style="${coverStyle}">
                     ${!item.coverArt ? '<span class="neon-blue-text opacity-70">' + icon + '</span>' : ''}
@@ -4020,6 +3980,15 @@
         };
 
         window.gallerySort = window.gallerySort || 'newest';
+
+        window.galleryViewMode = window.galleryViewMode || 'list';
+
+        window.toggleGalleryViewMode = function() {
+            window.galleryViewMode = window.galleryViewMode === 'list' ? 'grid' : 'list';
+            const list = document.getElementById('gallery-list');
+            if (list) list.classList.toggle('gallery-grid-mode', window.galleryViewMode === 'grid');
+            window.renderGallery();
+        };
 
         window.toggleGalleryOptionsMenu = function(event) {
             if (event) event.stopPropagation();
@@ -4057,6 +4026,24 @@
 
             if (!items.length) {
                 list.innerHTML = `<div class="text-center py-14"><p class="text-gray-600 font-black uppercase tracking-[0.3em] opacity-30 text-[10px]">Gallery is empty — new renders will fill in here</p></div>`;
+                return;
+            }
+
+            if (window.galleryViewMode === 'grid') {
+                list.innerHTML = items.filter(i => i.type !== 'folder').map(item => {
+                    const isSelected = item.name === window.gallerySelectedName;
+                    const icon = item.type === 'video' ? GALLERY_ICON_VIDEO : (item.type === 'audio' ? GALLERY_ICON_AUDIO : GALLERY_ICON_IMAGE);
+                    const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:112%;background-position:center;` : '';
+                    const safeName = item.name.replace(/'/g, "\\'");
+                    return `
+                    <div onclick="window.gallerySelect('${safeName}')" class="group relative aspect-square rounded-lg bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex items-center justify-center cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all overflow-hidden" style="${coverStyle}">
+                        ${!item.coverArt ? '<span class="neon-blue-text opacity-70 [&_svg]:w-6 [&_svg]:h-6">' + icon + '</span>' : ''}
+                        <span class="absolute bottom-0 inset-x-0 text-[7px] text-gray-300 font-bold truncate bg-black/70 px-1.5 py-1">${item.name}</span>
+                        <button onclick="window.deleteGalleryItem('${safeName}', event)" title="Delete" class="absolute top-1 right-1 w-5 h-5 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 neon-blue-text hover:bg-white/20">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></svg>
+                        </button>
+                    </div>`;
+                }).join('');
                 return;
             }
 
