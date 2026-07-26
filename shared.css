@@ -6,8 +6,8 @@
         .nav-active { border-left: 3px solid #a855f7; background: rgba(168, 85, 247, 0.1); color: white !important; }
         .hidden-section { display: none !important; }
         .tab-active { border-bottom: 2px solid #a855f7; color: #a855f7 !important; }
-        .wave-container { height: 56px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 12px; overflow: hidden; margin-top: 8px; }
-        .wave-stem-container { height: 36px; overflow: hidden; display: flex; align-items: center; }
+        .wave-container { height: 150px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 12px; overflow: hidden; margin-top: 8px; }
+        .wave-stem-container { height: 88px; overflow: hidden; }
         .stem-menu { min-width: 8rem; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 10px; }
@@ -117,7 +117,6 @@
         .nav-active { border-left: 3px solid #2fd0ff !important; background: rgba(47, 208, 255, 0.12) !important; color: #2fd0ff !important; text-shadow: 0 0 8px rgba(47,208,255,0.5); }
         .tab-active { border-bottom: 2px solid #ffffff !important; color: #ffffff !important; }
         ::-webkit-scrollbar-thumb { background: #ffffff !important; border-radius: 10px; }
-        .glow-purple { box-shadow: 0 0 40px rgba(255, 255, 255, 0.15) !important; }
 
         /* ===== GREEN/TEAL → WHITE (per Architect Marco's request: no more green anywhere) ===== */
         .text-teal-200 { color: #ffffff !important; }
@@ -182,6 +181,7 @@
         .slick-scroll::-webkit-scrollbar-thumb { background: rgba(47,208,255,0.35); border-radius: 10px; }
         .slick-scroll::-webkit-scrollbar-thumb:hover { background: rgba(47,208,255,0.6); }
         .slick-scroll { scrollbar-width: thin; scrollbar-color: rgba(47,208,255,0.35) transparent; }
+        .gallery-grid-mode { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; padding: 14px; }
         input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active,
         textarea:-webkit-autofill, textarea:-webkit-autofill:hover, textarea:-webkit-autofill:focus,
         select:-webkit-autofill, select:-webkit-autofill:hover, select:-webkit-autofill:focus {
@@ -220,8 +220,6 @@
 
         /* ===== BAND CARD (SOUL FORGE STYLE) ===== */
         .band-card { background: #0a0a0a; display: flex; flex-direction: column; }
-        .band-card-badge { display:flex; align-items:center; gap:4px; color:#facc15; font-weight:900; font-size:11px; }
-        .band-card-stat-val { font-weight:900; font-size:15px; line-height:1; }
 
         /* ===== MAGAZINE UPLOAD PANEL ===== */
         .magazine-frame { background-size: cover; background-position: center; background-color: #111; }
@@ -261,19 +259,14 @@
         .daw-chip-btn.on-mute { background:#ef4444; color:#000; }
         .daw-chip-btn.on-solo { background:#2fd0ff; color:#000; }
         .daw-chip-btn.fx-assigned { background:rgba(47,208,255,0.25); color:#2fd0ff; box-shadow:0 0 8px rgba(47,208,255,0.4); }
-        .daw-mini-wave { display:flex; align-items:center; gap:1.5px; height:14px; flex:1; opacity:.6; }
-        .daw-mini-wave span { width:2px; border-radius:1px; display:inline-block; }
 
         .daw-mixer-strip { width:96px; flex-shrink:0; border-right:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; align-items:center; padding:16px 8px 12px; gap:9px; }
         .daw-mixer-strip.master { width:150px; padding:16px 14px 12px; }
         .daw-knob { width:34px; height:34px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #2a2a2a, #0c0c0c); border:1px solid rgba(47,208,255,0.2); position:relative; flex-shrink:0; }
         .daw-knob::after { content:''; position:absolute; top:4px; left:50%; width:2px; height:10px; background:#2fd0ff; transform:translateX(-50%); border-radius:2px; }
-        .daw-knob-scale { display:flex; justify-content:space-between; width:100%; font-size:7px; color:#3f3f46; font-family:'JetBrains Mono',monospace; }
         .daw-fader-track { width:26px; height:150px; background:rgba(0,0,0,0.5); border-radius:4px; position:relative; display:flex; align-items:center; justify-content:center; border:1px solid rgba(47,208,255,0.15); }
         .daw-fader-input[type=range] { -webkit-appearance: slider-vertical; writing-mode: vertical-lr; direction: rtl; width:6px; height:140px; accent-color:#2fd0ff; background:transparent; cursor:pointer; }
         .daw-mixer-num { font-size:9px; font-weight:900; color:#6b7280; }
-        .daw-mixer-route { display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px; border-right:1px solid rgba(255,255,255,0.05); }
-        .daw-mixer-route .daw-tool-btn { color:#4b5563; }
         .daw-insert-dot { width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,0.12); flex-shrink:0; }
         .daw-insert-dot.filled { background:#2fd0ff; box-shadow:0 0 4px rgba(47,208,255,0.7); }
         .daw-mixer-io-row { display:flex; align-items:center; justify-content:space-between; width:100%; gap:4px; }
