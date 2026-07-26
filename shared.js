@@ -4668,8 +4668,8 @@
         // --- RADIO SYNC (pushes the On Air queue to WKOR/CDFM's public sites) ---
         // Fill these in after deploying the Cloudflare Worker (see RADIO-SYNC-SETUP.md).
         // Until RADIO_SYNC_URL is set, sync silently no-ops — nothing else changes.
-        window.RADIO_SYNC_URL = '';       // e.g. 'https://radio-sync.yoursubdomain.workers.dev'
-        window.RADIO_SYNC_SECRET = '';    // the same SYNC_SECRET you set on the Worker
+        window.RADIO_SYNC_URL = 'https://restless-star-2afa.djpolomaco.workers.dev';
+        window.RADIO_SYNC_SECRET = 'r7Kx9mQz2wPvT4bNyL8jH1sFdA6cE3uGiR5oV0k';
 
         let _radioSyncTimer = null;
         window.syncStationPlaylist = function() {
