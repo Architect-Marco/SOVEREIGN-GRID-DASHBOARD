@@ -173,8 +173,14 @@
                     </div>
                     <p class="text-gray-500 text-[10px] uppercase font-black tracking-widest mb-6">Drag a track left/right to adjust the gap before it plays. Tap ⇅ to move it between lanes. Tap ✕ to remove.</p>
                     <div id="station-timeline" class="relative bg-black/40 rounded-xl border border-white/5 overflow-x-auto overflow-y-hidden" style="min-height:180px;">
-                        <div id="station-lane-1" class="relative border-b border-white/5" style="height:88px; min-width:100%;"></div>
-                        <div id="station-lane-2" class="relative" style="height:88px; min-width:100%;"></div>
+                        <div class="relative border-b-2 border-white/10" style="height:88px; min-width:100%; background:rgba(47,208,255,0.03);">
+                            <span class="absolute top-1 left-2 text-[8px] font-black uppercase tracking-widest text-gray-600 z-0 select-none">Lane 1</span>
+                            <div id="station-lane-1" class="absolute top-0 left-0 h-full" style="min-width:100%;"></div>
+                        </div>
+                        <div class="relative" style="height:88px; min-width:100%; background:rgba(255,255,255,0.015);">
+                            <span class="absolute top-1 left-2 text-[8px] font-black uppercase tracking-widest text-gray-600 z-0 select-none">Lane 2</span>
+                            <div id="station-lane-2" class="absolute top-0 left-0 h-full" style="min-width:100%;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
