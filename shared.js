@@ -4699,7 +4699,7 @@
 
         // Pixels-per-second for the timeline; changed by the zoom buttons.
         window.stationZoomPxPerSec = window.stationZoomPxPerSec || 14;
-        const STATION_ZOOM_MIN = 4, STATION_ZOOM_MAX = 60;
+        const STATION_ZOOM_MIN = 1.5, STATION_ZOOM_MAX = 160;
 
         window.zoomStationTimeline = function(direction) {
             window.stationZoomPxPerSec = Math.max(STATION_ZOOM_MIN, Math.min(STATION_ZOOM_MAX, window.stationZoomPxPerSec * (direction > 0 ? 1.3 : 1/1.3)));
@@ -4780,9 +4780,18 @@
             });
 
             // Lanes need to be at least as wide as their content so the
-            // container's horizontal scroll actually reaches every block.
-            lane1.style.minWidth = Math.max(cursor1 + 20, 100) + 'px';
-            lane2.style.minWidth = Math.max(cursor2 + 20, 100) + 'px';
+            // container's horizontal scroll actually reaches every block —
+            // and the background wrapper behind each lane needs the same
+            // width, or the tint stops partway through the scrollable area.
+            // Both lanes share one common width so they end at the same
+            // right edge, regardless of which lane has more content.
+            const commonWidth = Math.max(cursor1 + 20, cursor2 + 20, 100);
+            lane1.style.minWidth = commonWidth + 'px';
+            lane2.style.minWidth = commonWidth + 'px';
+            const lane1Bg = document.getElementById('station-lane-1-bg');
+            const lane2Bg = document.getElementById('station-lane-2-bg');
+            if (lane1Bg) lane1Bg.style.width = commonWidth + 'px';
+            if (lane2Bg) lane2Bg.style.width = commonWidth + 'px';
 
             const onAir = document.getElementById('station-onair-title');
             const nextUp = document.getElementById('station-nextup-title');
