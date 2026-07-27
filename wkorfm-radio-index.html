@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WKOR 107.9 FM — The Station</title>
+<style>
+  :root{
+    --bg: #050a14;
+    --panel: #0a1220;
+    --panel-border: #16324f;
+    --blue: #2196f3;
+    --blue-bright: #4fc3ff;
+    --orange: #ff9a3d;
+    --text-dim: #7d92ad;
+    --text: #eaf2fb;
+    --white: #ffffff;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family: 'Arial Narrow', Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:1536px;
+    margin:0 auto;
+    padding:28px 28px 60px;
+  }
+
+  /* ============ HERO ============ */
+  .hero{
+    position:relative;
+    border-radius:14px;
+    overflow:hidden;
+    background:
+      radial-gradient(ellipse at 30% 120%, rgba(33,150,243,0.18), transparent 55%),
+      linear-gradient(180deg,#050912 0%, #060b16 60%, #050a14 100%);
+    border:1px solid #0e1c30;
+    padding:26px 30px 30px;
+    min-height:430px;
+  }
+  .skyline{
+    position:absolute;
+    inset:0;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(79,195,255,0.03) 0px, transparent 2px, transparent 40px),
+      linear-gradient(0deg, rgba(5,10,20,0.2), rgba(5,10,20,0.85) 70%);
+    pointer-events:none;
+  }
+  .hero-inner{ position:relative; z-index:2; display:flex; justify-content:space-between; gap:24px; }
+  .hero-left{ flex:1; min-width:0; }
+
+  .on-air-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:12px; letter-spacing:2px; font-weight:700;
+    color:var(--blue-bright);
+    margin-bottom:18px;
+  }
+  .on-air-badge .dot{
+    width:8px; height:8px; border-radius:50%;
+    background:var(--blue-bright);
+    box-shadow:0 0 8px 2px rgba(79,195,255,0.8);
+    animation: pulse-dot 1.4s ease-in-out infinite;
+  }
+  .on-air-badge span.now{ color:var(--text); font-weight:400; }
+  .on-air-badge.off-air{ color:#6b7280; }
+  .on-air-badge.off-air .dot{ background:#6b7280; box-shadow:none; animation:none; }
+  @keyframes pulse-dot{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:0.35; transform:scale(0.75); }
+  }
+
+  .station-name{
+    font-size:78px;
+    font-weight:900;
+    line-height:0.92;
+    letter-spacing:1px;
+    color:var(--white);
+    text-transform:uppercase;
+    margin:0;
+    font-stretch:condensed;
+  }
+  .station-freq{
+    font-size:56px;
+    font-weight:900;
+    line-height:1;
+    margin:6px 0 14px;
+    text-transform:uppercase;
+  }
+  .station-freq .fm{ color:var(--blue-bright); }
+
+  .tagline-eyebrow{
+    color:var(--blue-bright);
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:8px;
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .tagline{
+    color:#c7d5e6;
+    font-size:15px;
+    letter-spacing:1px;
+    margin-bottom:26px;
+  }
+
+  /* mini equalizer strip across hero — real audio-reactive */
+  .eq-strip{
+    display:flex; align-items:flex-end; gap:2px;
+    height:56px;
+    margin:8px 0 30px;
+    max-width:640px;
+  }
+  .eq-strip .bar{
+    width:3px;
+    background:linear-gradient(180deg, var(--blue-bright), var(--blue));
+    border-radius:2px;
+    opacity:0.9;
+    transition: height 0.08s linear;
+  }
+
+  .stat-row{
+    display:flex; gap:44px; flex-wrap:wrap;
+  }
+  .stat{ display:flex; flex-direction:column; gap:6px; }
+  .stat .icon-label{
+    display:flex; align-items:center; gap:8px;
+    color:var(--blue-bright);
+    font-size:12px; letter-spacing:1px; font-weight:700; text-transform:uppercase;
+  }
+  .stat .icon-label svg{ width:16px; height:16px; }
+  .stat .value{ font-size:17px; font-weight:700; color:var(--text); letter-spacing:0.5px; }
+
+  .hero-right{
+    flex:0 0 330px;
+    position:relative;
+    border-radius:12px;
+    overflow:hidden;
+    border:1px solid rgba(79,195,255,0.4);
+    box-shadow:0 0 34px rgba(33,150,243,0.25), inset 0 0 40px rgba(0,0,0,0.4);
+    height:380px;
+    background:#02060d;
+  }
+  .hero-right img{
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  }
+
+  /* ============ PANELS ============ */
+  .panels{
+    display:grid;
+    grid-template-columns: 1.55fr 1fr;
+    gap:22px;
+    margin-top:22px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:12px;
+    padding:22px 24px;
+  }
+  .panel h2{
+    color:var(--blue-bright);
+    font-size:14px;
+    letter-spacing:3px;
+    text-transform:uppercase;
+    margin:0 0 18px;
+    font-weight:800;
+  }
+
+  /* Now on air card */
+  .nowplaying{
+    display:flex; gap:18px; align-items:center;
+  }
+  .cover{
+    width:104px; height:104px; border-radius:8px; flex-shrink:0;
+    position:relative; overflow:hidden;
+    border:1px solid rgba(79,195,255,0.35);
+  }
+  .cover img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .np-info{ flex:1; min-width:0; }
+  .live-chip{
+    display:inline-flex; align-items:center; gap:6px;
+    border:1px solid var(--blue-bright);
+    color:var(--blue-bright);
+    font-size:11px; font-weight:800; letter-spacing:2px;
+    padding:3px 10px; border-radius:5px;
+    margin-bottom:10px;
+  }
+  .live-chip .liveled{
+    width:6px;height:6px;border-radius:50%;background:var(--blue-bright);
+    animation:pulse-dot 1s ease-in-out infinite;
+  }
+  .np-title{ font-size:21px; font-weight:800; color:var(--white); margin:0 0 4px; }
+  .np-artist{ color:var(--blue-bright); font-size:13px; font-weight:700; letter-spacing:1px; }
+  .np-time-row{
+    display:flex; justify-content:space-between; align-items:center; margin-top:6px;
+  }
+  .np-time{ color:var(--text-dim); font-size:13px; font-variant-numeric:tabular-nums; }
+
+  .np-wave{
+    margin-top:14px;
+    display:flex; align-items:center; gap:2px; height:34px;
+  }
+  .np-wave .bar{
+    flex:1; min-width:2px; max-width:4px;
+    background:#1c3a56;
+    border-radius:2px;
+    transition: background 0.12s linear, height 0.08s linear;
+  }
+  .np-wave .bar.played{ background: var(--blue-bright); }
+  .np-wave .bar.live{ background: var(--white); }
+
+  /* up-next strip */
+  .up-next{
+    margin-top:18px;
+    padding-top:14px;
+    border-top:1px dashed #16324f;
+    display:flex; align-items:center; gap:10px;
+    font-size:12px;
+    color:var(--text-dim);
+    letter-spacing:0.5px;
+  }
+  .up-next b{ color:var(--text); font-weight:700; }
+  .up-next .arrow{ color:var(--blue-bright); }
+
+  /* About panel */
+  .about-body{ color:#b7c6da; font-size:14px; line-height:1.65; }
+  .about-body p{ margin:0 0 14px; }
+  .network-chip{
+    display:inline-flex; align-items:center; gap:8px;
+    border:1px solid var(--blue-bright);
+    color:var(--blue-bright);
+    font-size:12px; font-weight:700; letter-spacing:1px;
+    padding:8px 14px; border-radius:7px;
+    margin-top:6px;
+  }
+
+  /* Playlist */
+  .playlist-panel{
+    margin-top:22px;
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:12px;
+    padding:22px 24px 10px;
+  }
+  .playlist-row{
+    display:grid;
+    grid-template-columns: 40px 56px 1fr auto 60px;
+    align-items:center;
+    gap:16px;
+    padding:14px 10px;
+    border-radius:8px;
+    border-bottom:1px solid #101f33;
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+  }
+  .playlist-row:last-child{ border-bottom:none; }
+  .playlist-row .idx{ color:var(--text-dim); font-size:13px; font-weight:700; }
+  .playlist-row .thumb{
+    width:56px; height:56px; border-radius:6px; overflow:hidden; position:relative;
+    border:1px solid rgba(79,195,255,0.25);
+  }
+  .playlist-row .thumb img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .playlist-row .meta .title{ font-size:14px; font-weight:700; color:var(--text); }
+  .playlist-row .meta .artist{ font-size:12px; color:var(--blue-bright); font-weight:600; margin-top:2px; }
+  .playlist-row .pwave{ display:flex; align-items:center; gap:2px; height:24px; }
+  .playlist-row .pwave .b{ width:2.5px; background:#1c3a56; border-radius:2px; transition: background .12s linear;}
+  .playlist-row .pwave .b.played{ background:var(--blue-bright); }
+  .playlist-row .dur{ color:var(--blue-bright); font-size:13px; font-weight:700; text-align:right; font-variant-numeric:tabular-nums;}
+
+  .playlist-row.active{
+    background: rgba(33,150,243,0.08);
+    box-shadow: inset 3px 0 0 var(--blue-bright);
+  }
+  .playlist-row.next-up .meta .title{ color:var(--orange); }
+
+  .eq-mini{ display:flex; align-items:flex-end; gap:2px; height:18px; width:20px;}
+  .eq-mini .m{ width:3px; background:var(--blue-bright); border-radius:1px; transition:height 0.08s linear; }
+
+  .start-hint{
+    position:fixed; inset:0; z-index:50;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(3,6,12,0.88);
+    backdrop-filter: blur(3px);
+    color:var(--text);
+    font-size:14px; letter-spacing:2px; text-transform:uppercase;
+    cursor:pointer;
+    transition: opacity 0.4s ease;
+  }
+  .start-hint .box{
+    border:1px solid var(--blue-bright);
+    padding:22px 34px;
+    border-radius:10px;
+    text-align:center;
+    color:var(--blue-bright);
+    font-weight:700;
+    max-width:520px;
+  }
+  .start-hint .box small{
+    display:block; margin-top:8px; color:var(--text-dim); font-weight:400; letter-spacing:1px; text-transform:none; font-size:12px;
+  }
+  .start-hint.hidden{ opacity:0; pointer-events:none; }
+
+  footer.credit{
+    text-align:center; color:#3f5674; font-size:11px; letter-spacing:2px;
+    margin-top:26px; text-transform:uppercase;
+  }
+
+  @media (max-width: 980px){
+    .panels{ grid-template-columns:1fr; }
+    .hero-inner{ flex-direction:column; }
+    .hero-right{ flex:none; width:100%; }
+    .station-name{ font-size:52px; }
+    .station-freq{ font-size:38px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="start-hint" id="startHint">
+  <div class="box" id="startHintBox">TAP ANYWHERE TO TUNE IN<small>WKOR 107.9 broadcasts continuously once the signal connects</small></div>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <div class="hero">
+    <div class="skyline"></div>
+    <div class="hero-inner">
+      <div class="hero-left">
+        <div class="on-air-badge"><span class="dot"></span><span class="now">ON AIR NOW</span></div>
+        <h1 class="station-name">WKOR</h1>
+        <div class="station-freq">107.9 <span class="fm">FM</span></div>
+        <div class="tagline-eyebrow">THE STATION</div>
+        <div class="tagline">THE PULSE OF THE SOVEREIGN GRID</div>
+
+        <div class="eq-strip" id="heroEq"></div>
+
+        <div class="stat-row">
+          <div class="stat">
+            <div class="icon-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 7.5a5 5 0 0 1 0 9M5 5a9 9 0 0 1 0 14M12 12a1 1 0 1 0 0-.001"/></svg>
+              LIVE BROADCAST
+            </div>
+            <div class="value">24/7</div>
+          </div>
+          <div class="stat">
+            <div class="icon-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M20 20v-1a4 4 0 0 0-3-3.87M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0z"/></svg>
+              LIVE LISTENERS
+            </div>
+            <div class="value" id="listenerCount">2,785</div>
+          </div>
+          <div class="stat">
+            <div class="icon-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l2 8 4-16 2 8h7"/></svg>
+              GENRE
+            </div>
+            <div class="value">ELECTRONIC</div>
+          </div>
+          <div class="stat">
+            <div class="icon-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/></svg>
+              LOCATION
+            </div>
+            <div class="value">SOVEREIGN GRID</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <img id="profilePhoto" src="cover-art.png" alt="WKOR 107.9 FM station profile art">
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ NOW ON AIR + ABOUT ============ -->
+  <div class="panels">
+    <div class="panel">
+      <h2>NOW ON AIR</h2>
+      <div class="nowplaying">
+        <div class="cover"><img id="npCover" src="" alt="track cover art"></div>
+        <div class="np-info">
+          <div class="live-chip"><span class="liveled"></span>LIVE</div>
+          <div class="np-title" id="npTitle">—</div>
+          <div class="np-artist" id="npArtist">—</div>
+          <div class="np-time-row">
+            <div class="np-time"><span id="npElapsed">00:00</span></div>
+            <div class="np-time" id="npDuration">00:00</div>
+          </div>
+          <div class="np-wave" id="npWave"></div>
+        </div>
+      </div>
+      <div class="up-next">
+        <span class="arrow">&#9654;</span> WHEN THIS TRACK ENDS &mdash; UP NEXT: <b id="upNextLabel">—</b>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>ABOUT WKOR 107.9 FM</h2>
+      <div class="about-body">
+        <p>WKOR 107.9 FM is the pulse of the Sovereign Grid. Broadcasting live from the epicenter of the Aetherwave Syndicate, we deliver high-velocity electronic music, exclusive mixes, and real-time transmissions 24/7.</p>
+        <p>This is more than a station.<br>This is the frequency of the future.</p>
+        <div class="network-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 7.5a5 5 0 0 1 0 9M5 5a9 9 0 0 1 0 14M12 12a1 1 0 1 0 0-.001"/></svg>
+          SOVEREIGN GRID BROADCAST NETWORK
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PLAYLIST ============ -->
+  <div class="playlist-panel">
+    <h2>PLAYLIST</h2>
+    <div id="playlistRows"></div>
+  </div>
+
+  <footer class="credit">WKOR 107.9 FM &middot; Sovereign Grid Broadcast Network &middot; On Air 24/7</footer>
+</div>
+
+<audio id="player" preload="auto"></audio>
+
+<script>
+/* ================= TRACK DATA (real audio files, cover art mapped by song number) ================= */
+const COVER_1  = "1 - THE SICK TEAM MINI ALUM MIX - cover art.png";
+const COVER_2  = "2 - I CANT LET THIS FEELING GO - FEAT LEXI CON (Cover Art).png";
+const COVER_3_12 = "2ND MINI ALBUM MAGAZINE - 3,4,5,6,7,8,9,10,11,12.png";
+
+let tracks = [
+  { title:"THE SICK TEAM MINI ALBUM — INTRO", artist:"THE SICK TEAM", src:"1 - THE SICK TEAM MINI ALUM MIX - intro - 2.02min.mp3", cover:COVER_1 },
+  { title:"I CAN'T LET THIS FEELING GO (Original Mix)", artist:"THE SICK TEAM FEAT. LEXI CON", src:"2 - I CANT LET THIS FEELING GO - FEAT LEXI CON (Original Mix) - 4.54min.mp3", cover:COVER_2 },
+  { title:"THIS IS US (Ver. 1)", artist:"THE SICK TEAM FT LEXI CON", src:"3 - THIS IS US - THE SICK TEAM FT LEIX CON 1 - 3.48min.mp3", cover:COVER_3_12 },
+  { title:"THIS IS US (Ver. 2)", artist:"THE SICK TEAM FT LEXI CON", src:"4 - THIS IS US - THE SICK TEAM FT LEIX CON 2 - 4.19min.mp3", cover:COVER_3_12 },
+  { title:"ROCK THIS BEATS (Ver. 1)", artist:"THE SICK TEAM FT LEXI CON", src:"5 - ROCK THIS BEATS - THE SICK TEAM FT LEXI CON 1 - 4.37min.mp3", cover:COVER_3_12 },
+  { title:"ROCK THIS BEATS (Ver. 2)", artist:"THE SICK TEAM FT LEXI CON", src:"6 - ROCK THIS BEATS - THE SICK TEAM FT LEXI CON 2 - 8.36min.mp3", cover:COVER_3_12 },
+  { title:"I CAN'T LET THIS FEELING GO (Remix Ver. 1)", artist:"THE SICK TEAM FT LEXI CON", src:"7 - I CANT LET THIS FEELING GO - REMIX - THE SICK TEAM FT LEXI CON 1 - 5.19min.mp3", cover:COVER_3_12 },
+  { title:"I CAN'T LET THIS FEELING GO (Remix Ver. 2)", artist:"THE SICK TEAM FT LEXI CON", src:"8 - I CANT LET THIS FEELING GO REMIX - THE SICK TEAM FT LEXI CON 2 - 5.24min.mp3", cover:COVER_3_12 },
+  { title:"YOU FEEL THE EMOTION (Ver. 1)", artist:"THE SICK TEAM FT LEXI CON", src:"9 - YOU FEEL THE EMOTION - THE SICK TEAM FT LEXI CON 1 - 4.54min.mp3", cover:COVER_3_12 },
+  { title:"YOU FEEL THE EMOTION (Ver. 2)", artist:"THE SICK TEAM FT LEXI CON", src:"10 - YOU FEEL THE EMOTION - THE SICK TEAM FT LEXI CON 2 - 5.13min.mp3", cover:COVER_3_12 },
+  { title:"REACH OUT (Ver. 1)", artist:"THE SICK TEAM FT LEXI CON", src:"11 - REACH OUT - THE SICK TEAM FT LEXI CON 1 - 4.52min.mp3", cover:COVER_3_12 },
+  { title:"REACH OUT (Ver. 2)", artist:"THE SICK TEAM FT LEXI CON", src:"12 - REACH OUT - THE SICK TEAM FT LEXI CON 2 - 4.44min.mp3", cover:COVER_3_12 },
+];
+
+let currentIndex = 0;
+const audio = document.getElementById('player');
+
+function fmtTime(s){
+  if(!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s/60);
+  const sec = Math.floor(s%60);
+  return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+}
+
+/* ================= BUILD PLAYLIST DOM ================= */
+const playlistRoot = document.getElementById('playlistRows');
+tracks.forEach((t, i) => {
+  const row = document.createElement('div');
+  row.className = 'playlist-row';
+  row.id = 'row-'+i;
+  row.innerHTML = `
+    <div class="idx" id="idx-${i}">${String(i+1).padStart(2,'0')}</div>
+    <div class="thumb"><img src="${encodeURI(t.cover)}" alt="cover art"></div>
+    <div class="meta">
+      <div class="title">${t.title}</div>
+      <div class="artist">${t.artist}</div>
+    </div>
+    <div class="pwave" id="pwave-${i}"></div>
+    <div class="dur" id="dur-${i}">--:--</div>
+  `;
+  playlistRoot.appendChild(row);
+});
+
+/* mini static waveforms per playlist row */
+function mulberry32(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = (t + Math.imul(t ^ t >>> 7, 61 | t)) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const playlistBars = [];
+tracks.forEach((t,i)=>{
+  const wave = document.getElementById('pwave-'+i);
+  const rand = mulberry32(i*97+11);
+  const bars = [];
+  for(let b=0;b<46;b++){
+    const el = document.createElement('div');
+    el.className = 'b';
+    el.style.height = (4 + rand()*20)+'px';
+    wave.appendChild(el);
+    bars.push(el);
+  }
+  playlistBars.push(bars);
+});
+
+/* ================= NOW PLAYING WAVEFORM ================= */
+const npWaveRoot = document.getElementById('npWave');
+let npBars = [];
+function buildNpWave(trackIdx){
+  npWaveRoot.innerHTML = '';
+  npBars = [];
+  const rand = mulberry32(trackIdx*53+21);
+  for(let b=0;b<90;b++){
+    const el = document.createElement('div');
+    el.className = 'bar';
+    el.style.height = (5 + rand()*10)+'px';
+    npWaveRoot.appendChild(el);
+    npBars.push(el);
+  }
+}
+
+/* ================= HERO EQ STRIP ================= */
+const heroEqRoot = document.getElementById('heroEq');
+const heroBars = [];
+for(let i=0;i<80;i++){
+  const el = document.createElement('div');
+  el.className = 'bar';
+  el.style.height = '6px';
+  heroEqRoot.appendChild(el);
+  heroBars.push(el);
+}
+
+/* ================= WEB AUDIO ANALYSER (real LED reactivity) ================= */
+let audioCtx, analyser, freqData, sourceNode;
+function setupAnalyser(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  sourceNode = audioCtx.createMediaElementSource(audio);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+  sourceNode.connect(analyser);
+  analyser.connect(audioCtx.destination);
+}
+
+/* ================= RENDER CURRENT TRACK ================= */
+function renderCurrentTrack(){
+  const t = tracks[currentIndex];
+  document.getElementById('npTitle').textContent = t.title;
+  document.getElementById('npArtist').textContent = t.artist;
+  document.getElementById('npCover').src = t.coverPreEncoded ? t.cover : encodeURI(t.cover);
+  buildNpWave(currentIndex);
+
+  const nextIdx = (currentIndex+1) % tracks.length;
+  document.getElementById('upNextLabel').textContent = tracks[nextIdx].title + ' – ' + tracks[nextIdx].artist;
+
+  document.querySelectorAll('.playlist-row').forEach(r=> r.classList.remove('active','next-up'));
+  tracks.forEach((tt,i)=>{ document.getElementById('idx-'+i).textContent = String(i+1).padStart(2,'0'); });
+
+  const activeRow = document.getElementById('row-'+currentIndex);
+  activeRow.classList.add('active');
+  const eqMini = document.createElement('div');
+  eqMini.className = 'eq-mini';
+  for(let i=0;i<4;i++){ const m = document.createElement('div'); m.className='m'; m.style.height='6px'; eqMini.appendChild(m); }
+  document.getElementById('idx-'+currentIndex).innerHTML = '';
+  document.getElementById('idx-'+currentIndex).appendChild(eqMini);
+
+  const nextRow = document.getElementById('row-'+nextIdx);
+  if(nextIdx !== currentIndex) nextRow.classList.add('next-up');
+
+  playlistBars.forEach(bars=> bars.forEach(b=> b.classList.remove('played')));
+}
+
+function loadTrack(i){
+  currentIndex = i;
+  audio.src = tracks[i].preEncoded ? tracks[i].src : encodeURI(tracks[i].src);
+  renderCurrentTrack();
+  if (isStationLive) audio.play().catch(()=>{ /* waiting for user gesture */ });
+}
+
+audio.addEventListener('loadedmetadata', ()=>{
+  document.getElementById('npDuration').textContent = fmtTime(audio.duration);
+  document.getElementById('dur-'+currentIndex).textContent = fmtTime(audio.duration);
+});
+
+audio.addEventListener('ended', ()=>{
+  const nextIdx = (currentIndex+1) % tracks.length;
+  loadTrack(nextIdx);
+});
+
+audio.addEventListener('error', ()=>{
+  const box = document.getElementById('startHintBox');
+  const code = audio.error ? audio.error.code : 0;
+  const reasons = {
+    1: 'Loading was aborted.',
+    2: 'Network error while fetching the file.',
+    3: 'The audio could not be decoded.',
+    4: 'File not found at "' + tracks[currentIndex].src + '" — check the exact filename and folder in your repo.'
+  };
+  box.innerHTML = 'COULD NOT LOAD TRACK ' + (currentIndex+1) +
+    '<small>' + (reasons[code] || 'Unknown playback error.') +
+    ' Make sure index.html, cover-art.png, the 3 cover images, and all 12 mp3 files are in the same folder, with filenames matching exactly.</small>';
+  startHint.classList.remove('hidden');
+});
+
+audio.addEventListener('timeupdate', ()=>{
+  document.getElementById('npElapsed').textContent = fmtTime(audio.currentTime);
+  if(audio.duration){
+    const progress = audio.currentTime / audio.duration;
+    const liveIdx = Math.floor(progress * npBars.length);
+    npBars.forEach((b,i)=>{
+      b.classList.remove('live');
+      if(i < liveIdx) b.classList.add('played'); else b.classList.remove('played');
+    });
+    if(npBars[liveIdx]) npBars[liveIdx].classList.add('live');
+
+    const bars = playlistBars[currentIndex];
+    const pLiveIdx = Math.floor(progress * bars.length);
+    bars.forEach((b,i)=>{ if(i < pLiveIdx) b.classList.add('played'); else b.classList.remove('played'); });
+  }
+});
+
+/* pre-fetch durations for all tracks so playlist shows real times immediately */
+tracks.forEach((t,i)=>{
+  const probe = document.createElement('audio');
+  probe.preload = 'metadata';
+  probe.src = encodeURI(t.src);
+  probe.addEventListener('loadedmetadata', ()=>{
+    document.getElementById('dur-'+i).textContent = fmtTime(probe.duration);
+  });
+});
+
+/* ================= ANIMATION LOOP: real frequency-driven LEDs (blue) ================= */
+function animate(){
+  requestAnimationFrame(animate);
+  if(!analyser) return;
+  analyser.getByteFrequencyData(freqData);
+
+  for(let i=0;i<heroBars.length;i++){
+    const idx = Math.floor((i/heroBars.length) * freqData.length * 0.85);
+    const v = freqData[idx] || 0;
+    heroBars[i].style.height = Math.max(6, (v/255)*56) + 'px';
+  }
+
+  for(let i=0;i<npBars.length;i++){
+    if(npBars[i].classList.contains('played') || npBars[i].classList.contains('live')) continue;
+    const idx = Math.floor((i/npBars.length) * freqData.length * 0.85);
+    const v = freqData[idx] || 0;
+    npBars[i].style.height = Math.max(4, (v/255)*32) + 'px';
+  }
+
+  const activeRow = document.getElementById('row-'+currentIndex);
+  const miniEls = activeRow ? activeRow.querySelectorAll('.eq-mini .m') : [];
+  miniEls.forEach((m,i)=>{
+    const idx = Math.floor((i/miniEls.length) * freqData.length * 0.6) + 4;
+    const v = freqData[idx] || 0;
+    m.style.height = Math.max(4, (v/255)*18) + 'px';
+  });
+}
+animate();
+
+/* ================= START ON FIRST GESTURE (no visible play button) ================= */
+const startHint = document.getElementById('startHint');
+function startBroadcast(){
+  try{ setupAnalyser(); }catch(e){ /* analyser optional, playback can continue without it */ }
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if(!audio.src){ loadTrack(0); }
+  const p = audio.play();
+  if(p && p.catch){
+    p.then(()=>{
+        startHint.classList.add('hidden');
+        document.removeEventListener('click', startBroadcast);
+        document.removeEventListener('keydown', startBroadcast);
+        document.removeEventListener('touchstart', startBroadcast);
+     })
+     .catch((err)=>{
+        document.getElementById('startHintBox').innerHTML =
+          'PLAYBACK BLOCKED — TAP AGAIN<small>' + (err && err.message ? err.message : 'The browser blocked audio.') +
+          ' If this repeats, open index.html directly in a browser tab (not a preview/sandbox) with all 12 mp3 files in the same folder.</small>';
+     });
+  } else {
+    startHint.classList.add('hidden');
+    document.removeEventListener('click', startBroadcast);
+    document.removeEventListener('keydown', startBroadcast);
+    document.removeEventListener('touchstart', startBroadcast);
+  }
+}
+document.addEventListener('click', startBroadcast);
+document.addEventListener('keydown', startBroadcast);
+document.addEventListener('touchstart', startBroadcast);
+
+/* attempt autoplay right away; if blocked, the hint above handles it */
+loadTrack(0);
+window.addEventListener('load', ()=>{
+  audio.play().then(()=>{ startHint.classList.add('hidden'); }).catch(()=>{ /* needs gesture */ });
+});
+
+/* gentle listener count fluctuation */
+setInterval(()=>{
+  const el = document.getElementById('listenerCount');
+  if(Math.random() < 0.3){
+    const cur = parseInt(el.textContent.replace(/,/g,'')) || 0;
+    const delta = Math.floor(Math.random()*30) - 15;
+    el.textContent = Math.max(0, cur + delta).toLocaleString();
+  }
+}, 3000);
+
+/* ================= DASHBOARD SYNC ================= */
+/* Appends any tracks pushed from the Radio Station dashboard on top of
+   the 12 mini-album tracks above. Runs once on load, then re-checks
+   every 20s so new uploads show up without a page reload. Never
+   touches or reorders the original 12 — only adds after them. */
+const FALLBACK_SYNC_COVER = COVER_3_12;
+let knownSyncedSrcs = new Set();
+
+function appendSyncedTrack(t){
+  const i = tracks.length;
+  const hasRealArt = !!t.art;
+  tracks.push({
+    title: t.title || 'Untitled',
+    artist: t.artist || '',
+    src: t.src,
+    cover: t.art || FALLBACK_SYNC_COVER,
+    preEncoded: true,        // src is always a pre-encoded URL from the Worker
+    coverPreEncoded: hasRealArt, // only true when cover is a data:URL, not the fallback filename
+  });
+
+  const row = document.createElement('div');
+  row.className = 'playlist-row';
+  row.id = 'row-'+i;
+  row.innerHTML = `
+    <div class="idx" id="idx-${i}">${String(i+1).padStart(2,'0')}</div>
+    <div class="thumb"><img src="${tracks[i].coverPreEncoded ? tracks[i].cover : encodeURI(tracks[i].cover)}" alt="cover art"></div>
+    <div class="meta">
+      <div class="title">${tracks[i].title}</div>
+      <div class="artist">${tracks[i].artist}</div>
+    </div>
+    <div class="pwave" id="pwave-${i}"></div>
+    <div class="dur" id="dur-${i}">--:--</div>
+  `;
+  playlistRoot.appendChild(row);
+
+  const wave = document.getElementById('pwave-'+i);
+  const rand = mulberry32(i*97+11);
+  const bars = [];
+  for(let b=0;b<46;b++){
+    const el = document.createElement('div');
+    el.className = 'b';
+    el.style.height = (4 + rand()*20)+'px';
+    wave.appendChild(el);
+    bars.push(el);
+  }
+  playlistBars.push(bars);
+
+  const probe = document.createElement('audio');
+  probe.preload = 'metadata';
+  probe.src = tracks[i].src;
+  probe.addEventListener('loadedmetadata', ()=>{
+    document.getElementById('dur-'+i).textContent = fmtTime(probe.duration);
+  });
+}
+
+let isStationLive = true;
+
+function setStationLiveState(live){
+  if (live === isStationLive) return;
+  isStationLive = live;
+  const badge = document.querySelector('.on-air-badge');
+  if (badge) {
+    badge.classList.toggle('off-air', !live);
+    const label = badge.querySelector('.now');
+    if (label) label.textContent = live ? 'ON AIR NOW' : 'OFF AIR — BE RIGHT BACK';
+  }
+  if (live) {
+    audio.play().catch(()=>{ /* waiting for user gesture */ });
+  } else {
+    audio.pause();
+  }
+}
+
+function checkPlaylistSync(){
+  fetch('./playlist.json?t=' + Date.now())
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data) return;
+      setStationLiveState(data.isLive !== false);
+      if (!Array.isArray(data.tracks)) return;
+      data.tracks.forEach(t => {
+        if (t.src && !knownSyncedSrcs.has(t.src)) {
+          knownSyncedSrcs.add(t.src);
+          appendSyncedTrack(t);
+        }
+      });
+    })
+    .catch(err => console.error('Playlist sync check failed:', err));
+}
+checkPlaylistSync();
+setInterval(checkPlaylistSync, 20000);
+</script>
+</body>
+</html>

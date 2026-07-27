@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CDFM 108.8 — Chinese Dance FM</title>
+<style>
+  :root{
+    --bg: #050a14;
+    --panel: #0a1220;
+    --panel-border: #16324f;
+    --blue: #2196f3;
+    --blue-bright: #4fc3ff;
+    --orange: #ff9a3d;
+    --red: #e53935;
+    --text-dim: #7d92ad;
+    --text: #eaf2fb;
+    --white: #ffffff;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family: 'Arial Narrow', Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:1536px;
+    margin:0 auto;
+    padding:28px 28px 60px;
+  }
+
+  /* ============ HERO ============ */
+  .hero{
+    position:relative;
+    border-radius:14px;
+    overflow:hidden;
+    background:
+      radial-gradient(ellipse at 30% 120%, rgba(255,90,40,0.12), transparent 55%),
+      linear-gradient(180deg,#050912 0%, #060b16 60%, #050a14 100%);
+    border:1px solid #0e1c30;
+    padding:26px 30px 30px;
+    min-height:430px;
+  }
+  .skyline{
+    position:absolute;
+    inset:0;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(255,154,61,0.03) 0px, transparent 2px, transparent 40px),
+      linear-gradient(0deg, rgba(5,10,20,0.2), rgba(5,10,20,0.85) 70%);
+    pointer-events:none;
+  }
+  .hero-inner{ position:relative; z-index:2; display:flex; justify-content:space-between; gap:24px; }
+  .hero-left{ flex:1; min-width:0; }
+
+  .on-air-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:12px; letter-spacing:2px; font-weight:700;
+    color:var(--red);
+    margin-bottom:18px;
+  }
+  .on-air-badge .dot{
+    width:8px; height:8px; border-radius:50%;
+    background:var(--red);
+    box-shadow:0 0 8px 2px rgba(229,57,53,0.8);
+    animation: pulse-dot 1.4s ease-in-out infinite;
+  }
+  .on-air-badge span.now{ color:var(--text); font-weight:400; }
+  .on-air-badge.off-air{ color:#6b7280; }
+  .on-air-badge.off-air .dot{ background:#6b7280; box-shadow:none; animation:none; }
+  @keyframes pulse-dot{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:0.35; transform:scale(0.75); }
+  }
+
+  .station-name{
+    font-size:78px;
+    font-weight:900;
+    line-height:0.92;
+    letter-spacing:1px;
+    color:var(--white);
+    text-transform:uppercase;
+    margin:0;
+  }
+  .station-freq{
+    font-size:56px;
+    font-weight:900;
+    line-height:1;
+    margin:6px 0 14px;
+    text-transform:uppercase;
+  }
+  .station-freq .fm{ color:var(--orange); }
+
+  .tagline-eyebrow{
+    color:var(--orange);
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:8px;
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .tagline{
+    color:#c7d5e6;
+    font-size:15px;
+    letter-spacing:1px;
+    margin-bottom:26px;
+    max-width:640px;
+  }
+
+  .eq-strip{
+    display:flex; align-items:flex-end; gap:2px;
+    height:56px;
+    margin:8px 0 30px;
+    max-width:640px;
+  }
+  .eq-strip .bar{
+    width:3px;
+    background:linear-gradient(180deg, var(--orange), var(--red));
+    border-radius:2px;
+    opacity:0.9;
+    transition: height 0.08s linear;
+  }
+
+  .stat-row{
+    display:flex; gap:44px; flex-wrap:wrap;
+  }
+  .stat{ display:flex; flex-direction:column; gap:6px; }
+  .stat .icon-label{
+    display:flex; align-items:center; gap:8px;
+    color:var(--orange);
+    font-size:12px; letter-spacing:1px; font-weight:700; text-transform:uppercase;
+  }
+  .stat .icon-label svg{ width:16px; height:16px; }
+  .stat .value{ font-size:17px; font-weight:700; color:var(--text); letter-spacing:0.5px; }
+  .genre-tags{ display:flex; gap:8px; flex-wrap:wrap; }
+  .genre-tags span{
+    border:1px solid rgba(255,154,61,0.5);
+    color:var(--text);
+    font-size:12px; font-weight:700;
+    padding:3px 10px; border-radius:5px;
+  }
+
+  .hero-right{
+    flex:0 0 330px;
+    position:relative;
+    border-radius:12px;
+    overflow:hidden;
+    border:1px solid rgba(255,154,61,0.4);
+    box-shadow:0 0 34px rgba(255,90,40,0.2), inset 0 0 40px rgba(0,0,0,0.4);
+    height:380px;
+    background:#02060d;
+  }
+  .hero-right img{
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  }
+
+  /* ============ PANELS ============ */
+  .panels{
+    display:grid;
+    grid-template-columns: 1.55fr 1fr;
+    gap:22px;
+    margin-top:22px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:12px;
+    padding:22px 24px;
+  }
+  .panel h2{
+    color:var(--orange);
+    font-size:14px;
+    letter-spacing:3px;
+    text-transform:uppercase;
+    margin:0 0 18px;
+    font-weight:800;
+  }
+
+  .nowplaying{
+    display:flex; gap:18px; align-items:center;
+  }
+  .cover{
+    width:104px; height:104px; border-radius:8px; flex-shrink:0;
+    position:relative; overflow:hidden;
+    border:1px solid rgba(255,154,61,0.35);
+  }
+  .cover img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .np-info{ flex:1; min-width:0; }
+  .live-chip{
+    display:inline-flex; align-items:center; gap:6px;
+    border:1px solid var(--red);
+    background:var(--red);
+    color:var(--white);
+    font-size:11px; font-weight:800; letter-spacing:2px;
+    padding:3px 10px; border-radius:5px;
+    margin-bottom:10px;
+  }
+  .live-chip .liveled{
+    width:6px;height:6px;border-radius:50%;background:var(--white);
+    animation:pulse-dot 1s ease-in-out infinite;
+  }
+  .np-title{ font-size:21px; font-weight:800; color:var(--white); margin:0 0 4px; }
+  .np-artist{ color:var(--orange); font-size:13px; font-weight:700; letter-spacing:1px; }
+  .np-time-row{
+    display:flex; justify-content:space-between; align-items:center; margin-top:6px;
+  }
+  .np-time{ color:var(--text-dim); font-size:13px; font-variant-numeric:tabular-nums; }
+
+  .np-wave{
+    margin-top:14px;
+    display:flex; align-items:center; gap:2px; height:34px;
+  }
+  .np-wave .bar{
+    flex:1; min-width:2px; max-width:4px;
+    background:#3a2418;
+    border-radius:2px;
+    transition: background 0.12s linear, height 0.08s linear;
+  }
+  .np-wave .bar.played{ background: var(--orange); }
+  .np-wave .bar.live{ background: var(--white); }
+
+  .up-next{
+    margin-top:18px;
+    padding-top:14px;
+    border-top:1px dashed #16324f;
+    display:flex; align-items:center; gap:10px;
+    font-size:12px;
+    color:var(--text-dim);
+    letter-spacing:0.5px;
+  }
+  .up-next b{ color:var(--text); font-weight:700; }
+  .up-next .arrow{ color:var(--orange); }
+
+  .about-body{ color:#b7c6da; font-size:14px; line-height:1.65; }
+  .about-body p{ margin:0 0 14px; }
+  .network-chip{
+    display:inline-flex; align-items:center; gap:8px;
+    border:1px solid var(--orange);
+    color:var(--orange);
+    font-size:12px; font-weight:700; letter-spacing:1px;
+    padding:8px 14px; border-radius:7px;
+    margin-top:6px;
+  }
+
+  .playlist-panel{
+    margin-top:22px;
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:12px;
+    padding:22px 24px 10px;
+  }
+  .playlist-row{
+    display:grid;
+    grid-template-columns: 40px 56px 1fr auto 60px;
+    align-items:center;
+    gap:16px;
+    padding:14px 10px;
+    border-radius:8px;
+    border-bottom:1px solid #101f33;
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+  }
+  .playlist-row:last-child{ border-bottom:none; }
+  .playlist-row .idx{ color:var(--text-dim); font-size:13px; font-weight:700; }
+  .playlist-row .thumb{
+    width:56px; height:56px; border-radius:6px; overflow:hidden; position:relative;
+    border:1px solid rgba(255,154,61,0.25);
+  }
+  .playlist-row .thumb img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .playlist-row .meta .title{ font-size:14px; font-weight:700; color:var(--text); }
+  .playlist-row .meta .artist{ font-size:12px; color:var(--orange); font-weight:600; margin-top:2px; }
+  .playlist-row .pwave{ display:flex; align-items:center; gap:2px; height:24px; }
+  .playlist-row .pwave .b{ width:2.5px; background:#3a2418; border-radius:2px; transition: background .12s linear;}
+  .playlist-row .pwave .b.played{ background:var(--orange); }
+  .playlist-row .dur{ color:var(--orange); font-size:13px; font-weight:700; text-align:right; font-variant-numeric:tabular-nums;}
+
+  .playlist-row.active{
+    background: rgba(255,90,40,0.08);
+    box-shadow: inset 3px 0 0 var(--orange);
+  }
+  .playlist-row.next-up .meta .title{ color:var(--blue-bright); }
+
+  .eq-mini{ display:flex; align-items:flex-end; gap:2px; height:18px; width:20px;}
+  .eq-mini .m{ width:3px; background:var(--orange); border-radius:1px; transition:height 0.08s linear; }
+
+  .start-hint{
+    position:fixed; inset:0; z-index:50;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(3,6,12,0.88);
+    backdrop-filter: blur(3px);
+    color:var(--text);
+    font-size:14px; letter-spacing:2px; text-transform:uppercase;
+    cursor:pointer;
+    transition: opacity 0.4s ease;
+  }
+  .start-hint .box{
+    border:1px solid var(--orange);
+    padding:22px 34px;
+    border-radius:10px;
+    text-align:center;
+    color:var(--orange);
+    font-weight:700;
+  }
+  .start-hint .box small{
+    display:block; margin-top:8px; color:var(--text-dim); font-weight:400; letter-spacing:1px; text-transform:none; font-size:12px;
+  }
+  .start-hint.hidden{ opacity:0; pointer-events:none; }
+
+  footer.credit{
+    text-align:center; color:#3f5674; font-size:11px; letter-spacing:2px;
+    margin-top:26px; text-transform:uppercase;
+  }
+
+  @media (max-width: 980px){
+    .panels{ grid-template-columns:1fr; }
+    .hero-inner{ flex-direction:column; }
+    .hero-right{ flex:none; width:100%; }
+    .station-name{ font-size:52px; }
+    .station-freq{ font-size:38px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="start-hint" id="startHint">
+  <div class="box" id="startHintBox">TAP ANYWHERE TO TUNE IN<small>CDFM 108.8 broadcasts continuously once the signal connects</small></div>
+</div>
+
+<div id="skipToast" style="position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); z-index:60; background:#0a1220; border:1px solid var(--orange); color:var(--orange); font-size:12px; font-weight:700; letter-spacing:1px; padding:12px 20px; border-radius:8px; opacity:0; transition:opacity .3s ease, transform .3s ease; pointer-events:none; max-width:90vw; text-align:center;"></div>
+
+<div class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <div class="hero">
+    <div class="skyline"></div>
+    <div class="hero-inner">
+      <div class="hero-left">
+        <div class="on-air-badge"><span class="dot"></span><span class="now">ON AIR NOW</span></div>
+        <h1 class="station-name">CDFM</h1>
+        <div class="station-freq">108.8 <span class="fm">FM</span></div>
+        <div class="tagline-eyebrow">THE STATION</div>
+        <div class="tagline">CHINESE DANCE FM — THE FREQUENCY OF THE SABAH DAWN</div>
+
+        <div class="eq-strip" id="heroEq"></div>
+
+        <div class="stat-row">
+          <div class="stat">
+            <div class="icon-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 7.5a5 5 0 0 1 0 9M5 5a9 9 0 0 1 0 14M12 12a1 1 0 1 0 0-.001"/></svg>
+              LIVE BROADCAST
+            </div>
+            <div class="value">24/7</div>
+          </div>
+          <div class="stat">
+            <div class="icon-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13M9 9l12-2M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
+              TRACKS
+            </div>
+            <div class="value">97</div>
+          </div>
+          <div class="stat">
+            <div class="icon-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
+              PLAYS
+            </div>
+            <div class="value">451</div>
+          </div>
+          <div class="stat">
+            <div class="icon-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M20 20v-1a4 4 0 0 0-3-3.87M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0z"/></svg>
+              LISTENERS
+            </div>
+            <div class="value" id="listenerCount">0</div>
+          </div>
+          <div class="stat">
+            <div class="icon-label">GENRE</div>
+            <div class="genre-tags"><span>EDM</span><span>House</span><span>Techno</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <img src="cover-art.png" alt="CDFM 108.8 station profile art">
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ NOW ON AIR + ABOUT ============ -->
+  <div class="panels">
+    <div class="panel">
+      <h2>NOW ON AIR</h2>
+      <div class="nowplaying">
+        <div class="cover"><img src="cover-art.png" alt="CDFM 108.8 cover art"></div>
+        <div class="np-info">
+          <div class="live-chip"><span class="liveled"></span>LIVE</div>
+          <div class="np-title" id="npTitle">—</div>
+          <div class="np-artist" id="npArtist">—</div>
+          <div class="np-time-row">
+            <div class="np-time"><span id="npElapsed">00:00</span></div>
+            <div class="np-time" id="npDuration">00:00</div>
+          </div>
+          <div class="np-wave" id="npWave"></div>
+        </div>
+      </div>
+      <div class="up-next">
+        <span class="arrow">&#9654;</span> WHEN THIS TRACK ENDS &mdash; UP NEXT: <b id="upNextLabel">—</b>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>ABOUT CDFM 108.8</h2>
+      <div class="about-body">
+        <p>Welcome to Chinese Dance FM — the frequency of the Sabah Dawn. Lead architect @djpolomaco, the original force behind the C4 era, has returned to reclaim the bridge, fusing a 15-year radio engineering legacy with the high-octane evolution of the Cantonese techno-rap movement.</p>
+        <p>From remixing HK legends to performing live across the Trinity — Malaysia, Singapore, Hong Kong — this is the high-fidelity DNA they can't replicate. Your lane. Your identity. Your station.</p>
+        <div class="network-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 7.5a5 5 0 0 1 0 9M5 5a9 9 0 0 1 0 14M12 12a1 1 0 1 0 0-.001"/></svg>
+          SOVEREIGN GRID BROADCAST NETWORK
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PLAYLIST ============ -->
+  <div class="playlist-panel">
+    <h2>PLAYLIST</h2>
+    <div id="playlistRows"></div>
+  </div>
+
+  <footer class="credit">CDFM 108.8 &middot; Chinese Dance FM &middot; On Air 24/7</footer>
+</div>
+
+<audio id="player" preload="auto"></audio>
+
+<script>
+/* ================= TRACK DATA (real audio files) ================= */
+let tracks = [
+  { title:"THIS JOURNEY HAS NO END", subtitle:"这段旅程没有终点", artist:"DJPOLOMACO", src:"1 - 这段旅程没有终点 - This journey has no end - 5.02.mp3", palette:['#0d1b2e','#ff9a3d','#e53935'] },
+  { title:"THIS IS HOW I LOVE YOU", subtitle:"这就是我爱你", artist:"DJPOLOMACO", src:"2 - 这就是我爱你 - This Is How I Love You - 5.32.mp3", palette:['#12100d','#ff9a3d','#7a2b0a'] },
+  { title:"THE HARDER IT IS", subtitle:"越难越好", artist:"DJPOLOMACO", src:"3 - 越难越好 - The Harder It Is - 5.33.mp3", palette:['#04101c','#ff9a3d','#e53935'] },
+  { title:"BABY LET ME SEE YOUR HEART", subtitle:"让我看见心", artist:"DJPOLOMACO", src:"4 - 让我看见心 - baby let me see your heart - 3.54.mp3", palette:['#0b0b12','#ff9a3d','#c0392b'] },
+  { title:"LET ME LOVE YOU", subtitle:"让你靠近我", artist:"DJPOLOMACO", src:"5 - 让你靠近我 - let me love you - 6.37.mp3", palette:['#0a1220','#4fc3ff','#2196f3'] },
+  { title:"SOMEONE TO LOVE", subtitle:"给我一个人", artist:"DJPOLOMACO", src:"6 - 给我一个人 - Someone To Love - 4.01.mp3", palette:['#050a14','#ff9a3d','#4fc3ff'] },
+  { title:"BABY BABY", subtitle:"甜心宝贝", artist:"DJPOLOMACO", src:"7 - 甜心宝贝 - Baby Baby - 5.20.mp3", palette:['#120024','#ff3b30','#4fc3ff'] },
+  { title:"ROSES ARE RED", subtitle:"玫瑰色的告白", artist:"DJPOLOMACO", src:"8 - 玫瑰色的告白 - roses are red - 4.40.mp3", palette:['#160a10','#e53935','#ff9a3d'] },
+  { title:"HOW AM I SUPPOSED TO LIVE WITHOUT YOU", subtitle:"没有你的日子", artist:"DJPOLOMACO", src:"9 - 没有你的日子 - how am i supposed to live without you - 4.35.mp3", palette:['#0d1b2e','#7d92ad','#ffffff'] },
+  { title:"CITY NEVER SLEEPS", subtitle:"沙巴夜不打烊", artist:"DJPOLOMACO", src:"10 - 沙巴夜不打烊 - City Never Sleeps - 3.57.mp3", palette:['#050b14','#ff9a3d','#2196f3'] },
+  { title:"FOREVER BABY", subtitle:"永远的宝贝", artist:"DJPOLOMACO", src:"11 - 永远的宝贝 - Forever Baby - 4.04.mp3", palette:['#0a1422','#4fc3ff','#ff9a3d'] },
+];
+
+let currentIndex = 0;
+const audio = document.getElementById('player');
+
+function fmtTime(s){
+  if(!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s/60);
+  const sec = Math.floor(s%60);
+  return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+}
+
+/* ================= COVER ART GENERATOR ================= */
+function mulberry32(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = (t + Math.imul(t ^ t >>> 7, 61 | t)) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function drawCoverArt(canvas, palette, seedOffset){
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+  const g = ctx.createLinearGradient(0,0,w,h);
+  g.addColorStop(0, palette[0]);
+  g.addColorStop(1, '#02060d');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,w,h);
+
+  ctx.strokeStyle = 'rgba(255,154,61,0.12)';
+  ctx.lineWidth = 1;
+  const cell = Math.max(8, w/14);
+  for(let x=0;x<=w;x+=cell){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  for(let y=0;y<=h;y+=cell){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+
+  const rand = mulberry32(seedOffset);
+  for(let i=0;i<6;i++){
+    const yy = rand()*h;
+    const len = w*(0.5+rand()*0.6);
+    const startX = rand()*w*0.4;
+    const grad = ctx.createLinearGradient(startX,yy,startX+len,yy);
+    grad.addColorStop(0,'rgba(0,0,0,0)');
+    grad.addColorStop(0.5, palette[2]+'cc');
+    grad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1 + rand()*1.5;
+    ctx.beginPath();
+    ctx.moveTo(startX, yy);
+    ctx.lineTo(startX+len, yy - h*0.08);
+    ctx.stroke();
+  }
+
+  ctx.font = `${Math.max(8,w*0.09)}px monospace`;
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  const nums = ['108','88.0','726','0.04','5.565','0.026'];
+  nums.forEach((n)=>{
+    const x = (rand()*0.7+0.05)*w;
+    const y = (rand()*0.7+0.15)*h;
+    ctx.fillText(n, x, y);
+  });
+
+  const vg = ctx.createRadialGradient(w/2,h/2,w*0.1,w/2,h/2,w*0.75);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(0,0,0,0.55)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0,0,w,h);
+}
+
+/* ================= BUILD PLAYLIST DOM ================= */
+const playlistRoot = document.getElementById('playlistRows');
+tracks.forEach((t, i) => {
+  const row = document.createElement('div');
+  row.className = 'playlist-row';
+  row.id = 'row-'+i;
+  row.innerHTML = `
+    <div class="idx" id="idx-${i}">${String(i+1).padStart(2,'0')}</div>
+    <div class="thumb"><img src="cover-art.png" alt="cover art"></div>
+    <div class="meta">
+      <div class="title">${t.title}</div>
+      <div class="artist">${t.subtitle} &middot; ${t.artist}</div>
+    </div>
+    <div class="pwave" id="pwave-${i}"></div>
+    <div class="dur" id="dur-${i}">--:--</div>
+  `;
+  playlistRoot.appendChild(row);
+});
+/* thumbnails now use the shared cover-art.png profile image (see markup above) */
+
+/* mini static waveforms per playlist row */
+const playlistBars = [];
+tracks.forEach((t,i)=>{
+  const wave = document.getElementById('pwave-'+i);
+  const rand = mulberry32(i*97+11);
+  const bars = [];
+  for(let b=0;b<46;b++){
+    const el = document.createElement('div');
+    el.className = 'b';
+    el.style.height = (4 + rand()*20)+'px';
+    wave.appendChild(el);
+    bars.push(el);
+  }
+  playlistBars.push(bars);
+});
+
+/* ================= NOW PLAYING WAVEFORM ================= */
+const npWaveRoot = document.getElementById('npWave');
+let npBars = [];
+function buildNpWave(trackIdx){
+  npWaveRoot.innerHTML = '';
+  npBars = [];
+  const rand = mulberry32(trackIdx*53+21);
+  for(let b=0;b<90;b++){
+    const el = document.createElement('div');
+    el.className = 'bar';
+    el.style.height = (5 + rand()*10)+'px';
+    npWaveRoot.appendChild(el);
+    npBars.push(el);
+  }
+}
+
+/* ================= HERO EQ STRIP ================= */
+const heroEqRoot = document.getElementById('heroEq');
+const heroBars = [];
+for(let i=0;i<80;i++){
+  const el = document.createElement('div');
+  el.className = 'bar';
+  el.style.height = '6px';
+  heroEqRoot.appendChild(el);
+  heroBars.push(el);
+}
+
+/* ================= WEB AUDIO ANALYSER (real LED reactivity) ================= */
+let audioCtx, analyser, freqData, sourceNode;
+function setupAnalyser(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  sourceNode = audioCtx.createMediaElementSource(audio);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+  sourceNode.connect(analyser);
+  analyser.connect(audioCtx.destination);
+}
+
+/* ================= RENDER CURRENT TRACK ================= */
+function renderCurrentTrack(){
+  const t = tracks[currentIndex];
+  document.getElementById('npTitle').textContent = t.title;
+  document.getElementById('npArtist').textContent = t.subtitle + ' · ' + t.artist;
+  /* cover art now uses the shared cover-art.png profile image (see markup above) */
+  buildNpWave(currentIndex);
+
+  const nextIdx = (currentIndex+1) % tracks.length;
+  document.getElementById('upNextLabel').textContent = tracks[nextIdx].title + ' – ' + tracks[nextIdx].artist;
+
+  document.querySelectorAll('.playlist-row').forEach(r=> r.classList.remove('active','next-up'));
+  tracks.forEach((tt,i)=>{ document.getElementById('idx-'+i).textContent = String(i+1).padStart(2,'0'); });
+
+  const activeRow = document.getElementById('row-'+currentIndex);
+  activeRow.classList.add('active');
+  const eqMini = document.createElement('div');
+  eqMini.className = 'eq-mini';
+  for(let i=0;i<4;i++){ const m = document.createElement('div'); m.className='m'; m.style.height='6px'; eqMini.appendChild(m); }
+  document.getElementById('idx-'+currentIndex).innerHTML = '';
+  document.getElementById('idx-'+currentIndex).appendChild(eqMini);
+
+  const nextRow = document.getElementById('row-'+nextIdx);
+  if(nextIdx !== currentIndex) nextRow.classList.add('next-up');
+
+  playlistBars.forEach(bars=> bars.forEach(b=> b.classList.remove('played')));
+}
+
+function loadTrack(i){
+  currentIndex = i;
+  audio.src = tracks[i].preEncoded ? tracks[i].src : encodeURI(tracks[i].src);
+  renderCurrentTrack();
+  if (isStationLive) audio.play().catch(()=>{ /* waiting for user gesture */ });
+}
+
+audio.addEventListener('loadedmetadata', ()=>{
+  document.getElementById('npDuration').textContent = fmtTime(audio.duration);
+  document.getElementById('dur-'+currentIndex).textContent = fmtTime(audio.duration);
+});
+
+audio.addEventListener('ended', ()=>{
+  const nextIdx = (currentIndex+1) % tracks.length;
+  loadTrack(nextIdx);
+});
+
+let skipToastTimer = null;
+function showSkipToast(msg){
+  const toast = document.getElementById('skipToast');
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(skipToastTimer);
+  skipToastTimer = setTimeout(()=>{
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(20px)';
+  }, 3500);
+}
+
+let lastErroredIndex = -1;
+audio.addEventListener('error', ()=>{
+  const code = audio.error ? audio.error.code : 0;
+  const reasons = {
+    1: 'loading aborted',
+    2: 'network error',
+    3: 'could not decode audio',
+    4: 'file not found — check the exact filename in your repo'
+  };
+  showSkipToast('TRACK ' + (currentIndex+1) + ' UNAVAILABLE (' + (reasons[code] || 'unknown error') + ') — SKIPPING TO NEXT');
+
+  // avoid an infinite loop if every track is broken
+  if(lastErroredIndex === currentIndex) return;
+  lastErroredIndex = currentIndex;
+
+  const nextIdx = (currentIndex+1) % tracks.length;
+  setTimeout(()=>{ loadTrack(nextIdx); }, 800);
+});
+
+audio.addEventListener('timeupdate', ()=>{
+  document.getElementById('npElapsed').textContent = fmtTime(audio.currentTime);
+  if(audio.duration){
+    const progress = audio.currentTime / audio.duration;
+    const liveIdx = Math.floor(progress * npBars.length);
+    npBars.forEach((b,i)=>{
+      b.classList.remove('live');
+      if(i < liveIdx) b.classList.add('played'); else b.classList.remove('played');
+    });
+    if(npBars[liveIdx]) npBars[liveIdx].classList.add('live');
+
+    const bars = playlistBars[currentIndex];
+    const pLiveIdx = Math.floor(progress * bars.length);
+    bars.forEach((b,i)=>{ if(i < pLiveIdx) b.classList.add('played'); else b.classList.remove('played'); });
+  }
+});
+
+/* pre-fetch durations for all tracks so playlist shows real times immediately */
+tracks.forEach((t,i)=>{
+  const probe = document.createElement('audio');
+  probe.preload = 'metadata';
+  probe.src = encodeURI(t.src);
+  probe.addEventListener('loadedmetadata', ()=>{
+    document.getElementById('dur-'+i).textContent = fmtTime(probe.duration);
+  });
+});
+
+/* ================= ANIMATION LOOP: real frequency-driven LEDs ================= */
+function animate(){
+  requestAnimationFrame(animate);
+  if(!analyser) return;
+  analyser.getByteFrequencyData(freqData);
+
+  // hero strip: sample across spectrum
+  for(let i=0;i<heroBars.length;i++){
+    const idx = Math.floor((i/heroBars.length) * freqData.length * 0.85);
+    const v = freqData[idx] || 0;
+    heroBars[i].style.height = Math.max(6, (v/255)*56) + 'px';
+  }
+
+  // now-playing waveform: overlay live amplitude on top of base shape (only unplayed region reacts)
+  for(let i=0;i<npBars.length;i++){
+    if(npBars[i].classList.contains('played') || npBars[i].classList.contains('live')) continue;
+    const idx = Math.floor((i/npBars.length) * freqData.length * 0.85);
+    const v = freqData[idx] || 0;
+    npBars[i].style.height = Math.max(4, (v/255)*32) + 'px';
+  }
+
+  // mini eq next to active track number
+  const activeRow = document.getElementById('row-'+currentIndex);
+  const miniEls = activeRow ? activeRow.querySelectorAll('.eq-mini .m') : [];
+  miniEls.forEach((m,i)=>{
+    const idx = Math.floor((i/miniEls.length) * freqData.length * 0.6) + 4;
+    const v = freqData[idx] || 0;
+    m.style.height = Math.max(4, (v/255)*18) + 'px';
+  });
+}
+animate();
+
+/* ================= START ON FIRST GESTURE (no visible play button) ================= */
+const startHint = document.getElementById('startHint');
+function startBroadcast(){
+  try{ setupAnalyser(); }catch(e){ /* analyser optional, playback can continue without it */ }
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if(!audio.src){ loadTrack(0); }
+  const p = audio.play();
+  if(p && p.catch){
+    p.then(()=>{
+        startHint.classList.add('hidden');
+        document.removeEventListener('click', startBroadcast);
+        document.removeEventListener('keydown', startBroadcast);
+        document.removeEventListener('touchstart', startBroadcast);
+     })
+     .catch((err)=>{
+        document.getElementById('startHintBox').innerHTML =
+          'PLAYBACK BLOCKED — TAP AGAIN<small>' + (err && err.message ? err.message : 'The browser blocked audio.') +
+          ' If this repeats, open index.html directly in a browser tab (not a preview/sandbox) with all 11 mp3 files in the same folder.</small>';
+     });
+  } else {
+    startHint.classList.add('hidden');
+    document.removeEventListener('click', startBroadcast);
+    document.removeEventListener('keydown', startBroadcast);
+    document.removeEventListener('touchstart', startBroadcast);
+  }
+}
+document.addEventListener('click', startBroadcast);
+document.addEventListener('keydown', startBroadcast);
+document.addEventListener('touchstart', startBroadcast);
+
+/* attempt silent-friendly autoplay right away; if blocked, the hint above handles it */
+loadTrack(0);
+window.addEventListener('load', ()=>{
+  audio.play().then(()=>{ startHint.classList.add('hidden'); }).catch(()=>{ /* needs gesture */ });
+});
+
+/* gentle listener count fluctuation */
+setInterval(()=>{
+  const el = document.getElementById('listenerCount');
+  if(Math.random() < 0.3){
+    const cur = parseInt(el.textContent.replace(/,/g,'')) || 0;
+    const next = Math.max(0, cur + (Math.random()<0.6 ? 1 : -1));
+    el.textContent = next.toLocaleString();
+  }
+}, 3000);
+
+/* ================= DASHBOARD SYNC ================= */
+/* Appends any tracks pushed from the Radio Station dashboard on top of
+   the 11 built-in tracks above. Never touches or reorders the
+   originals — only adds after them. Runs once on load, then re-checks
+   every 20s so new uploads show up without a page reload. */
+let knownSyncedSrcs = new Set();
+
+function appendSyncedTrack(t){
+  const i = tracks.length;
+  tracks.push({
+    title: t.title || 'Untitled',
+    subtitle: '',
+    artist: t.artist || '',
+    src: t.src,
+    palette: ['#0a1220','#4fc3ff','#2196f3'],
+    preEncoded: true,
+  });
+
+  const row = document.createElement('div');
+  row.className = 'playlist-row';
+  row.id = 'row-'+i;
+  row.innerHTML = `
+    <div class="idx" id="idx-${i}">${String(i+1).padStart(2,'0')}</div>
+    <div class="thumb"><img src="cover-art.png" alt="cover art"></div>
+    <div class="meta">
+      <div class="title">${tracks[i].title}</div>
+      <div class="artist">${tracks[i].artist}</div>
+    </div>
+    <div class="pwave" id="pwave-${i}"></div>
+    <div class="dur" id="dur-${i}">--:--</div>
+  `;
+  playlistRoot.appendChild(row);
+
+  const wave = document.getElementById('pwave-'+i);
+  const rand = mulberry32(i*97+11);
+  const bars = [];
+  for(let b=0;b<46;b++){
+    const el = document.createElement('div');
+    el.className = 'b';
+    el.style.height = (4 + rand()*20)+'px';
+    wave.appendChild(el);
+    bars.push(el);
+  }
+  playlistBars.push(bars);
+
+  const probe = document.createElement('audio');
+  probe.preload = 'metadata';
+  probe.src = tracks[i].src;
+  probe.addEventListener('loadedmetadata', ()=>{
+    document.getElementById('dur-'+i).textContent = fmtTime(probe.duration);
+  });
+}
+
+let isStationLive = true;
+
+function setStationLiveState(live){
+  if (live === isStationLive) return;
+  isStationLive = live;
+  const badge = document.querySelector('.on-air-badge');
+  if (badge) {
+    badge.classList.toggle('off-air', !live);
+    const label = badge.querySelector('.now');
+    if (label) label.textContent = live ? 'ON AIR NOW' : 'OFF AIR — BE RIGHT BACK';
+  }
+  if (live) {
+    audio.play().catch(()=>{ /* waiting for user gesture */ });
+  } else {
+    audio.pause();
+  }
+}
+
+function checkPlaylistSync(){
+  fetch('./playlist.json?t=' + Date.now())
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data) return;
+      setStationLiveState(data.isLive !== false);
+      if (!Array.isArray(data.tracks)) return;
+      data.tracks.forEach(t => {
+        if (t.src && !knownSyncedSrcs.has(t.src)) {
+          knownSyncedSrcs.add(t.src);
+          appendSyncedTrack(t);
+        }
+      });
+    })
+    .catch(err => console.error('Playlist sync check failed:', err));
+}
+checkPlaylistSync();
+setInterval(checkPlaylistSync, 20000);
+</script>
+</body>
+</html>
