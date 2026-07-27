@@ -51,7 +51,13 @@
 
                 <!-- SECTION HEADER -->
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="neon-blue-text text-lg font-black uppercase italic tracking-tighter">Radio Profile</h2>
+                    <div class="flex items-center gap-4">
+                        <h2 class="neon-blue-text text-lg font-black uppercase italic tracking-tighter">Radio Profile</h2>
+                        <div class="flex gap-1.5 bg-white/5 rounded-lg p-1">
+                            <button onclick="window.switchStationView('wkor')" id="station-tab-wkor" class="station-tab station-tab-active px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all">WKOR FM</button>
+                            <button onclick="window.switchStationView('cdfm')" id="station-tab-cdfm" class="station-tab px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all">CDFM</button>
+                        </div>
+                    </div>
                     <button class="text-gray-500 hover:text-white transition-colors px-2" title="More options">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                     </button>
@@ -119,11 +125,11 @@
                         <!-- STATION INFO -->
                         <div class="bg-[#0a0a0a] noir-bezel rounded-xl p-4 space-y-2.5">
                             <span class="text-gray-500 text-[9px] font-black uppercase tracking-widest block mb-1">Station Info</span>
-                            <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Station ID</span><span class="neon-blue-text font-bold">WKOR-FM-001</span></div>
+                            <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Station ID</span><span id="station-id-value" class="neon-blue-text font-bold">WKOR-FM-001</span></div>
                             <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Owner</span><span class="neon-blue-text font-bold">The Sick Team</span></div>
                             <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Created</span><span class="neon-blue-text font-bold">Jun 11, 2025</span></div>
                             <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Location</span><span class="neon-blue-text font-bold">Sovereign Grid</span></div>
-                            <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Frequency</span><span class="neon-blue-text font-bold">107.9 FM</span></div>
+                            <div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 uppercase font-black tracking-widest">Frequency</span><span id="station-frequency-value" class="neon-blue-text font-bold">107.9 FM</span></div>
                             <div class="flex items-center justify-between text-[10px]">
                                 <span class="text-gray-500 uppercase font-black tracking-widest">Signal</span>
                                 <div class="flex items-center gap-1.5">
