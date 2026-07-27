@@ -4684,6 +4684,7 @@
                         'x-sync-secret': window.RADIO_SYNC_SECRET,
                     },
                     body: JSON.stringify({
+                        station: window.currentStationKey,
                         tracks: window.stationTracks,
                         isLive: window.stationIsLive,
                     }),
@@ -4696,6 +4697,32 @@
             { id: 'st2', title: 'The Python Strike" Teaser', artist: 'djpolo', art: null }
         ];
         window.stationIsLive = true;
+
+        // Per-station identity/branding — WKOR (English) and CDFM (Chinese)
+        // are two separate stations sharing this one page. Everything
+        // below (tracks, cover, name/bio/genres) is kept in its own
+        // localStorage bucket per station key so switching never mixes
+        // one station's songs/info into the other's.
+        window.STATION_META = {
+            wkor: {
+                id: 'WKOR-FM-001', frequency: '107.9 FM',
+                defaultName: '107.9 W-K-O-R FM - Broadcast',
+                defaultBio: '107.9 W-K-O-R FM — THE SICK TEAM BROADCAST. Broadcasting live from the epicenter of the Aetherwave Syndicate. WKOR 107.9 is the pulse of the global grid.',
+                defaultGenres: 'Electronic, Techno, House, Funk, Parody / Comedy',
+                defaultTracks: [
+                    { id: 'st1', title: 'The Signal Filter" - Teaser 1', artist: 'djpolo', art: null },
+                    { id: 'st2', title: 'The Python Strike" Teaser', artist: 'djpolo', art: null }
+                ],
+            },
+            cdfm: {
+                id: 'CDFM-FM-001', frequency: '108.8 FM',
+                defaultName: '108.8 CDFM - Chinese Dance FM',
+                defaultBio: '108.8 CDFM — THE SICK TEAM BROADCAST. Chinese Dance FM, broadcasting from the same Sovereign Grid as WKOR — its own queue, its own songs.',
+                defaultGenres: 'Mandopop, Dance, Electronic',
+                defaultTracks: [],
+            },
+        };
+        window.currentStationKey = window.currentStationKey || 'wkor';
 
         // Pixels-per-second for the timeline; changed by the zoom buttons.
         window.stationZoomPxPerSec = window.stationZoomPxPerSec || 14;
@@ -4800,7 +4827,7 @@
 
             const statTracks = document.getElementById('station-stat-tracks');
             if (statTracks) statTracks.innerText = window.stationTracks.length;
-            try { localStorage.setItem('sbn-station-tracks', JSON.stringify(window.stationTracks)); } catch (err) { console.error('Could not save station tracks:', err); }
+            try { localStorage.setItem('sbn-station-tracks-' + window.currentStationKey, JSON.stringify(window.stationTracks)); } catch (err) { console.error('Could not save station tracks:', err); }
             window.syncStationPlaylist();
         };
 
@@ -5039,6 +5066,7 @@
 
         window.toggleAirStatus = function() {
             window.stationIsLive = !window.stationIsLive;
+            try { localStorage.setItem('sbn-station-live-' + window.currentStationKey, window.stationIsLive); } catch (err) { console.error('Could not save station live status:', err); }
             window.applyAirStatus();
             window.syncStationPlaylist();
         };
@@ -5059,7 +5087,7 @@
                 if (!box) return;
                 box.style.backgroundImage = `url(${e.target.result})`;
                 box.classList.add('has-photo');
-                try { localStorage.setItem('sbn-station-cover', e.target.result); } catch (err) { console.error('Could not save station cover:', err); }
+                try { localStorage.setItem('sbn-station-cover-' + window.currentStationKey, e.target.result); } catch (err) { console.error('Could not save station cover:', err); }
             };
             reader.readAsDataURL(file);
         };
@@ -5088,27 +5116,52 @@
             document.getElementById('station-bio-display').innerText = bio;
             window.renderStationGenres(genres);
             window.updateStationCharCount(bio);
-            try { localStorage.setItem('sbn-station-info', JSON.stringify({ name, bio, genres })); } catch (err) { console.error('Could not save station info:', err); }
+            try { localStorage.setItem('sbn-station-info-' + window.currentStationKey, JSON.stringify({ name, bio, genres })); } catch (err) { console.error('Could not save station info:', err); }
             window.toggleStationEdit();
         };
 
-        window.loadStation = function() {
+        window.loadStationForKey = function(key) {
+            const meta = window.STATION_META[key];
+            if (!meta) return;
+            window.currentStationKey = key;
+
+            document.getElementById('station-id-value').textContent = meta.id;
+            document.getElementById('station-frequency-value').textContent = meta.frequency;
+            document.getElementById('station-tab-wkor').classList.toggle('station-tab-active', key === 'wkor');
+            document.getElementById('station-tab-cdfm').classList.toggle('station-tab-active', key === 'cdfm');
+
             try {
-                const cover = localStorage.getItem('sbn-station-cover');
-                if (cover) {
-                    const box = document.getElementById('station-cover');
-                    if (box) { box.style.backgroundImage = `url(${cover})`; box.classList.add('has-photo'); }
+                // Cover — falls back to the empty placeholder box if this
+                // station has never had one uploaded.
+                const box = document.getElementById('station-cover');
+                const cover = localStorage.getItem('sbn-station-cover-' + key);
+                if (box) {
+                    if (cover) { box.style.backgroundImage = `url(${cover})`; box.classList.add('has-photo'); }
+                    else { box.style.backgroundImage = ''; box.classList.remove('has-photo'); }
                 }
-                const info = JSON.parse(localStorage.getItem('sbn-station-info') || 'null');
-                if (info) {
-                    if (info.name) { document.getElementById('station-name-display').innerText = info.name; document.getElementById('station-name-input').value = info.name; }
-                    if (info.bio) { document.getElementById('station-bio-display').innerText = info.bio; document.getElementById('station-bio-input').value = info.bio; }
-                    if (info.genres) document.getElementById('station-genres-input').value = info.genres;
-                }
-                window.renderStationGenres(document.getElementById('station-genres-input').value);
-                window.updateStationCharCount(document.getElementById('station-bio-input').value);
-                const savedTracks = JSON.parse(localStorage.getItem('sbn-station-tracks') || 'null');
-                if (savedTracks && savedTracks.length) window.stationTracks = savedTracks;
+
+                // Name / bio / genres — saved info if this station has been
+                // edited before, otherwise this station's own defaults.
+                const info = JSON.parse(localStorage.getItem('sbn-station-info-' + key) || 'null');
+                const name = (info && info.name) || meta.defaultName;
+                const bio = (info && info.bio) || meta.defaultBio;
+                const genres = (info && info.genres) || meta.defaultGenres;
+                document.getElementById('station-name-display').innerText = name;
+                document.getElementById('station-name-input').value = name;
+                document.getElementById('station-bio-display').innerText = bio;
+                document.getElementById('station-bio-input').value = bio;
+                document.getElementById('station-genres-input').value = genres;
+                window.renderStationGenres(genres);
+                window.updateStationCharCount(bio);
+
+                // Tracks / live status — this station's own queue, falling
+                // back to its own defaults (WKOR's two teasers, CDFM starts
+                // empty) rather than ever borrowing the other station's.
+                const savedTracks = JSON.parse(localStorage.getItem('sbn-station-tracks-' + key) || 'null');
+                window.stationTracks = (savedTracks && savedTracks.length) ? savedTracks : meta.defaultTracks.slice();
+                const savedIsLive = localStorage.getItem('sbn-station-live-' + key);
+                window.stationIsLive = savedIsLive === null ? true : savedIsLive === 'true';
+
                 const savedLibraryTracks = JSON.parse(localStorage.getItem('sbn-library-tracks-custom') || 'null');
                 if (Array.isArray(savedLibraryTracks) && savedLibraryTracks.length) {
                     // Append custom uploads on top of the hardcoded base catalog, skipping any dupes.
@@ -5119,6 +5172,15 @@
                 window.renderStationTracks();
                 window.applyAirStatus();
             } catch (err) { console.error('Could not load station data:', err); }
+        };
+
+        window.switchStationView = function(key) {
+            if (key === window.currentStationKey) return;
+            window.loadStationForKey(key);
+        };
+
+        window.loadStation = function() {
+            window.loadStationForKey(window.currentStationKey);
         };
 
         // 7. HOME DOSSIER SNAPSHOT (standalone Dossier page removed; this only syncs the Home tab name)
@@ -5595,6 +5657,22 @@
             safeInit(window.loadAvatarPic, 'loadAvatarPic');
             safeInit(window.loadPlayerIcon, 'loadPlayerIcon');
             safeInit(window.loadMagazine, 'loadMagazine');
+            // One-time migration: before CDFM existed, station data was
+            // saved under flat (non-per-station) keys. Move it under the
+            // WKOR-specific keys so existing cover/bio/tracks aren't lost.
+            try {
+                const migrations = [
+                    ['sbn-station-cover', 'sbn-station-cover-wkor'],
+                    ['sbn-station-info', 'sbn-station-info-wkor'],
+                    ['sbn-station-tracks', 'sbn-station-tracks-wkor'],
+                ];
+                migrations.forEach(([oldKey, newKey]) => {
+                    const oldVal = localStorage.getItem(oldKey);
+                    if (oldVal !== null && localStorage.getItem(newKey) === null) {
+                        localStorage.setItem(newKey, oldVal);
+                    }
+                });
+            } catch (err) { console.error('Station data migration failed:', err); }
             safeInit(window.loadStation, 'loadStation');
             safeInit(window.loadPressKits, 'loadPressKits');
             safeInit(window.loadArchiveFolders, 'loadArchiveFolders');
