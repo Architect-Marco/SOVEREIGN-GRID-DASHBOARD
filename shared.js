@@ -4672,24 +4672,31 @@
         window.RADIO_SYNC_SECRET = 'r7Kx9mQz2wPvT4bNyL8jH1sFdA6cE3uGiR5oV0k';
 
         let _radioSyncTimer = null;
+        // Does the actual push to the Worker, right now, no debounce, no
+        // on-air check — used directly by the on-air toggle so flipping the
+        // switch (either direction) always publishes immediately.
+        window.forceSyncStationPlaylist = function() {
+            if (!window.RADIO_SYNC_URL) return; // not configured yet
+            fetch(window.RADIO_SYNC_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-sync-secret': window.RADIO_SYNC_SECRET,
+                },
+                body: JSON.stringify({
+                    station: window.currentStationKey,
+                    tracks: window.stationTracks,
+                    isLive: window.stationIsLive,
+                }),
+            }).catch(err => console.error('Radio sync failed:', err));
+        };
+
         window.syncStationPlaylist = function() {
             if (!window.RADIO_SYNC_URL) return; // not configured yet
+            if (!window.stationIsLive) return; // paused while off air — edits stay local until back on
             clearTimeout(_radioSyncTimer);
             // Debounced so dragging tracks around doesn't fire a request per pixel.
-            _radioSyncTimer = setTimeout(() => {
-                fetch(window.RADIO_SYNC_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-sync-secret': window.RADIO_SYNC_SECRET,
-                    },
-                    body: JSON.stringify({
-                        station: window.currentStationKey,
-                        tracks: window.stationTracks,
-                        isLive: window.stationIsLive,
-                    }),
-                }).catch(err => console.error('Radio sync failed:', err));
-            }, 800);
+            _radioSyncTimer = setTimeout(window.forceSyncStationPlaylist, 800);
         };
 
         window.stationTracks = [
@@ -5068,7 +5075,7 @@
             window.stationIsLive = !window.stationIsLive;
             try { localStorage.setItem('sbn-station-live-' + window.currentStationKey, window.stationIsLive); } catch (err) { console.error('Could not save station live status:', err); }
             window.applyAirStatus();
-            window.syncStationPlaylist();
+            window.forceSyncStationPlaylist(); // always publish the toggle itself right away, in either direction
         };
 
         window.shareStation = function(btn) {
