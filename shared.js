@@ -4697,31 +4697,135 @@
         ];
         window.stationIsLive = true;
 
+        // Pixels-per-second for the timeline; changed by the zoom buttons.
+        window.stationZoomPxPerSec = window.stationZoomPxPerSec || 14;
+        const STATION_ZOOM_MIN = 4, STATION_ZOOM_MAX = 60;
+
+        window.zoomStationTimeline = function(direction) {
+            window.stationZoomPxPerSec = Math.max(STATION_ZOOM_MIN, Math.min(STATION_ZOOM_MAX, window.stationZoomPxPerSec * (direction > 0 ? 1.3 : 1/1.3)));
+            window.renderStationTracks();
+        };
+
+        // Rough duration estimate from a title like "...4.37min" — used only
+        // to size the block visually, not for real playback timing.
+        function estimateTrackDurationSec(title) {
+            const m = /(\d+(?:\.\d+)?)\s*min/i.exec(title || '');
+            return m ? Math.round(parseFloat(m[1]) * 60) : 180; // default 3:00 if unknown
+        }
+
+        function mulberry32(seed){
+            let a = seed >>> 0;
+            return function(){
+                a |= 0; a = (a + 0x6D2B79F5) | 0;
+                let t = Math.imul(a ^ a >>> 15, 1 | a);
+                t = (t + Math.imul(t ^ t >>> 7, 61 | t)) ^ t;
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            };
+        }
+
+        function buildStationWaveformSVG(seed, width) {
+            const rand = mulberry32(seed);
+            const barW = 3, gap = 2, count = Math.max(1, Math.floor(width / (barW + gap)));
+            let bars = '';
+            for (let b = 0; b < count; b++) {
+                const h = 6 + rand() * 26;
+                bars += `<rect x="${b*(barW+gap)}" y="${(40-h)/2}" width="${barW}" height="${h}" rx="1" fill="rgba(47,208,255,0.5)"/>`;
+            }
+            return `<svg width="${count*(barW+gap)}" height="40" style="position:absolute; left:8px; top:24px; opacity:0.7; pointer-events:none;">${bars}</svg>`;
+        }
+
         window.renderStationTracks = function() {
-            const list = document.getElementById('station-track-list');
-            if (!list) return;
-            list.innerHTML = window.stationTracks.map((t, i) => `
-                <div draggable="true"
-                     ondragstart="window.dragStationTrackStart(event,'${t.id}')"
-                     ondragover="event.preventDefault()"
-                     ondrop="window.dragStationTrackDrop(event,'${t.id}')"
-                     ondragend="window.dragStationTrackEnd(event)"
-                     class="station-track-row flex items-center gap-4 border-b border-white/5 last:border-b-0 px-2 py-3 transition-opacity">
-                    <span class="text-gray-700 text-sm select-none cursor-grab active:cursor-grabbing" title="Drag to reorder">⋮⋮</span>
-                    <div onclick="window.triggerTrackArtUpload('${t.id}')" class="w-9 h-9 rounded bg-white/5 border border-white/10 bg-cover bg-center flex-shrink-0 cursor-pointer hover:ring-1 hover:ring-white/40 transition-all flex items-center justify-center text-gray-600" title="Upload cover art" ${t.art ? `style="background-image:url(${t.art})"` : ''}>${t.art ? '' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'}</div>
-                    <span class="text-gray-600 text-xs w-4 flex-shrink-0">${i + 1}</span>
-                    <div class="flex-1 min-w-0">
-                        <div class="neon-blue-text text-sm font-bold truncate">"${t.title}</div>
-                        <div class="text-gray-500 text-[10px] uppercase font-black tracking-widest truncate mt-0.5">${t.artist}</div>
+            const lane1 = document.getElementById('station-lane-1');
+            const lane2 = document.getElementById('station-lane-2');
+            if (!lane1 || !lane2) return;
+
+            const pxPerSec = window.stationZoomPxPerSec;
+            lane1.innerHTML = '';
+            lane2.innerHTML = '';
+            let cursor1 = 8, cursor2 = 8;
+
+            window.stationTracks.forEach((t, i) => {
+                const lane = t.lane === 2 ? 2 : 1;
+                const laneEl = lane === 2 ? lane2 : lane1;
+                const durSec = estimateTrackDurationSec(t.title);
+                const gapPx = Math.max(0, (t.gapSec || 0) * pxPerSec);
+                const widthPx = Math.max(60, durSec * pxPerSec);
+                const startPx = (lane === 2 ? cursor2 : cursor1) + gapPx;
+
+                const block = document.createElement('div');
+                block.className = 'station-track-block absolute top-2 bottom-2 rounded-lg bg-gradient-to-b from-[#12181c] to-[#0a0e11] border border-[rgba(47,208,255,0.25)] cursor-grab active:cursor-grabbing overflow-hidden group';
+                block.style.left = startPx + 'px';
+                block.style.width = widthPx + 'px';
+                block.dataset.trackId = t.id;
+                block.innerHTML = `
+                    ${buildStationWaveformSVG(i * 97 + 11, widthPx - 16)}
+                    <div class="relative z-10 flex items-start justify-between px-2 pt-1.5">
+                        <div class="min-w-0">
+                            <div class="neon-blue-text text-[10px] font-bold truncate" style="max-width:${Math.max(40,widthPx-50)}px;">"${t.title}</div>
+                            <div class="text-gray-500 text-[8px] uppercase font-black tracking-widest truncate">${t.artist}</div>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="event.stopPropagation(); window.toggleStationTrackLane('${t.id}')" class="text-gray-400 hover:text-white transition-colors" title="Move to other lane">⇅</button>
+                            <button onclick="event.stopPropagation(); window.playStationTrack('${t.id}')" class="text-teal-400 hover:text-teal-300 transition-colors" title="Play"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+                            <button onclick="event.stopPropagation(); window.deleteStationTrack('${t.id}')" class="text-gray-600 hover:text-red-500 transition-colors" title="Remove">✕</button>
+                        </div>
                     </div>
-                    <button onclick="event.stopPropagation(); window.playStationTrack('${t.id}')" class="text-teal-400 hover:text-teal-300 transition-colors flex-shrink-0" title="Play this track"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-                    <button onclick="window.deleteStationTrack('${t.id}')" class="text-gray-600 hover:text-red-500 transition-colors flex-shrink-0 px-2" title="Delete track">✕</button>
-                </div>
-            `).join('');
+                `;
+                laneEl.appendChild(block);
+                window.attachStationTrackDrag(block, t.id);
+
+                if (lane === 2) cursor2 = startPx + widthPx + 4; else cursor1 = startPx + widthPx + 4;
+            });
+
+            // Lanes need to be at least as wide as their content so the
+            // container's horizontal scroll actually reaches every block.
+            lane1.style.minWidth = Math.max(cursor1 + 20, 100) + 'px';
+            lane2.style.minWidth = Math.max(cursor2 + 20, 100) + 'px';
+
+            const onAir = document.getElementById('station-onair-title');
+            const nextUp = document.getElementById('station-nextup-title');
+            if (onAir) onAir.textContent = window.stationTracks[0] ? window.stationTracks[0].title : '—';
+            if (nextUp) nextUp.textContent = window.stationTracks[1] ? window.stationTracks[1].title : '—';
+
             const statTracks = document.getElementById('station-stat-tracks');
             if (statTracks) statTracks.innerText = window.stationTracks.length;
             try { localStorage.setItem('sbn-station-tracks', JSON.stringify(window.stationTracks)); } catch (err) { console.error('Could not save station tracks:', err); }
             window.syncStationPlaylist();
+        };
+
+        window.toggleStationTrackLane = function(id) {
+            const t = window.stationTracks.find(x => x.id === id);
+            if (!t) return;
+            t.lane = t.lane === 2 ? 1 : 2;
+            window.renderStationTracks();
+        };
+
+        // Pointer-drag: horizontal movement adjusts this track's gapSec
+        // (the silence before it plays), rather than reordering the queue.
+        window.attachStationTrackDrag = function(el, id) {
+            let startX = 0, startGapSec = 0, dragging = false;
+
+            el.addEventListener('pointerdown', (e) => {
+                if (e.target.closest('button')) return; // don't hijack the mini action buttons
+                dragging = true;
+                startX = e.clientX;
+                const t = window.stationTracks.find(x => x.id === id);
+                startGapSec = (t && t.gapSec) || 0;
+                el.setPointerCapture(e.pointerId);
+            });
+
+            el.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                const dx = e.clientX - startX;
+                const t = window.stationTracks.find(x => x.id === id);
+                if (!t) return;
+                t.gapSec = Math.max(0, startGapSec + dx / window.stationZoomPxPerSec);
+                window.renderStationTracks();
+            });
+
+            const endDrag = () => { dragging = false; };
+            el.addEventListener('pointerup', endDrag);
+            el.addEventListener('pointercancel', endDrag);
         };
 
         // Real playback for the On Air queue: only tracks with a real `src`
