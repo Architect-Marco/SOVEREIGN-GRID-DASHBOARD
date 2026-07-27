@@ -181,11 +181,16 @@
         .slick-scroll::-webkit-scrollbar-thumb { background: rgba(47,208,255,0.35); border-radius: 10px; }
         .slick-scroll::-webkit-scrollbar-thumb:hover { background: rgba(47,208,255,0.6); }
         .slick-scroll { scrollbar-width: thin; scrollbar-color: rgba(47,208,255,0.35) transparent; }
-        .station-timeline-scroll::-webkit-scrollbar { height: 12px; }
-        .station-timeline-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
-        .station-timeline-scroll::-webkit-scrollbar-thumb { background: rgba(47,208,255,0.6); border-radius: 10px; border: 2px solid #0a0a0a; }
-        .station-timeline-scroll::-webkit-scrollbar-thumb:hover { background: #2fd0ff; }
-        .station-timeline-scroll { scrollbar-width: auto; scrollbar-color: rgba(47,208,255,0.6) rgba(255,255,255,0.03); }
+        .station-timeline-scroll::-webkit-scrollbar,
+        #station-timeline::-webkit-scrollbar { height: 12px !important; }
+        .station-timeline-scroll::-webkit-scrollbar-track,
+        #station-timeline::-webkit-scrollbar-track { background: rgba(255,255,255,0.03) !important; }
+        .station-timeline-scroll::-webkit-scrollbar-thumb,
+        #station-timeline::-webkit-scrollbar-thumb { background: #2fd0ff !important; border-radius: 10px !important; border: 2px solid #0a0a0a !important; }
+        .station-timeline-scroll::-webkit-scrollbar-thumb:hover,
+        #station-timeline::-webkit-scrollbar-thumb:hover { background: #6fe0ff !important; }
+        .station-timeline-scroll,
+        #station-timeline { scrollbar-width: auto; scrollbar-color: #2fd0ff rgba(255,255,255,0.03); }
         .gallery-grid-mode { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; padding: 14px; }
         input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active,
         textarea:-webkit-autofill, textarea:-webkit-autofill:hover, textarea:-webkit-autofill:focus,
