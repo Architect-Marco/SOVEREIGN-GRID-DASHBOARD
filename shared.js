@@ -4750,13 +4750,15 @@
                 const durSec = estimateTrackDurationSec(t.title);
                 const gapPx = Math.max(0, (t.gapSec || 0) * pxPerSec);
                 const widthPx = Math.max(60, durSec * pxPerSec);
-                const startPx = (lane === 2 ? cursor2 : cursor1) + gapPx;
+                const naturalPx = (lane === 2 ? cursor2 : cursor1); // position before this track's own gap
+                const startPx = naturalPx + gapPx;
 
                 const block = document.createElement('div');
                 block.className = 'station-track-block absolute top-2 bottom-2 rounded-lg bg-gradient-to-b from-[#12181c] to-[#0a0e11] border border-[rgba(47,208,255,0.25)] cursor-grab active:cursor-grabbing overflow-hidden group';
                 block.style.left = startPx + 'px';
                 block.style.width = widthPx + 'px';
                 block.dataset.trackId = t.id;
+                block.dataset.naturalPx = naturalPx;
                 block.innerHTML = `
                     ${buildStationWaveformSVG(i * 97 + 11, widthPx - 16)}
                     <div class="relative z-10 flex items-start justify-between px-2 pt-1.5">
@@ -4802,28 +4804,39 @@
 
         // Pointer-drag: horizontal movement adjusts this track's gapSec
         // (the silence before it plays), rather than reordering the queue.
+        // The block is moved directly during the drag (cheap, stays under
+        // the pointer) — the full timeline only re-renders once, on release,
+        // to reflow anything else and persist/sync the change.
         window.attachStationTrackDrag = function(el, id) {
-            let startX = 0, startGapSec = 0, dragging = false;
+            let startX = 0, startLeftPx = 0, dragging = false;
 
             el.addEventListener('pointerdown', (e) => {
                 if (e.target.closest('button')) return; // don't hijack the mini action buttons
                 dragging = true;
                 startX = e.clientX;
-                const t = window.stationTracks.find(x => x.id === id);
-                startGapSec = (t && t.gapSec) || 0;
+                startLeftPx = parseFloat(el.style.left) || 0;
                 el.setPointerCapture(e.pointerId);
+                el.style.zIndex = 20;
             });
 
             el.addEventListener('pointermove', (e) => {
                 if (!dragging) return;
                 const dx = e.clientX - startX;
-                const t = window.stationTracks.find(x => x.id === id);
-                if (!t) return;
-                t.gapSec = Math.max(0, startGapSec + dx / window.stationZoomPxPerSec);
-                window.renderStationTracks();
+                const naturalPx = parseFloat(el.dataset.naturalPx) || 0;
+                const newLeft = Math.max(naturalPx, startLeftPx + dx); // can't drag earlier than its natural slot (gap can't go negative)
+                el.style.left = newLeft + 'px';
             });
 
-            const endDrag = () => { dragging = false; };
+            const endDrag = () => {
+                if (!dragging) return;
+                dragging = false;
+                el.style.zIndex = '';
+                const naturalPx = parseFloat(el.dataset.naturalPx) || 0;
+                const finalLeft = parseFloat(el.style.left) || naturalPx;
+                const t = window.stationTracks.find(x => x.id === id);
+                if (t) t.gapSec = Math.max(0, (finalLeft - naturalPx) / window.stationZoomPxPerSec);
+                window.renderStationTracks();
+            };
             el.addEventListener('pointerup', endDrag);
             el.addEventListener('pointercancel', endDrag);
         };
