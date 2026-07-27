@@ -1999,36 +1999,42 @@
             document.getElementById('cover-upload-input').click();
         };
 
-        window.handleCoverUpload = function(event) {
+        window.handleCoverUpload = async function(event) {
             const file = event.target.files[0];
             const id = window.pendingCoverUploadId;
             event.target.value = ''; // reset so re-selecting the same file still fires change
             if (!file || !id) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const creation = window.creations.find(c => c.id === id);
-                if (creation) {
-                    creation.coverArt = e.target.result;
-                    window.renderCreations();
-                    window.saveCreations();
-                    const galleryItem = window.galleryItems.find(g => g.creationId === id);
-                    if (galleryItem) {
-                        galleryItem.coverArt = e.target.result;
-                        if (typeof window.renderGallery === 'function') window.renderGallery();
-                    }
-                    return;
+
+            let url;
+            try {
+                url = await window.uploadImageToRepo(file, 'create');
+            } catch (err) {
+                console.error('Cover art upload failed:', err);
+                alert('Cover art upload failed: ' + err.message);
+                return;
+            }
+
+            const creation = window.creations.find(c => c.id === id);
+            if (creation) {
+                creation.coverArt = url;
+                window.renderCreations();
+                window.saveCreations();
+                const galleryItem = window.galleryItems.find(g => g.creationId === id);
+                if (galleryItem) {
+                    galleryItem.coverArt = url;
+                    if (typeof window.renderGallery === 'function') window.renderGallery();
                 }
-                // Not in Your Creations — check inside archive folders too
-                for (const folder of window.archiveFolders) {
-                    const song = (folder.songs || []).find(s => s.id === id);
-                    if (song) {
-                        song.coverArt = e.target.result;
-                        window.renderArchiveFolders();
-                        break;
-                    }
+                return;
+            }
+            // Not in Your Creations — check inside archive folders too
+            for (const folder of window.archiveFolders) {
+                const song = (folder.songs || []).find(s => s.id === id);
+                if (song) {
+                    song.coverArt = url;
+                    window.renderArchiveFolders();
+                    break;
                 }
-            };
-            reader.readAsDataURL(file);
+            }
         };
 
         // --- Lyrics slide-in panel ---
@@ -4175,15 +4181,20 @@
         };
 
         // 6.5 UPLOADABLE PHOTOS (Profile Avatar / Player Icon / Magazine Cover)
-        window.handleAvatarUpload = function(event) {
+        window.handleAvatarUpload = async function(event) {
             const file = event.target.files && event.target.files[0];
+            event.target.value = '';
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try { localStorage.setItem('sbn-avatar-pic', e.target.result); } catch (err) { console.error('Could not save avatar:', err); }
-                window.applyAvatarPic(e.target.result);
-            };
-            reader.readAsDataURL(file);
+            let url;
+            try {
+                url = await window.uploadImageToRepo(file, 'home');
+            } catch (err) {
+                console.error('Avatar upload failed:', err);
+                alert('Avatar upload failed: ' + err.message);
+                return;
+            }
+            try { localStorage.setItem('sbn-avatar-pic', url); } catch (err) { console.error('Could not save avatar:', err); }
+            window.applyAvatarPic(url);
         };
 
         window.applyAvatarPic = function(dataUrl) {
@@ -4964,6 +4975,28 @@
             });
         }
 
+        // Uploads an image file into assets/<folder>/ in the dashboard repo,
+        // returning its permanent URL — used in place of saving a giant
+        // base64 blob directly into localStorage, which has a small hard
+        // quota and silently fails once full.
+        window.uploadImageToRepo = async function(file, folder) {
+            if (!window.RADIO_SYNC_URL) {
+                throw new Error('Image sync isn\'t configured yet (RADIO_SYNC_URL is empty in shared.js)');
+            }
+            const contentBase64 = await readFileAsBase64(file);
+            const resp = await fetch(window.RADIO_SYNC_URL + '/upload-image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-sync-secret': window.RADIO_SYNC_SECRET,
+                },
+                body: JSON.stringify({ folder, filename: file.name, contentBase64 }),
+            });
+            const result = await resp.json();
+            if (!resp.ok || !result.ok) throw new Error(result.error || ('HTTP ' + resp.status));
+            return result.url;
+        };
+
         window.handleStationTrackUpload = function(event) {
             const files = Array.from(event.target.files || []);
             event.target.value = '';
@@ -5085,18 +5118,24 @@
             setTimeout(() => { btn.innerText = original; }, 1500);
         };
 
-        window.handleStationCoverUpload = function(event) {
+        window.handleStationCoverUpload = async function(event) {
             const file = event.target.files && event.target.files[0];
+            event.target.value = '';
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const box = document.getElementById('station-cover');
-                if (!box) return;
-                box.style.backgroundImage = `url(${e.target.result})`;
+            let url;
+            try {
+                url = await window.uploadImageToRepo(file, window.currentStationKey); // 'wkor' or 'cdfm'
+            } catch (err) {
+                console.error('Station cover upload failed:', err);
+                alert('Station cover upload failed: ' + err.message);
+                return;
+            }
+            const box = document.getElementById('station-cover');
+            if (box) {
+                box.style.backgroundImage = `url(${url})`;
                 box.classList.add('has-photo');
-                try { localStorage.setItem('sbn-station-cover-' + window.currentStationKey, e.target.result); } catch (err) { console.error('Could not save station cover:', err); }
-            };
-            reader.readAsDataURL(file);
+            }
+            try { localStorage.setItem('sbn-station-cover-' + window.currentStationKey, url); } catch (err) { console.error('Could not save station cover:', err); }
         };
 
         window.updateStationCharCount = function(bio) {
