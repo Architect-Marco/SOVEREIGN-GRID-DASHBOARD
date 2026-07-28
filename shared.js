@@ -2099,6 +2099,7 @@
         window.dawHeaderFxExpanded = {};
         window.dawFxParams = {}; // { trackId: { pluginName: { paramLabel: numericValue } } }
         window.dpdContext = null;
+        window.dawSelectedTrackId = 'master'; // drives which track's chain the Device Rack shows
 
         // Meter loop: LEDs only move while a track is actually playing (mirrors a
         // real console — silent tracks show nothing regardless of fader position).
@@ -2323,8 +2324,9 @@
 
             const masterFxList = window.dawMasterFx || [];
             const masterExpanded = !!window.dawMixerFxExpanded['master'];
+            const masterSelected = window.dawSelectedTrackId === 'master';
             const masterHtml = `
-                <div class="daw-mixer-strip master">
+                <div class="daw-mixer-strip master" style="${masterSelected ? 'box-shadow: inset 0 0 0 1.5px rgba(47,208,255,0.7); background: rgba(47,208,255,0.04);' : ''}" onclick="window.selectDawTrack('master')" ondragover="window.dawAllowDrop(event)" ondrop="window.dawDropOnStrip(event,'master')">
                     <div class="flex items-center gap-1.5">${insertDotsHtml(masterFxList.length)}</div>
 
                     <div class="daw-mixer-io-row">
@@ -2368,8 +2370,9 @@
             const stripsHtml = window.dawTracks.map((t, i) => {
                 const fxList = t.fx || [];
                 const isExpanded = !!window.dawMixerFxExpanded[t.id];
+                const isSelected = window.dawSelectedTrackId === t.id;
                 return `
-                <div class="daw-mixer-strip" style="width:112px;">
+                <div class="daw-mixer-strip" style="width:112px;${isSelected ? ' box-shadow: inset 0 0 0 1.5px rgba(47,208,255,0.7); background: rgba(47,208,255,0.04);' : ''}" onclick="window.selectDawTrack('${t.id}')" ondragover="window.dawAllowDrop(event)" ondrop="window.dawDropOnStrip(event,'${t.id}')">
                     <div class="flex items-center gap-1.5">${insertDotsHtml(fxList.length)}</div>
 
                     <div class="daw-mixer-io-row">
@@ -2418,6 +2421,94 @@
             window.dawUpdateLed('daw-led-master', 0);
             window.dawTracks.forEach(t => window.dawUpdateLed('daw-led-' + t.id, 0));
             window.dawStartMeterLoop();
+            window.renderDawDeviceRack();
+            if (!window.dawPluginBrowserRendered) { window.renderDawPluginBrowser(); window.dawPluginBrowserRendered = true; }
+        };
+
+        // ============================================================
+        // DEVICE RACK + PLUGIN BROWSER — Ableton-style drag-and-drop
+        // ============================================================
+        window.selectDawTrack = function(trackId) {
+            if (window.dawSelectedTrackId === trackId) return;
+            window.dawSelectedTrackId = trackId;
+            window.renderDawMixer();
+        };
+
+        window.renderDawPluginBrowser = function() {
+            const list = document.getElementById('daw-plugin-browser-list');
+            if (!list) return;
+            list.innerHTML = window.SOVEREIGN_12_PLUGINS.map(p => `
+                <div draggable="true" ondragstart="window.dawDragStartPlugin(event,'${p.id}')"
+                     class="bg-white/5 hover:bg-[#2fd0ff]/15 border border-white/10 hover:border-[rgba(47,208,255,0.4)] rounded-lg px-2.5 py-2 cursor-grab active:cursor-grabbing transition-colors select-none">
+                    <div class="neon-blue-text text-[10px] font-black italic truncate">${p.name}</div>
+                    <div class="text-[7.5px] text-gray-500 uppercase tracking-widest truncate mt-0.5">${p.tagline}</div>
+                    <div class="text-[7px] neon-blue-text uppercase font-black tracking-widest mt-1 opacity-70">${p.category}</div>
+                </div>`).join('');
+        };
+
+        window.dawDragStartPlugin = function(e, pluginId) {
+            e.dataTransfer.setData('text/plain', pluginId);
+            e.dataTransfer.effectAllowed = 'copy';
+        };
+
+        window.dawAllowDrop = function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; };
+
+        window.dawAddPluginToTrack = function(trackId, pluginId) {
+            const fxList = dawFxListFor(trackId);
+            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.id === pluginId);
+            if (!fxList || !plugin) return;
+            if (fxList.includes(plugin.name)) return; // already on this chain
+            if (fxList.length >= 12) return;
+            fxList.push(plugin.name);
+            dawRerenderFxOwner(trackId);
+        };
+
+        window.dawDropOnRack = function(e) {
+            e.preventDefault();
+            const pluginId = e.dataTransfer.getData('text/plain');
+            if (!pluginId) return;
+            window.dawAddPluginToTrack(window.dawSelectedTrackId, pluginId);
+        };
+
+        window.dawDropOnStrip = function(e, trackId) {
+            e.preventDefault();
+            e.stopPropagation();
+            const pluginId = e.dataTransfer.getData('text/plain');
+            if (!pluginId) return;
+            window.dawSelectedTrackId = trackId;
+            window.dawAddPluginToTrack(trackId, pluginId);
+        };
+
+        window.dawRemovePluginFromRack = function(trackId, pluginName) {
+            const fxList = dawFxListFor(trackId);
+            if (!fxList) return;
+            const idx = fxList.indexOf(pluginName);
+            if (idx >= 0) fxList.splice(idx, 1);
+            dawRerenderFxOwner(trackId);
+        };
+
+        window.renderDawDeviceRack = function() {
+            const rack = document.getElementById('daw-device-rack');
+            const nameEl = document.getElementById('daw-rack-track-name');
+            if (!rack) return;
+            const trackId = window.dawSelectedTrackId;
+            const track = trackId === 'master' ? null : window.dawTracks.find(t => t.id === trackId);
+            if (nameEl) nameEl.innerText = trackId === 'master' ? 'Master' : (track ? track.name : 'Master');
+            const fxList = dawFxListFor(trackId) || [];
+            if (!fxList.length) {
+                rack.innerHTML = `<div class="flex items-center text-[10px] font-bold text-gray-600 italic px-2">No plugins on this track — drag one in from the Plugin Browser</div>`;
+                return;
+            }
+            rack.innerHTML = fxList.map(name => `
+                <div class="flex-shrink-0 w-32 bg-black/40 border border-[rgba(47,208,255,0.25)] rounded-xl p-2.5 relative group">
+                    <button onclick="window.dawRemovePluginFromRack('${trackId}','${name.replace(/'/g, "\\'")}')" title="Remove" class="absolute top-1.5 right-1.5 text-gray-600 hover:text-[#ef4444] transition-colors opacity-0 group-hover:opacity-100">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                    <div onclick="window.openDawPluginDetail('${trackId}','${name.replace(/'/g, "\\'")}')" class="cursor-pointer">
+                        <div class="neon-blue-text text-[10px] font-black italic truncate pr-3">${name}</div>
+                        <div class="text-[7px] text-gray-600 uppercase font-black tracking-widest mt-3">Tap to edit</div>
+                    </div>
+                </div>`).join('');
         };
 
         window.toggleDawHeaderFxBox = function(trackId) {
