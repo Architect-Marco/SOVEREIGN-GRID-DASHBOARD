@@ -258,10 +258,14 @@
         };
 
         window.initSplitterWaves = function() {
-            if (window.waves.vocals) return;
+            if (window.waves.vocals) { console.log('[splitter-debug] initSplitterWaves skipped — already initialized'); return; }
             const config = (id, color) => ({
                 container: `#wave-${id}`, waveColor: 'rgba(47,208,255,0.28)', progressColor: color,
                 cursorWidth: 0, barWidth: 1, barGap: 1, barRadius: 0, responsive: true, height: 36, normalize: true
+            });
+            ['instrumental', 'vocals', 'bass', 'others'].forEach(id => {
+                const el = document.querySelector(`#wave-${id}`);
+                console.log(`[splitter-debug] container #wave-${id}`, el ? `found, size ${el.clientWidth}x${el.clientHeight}` : 'NOT FOUND IN DOM');
             });
             window.waves.instrumental = WaveSurfer.create(config('instrumental', '#2fd0ff'));
             window.waves.vocals = WaveSurfer.create(config('vocals', '#2fd0ff'));
@@ -269,6 +273,14 @@
             window.waves.others = WaveSurfer.create(config('others', '#2fd0ff'));
             window.waves['master-before'] = WaveSurfer.create({ container: '#wave-master-before', waveColor: 'rgba(47,208,255,0.22)', progressColor: '#7fe3ff', cursorColor: '#2fd0ff', barWidth: 1, barGap: 1, barRadius: 0, responsive: true, height: 56, normalize: true });
             window.waves['master-after'] = WaveSurfer.create({ container: '#wave-master-after', waveColor: 'rgba(47,208,255,0.22)', progressColor: '#2fd0ff', cursorColor: '#2fd0ff', barWidth: 1, barGap: 1, barRadius: 0, responsive: true, height: 56, normalize: true });
+
+            ['instrumental', 'vocals', 'bass', 'others', 'master-before', 'master-after'].forEach(id => {
+                const w = window.waves[id];
+                if (!w) return;
+                w.on('error', (err) => console.error(`[splitter-debug] wave "${id}" error:`, err));
+                w.on('ready', () => console.log(`[splitter-debug] wave "${id}" ready, duration:`, w.getDuration()));
+                w.on('load', () => console.log(`[splitter-debug] wave "${id}" load event fired`));
+            });
 
             // Live functional metering — wired to real Web Audio analysis (see initMasteringMeters below)
             try { window.initMasteringMeters(); } catch (err) { console.warn('Mastering meters skipped:', err); }
