@@ -440,9 +440,8 @@
             }
             window.masteringLiveState = { rafId: null, analyser: null, key: null };
 
-            // Go idle: Output Level drops to 0 / -inf; the loudness bar falls back
-            // to the static whole-file True Peak reading instead of freezing on
-            // the last live blip from when playback stopped.
+            // Go idle on stop: Output Level and the True Peak LED both drop to 0 / blank
+            // instead of staying lit at wherever the last live reading left off.
             const outputNeedle = document.getElementById('output-level-needle');
             const outputCurrent = document.getElementById('output-current-db');
             const shortTermVal = document.getElementById('meter-shortterm');
@@ -452,10 +451,7 @@
             if (outputCurrent) outputCurrent.innerText = '-inf dB';
             if (shortTermVal) shortTermVal.innerText = '-inf';
             if (shortTermText) shortTermText.innerText = 'Short-term: -inf LUFS';
-            if (loudnessNeedle) {
-                const restoreDb = window.mfxStaticLoudness ? window.mfxStaticLoudness.truePeakDb : -Infinity;
-                loudnessNeedle.style.width = clampPct(dbToPct(restoreDb, -60)) + '%';
-            }
+            if (loudnessNeedle) loudnessNeedle.style.width = '0%';
         };
 
         window.updateSplitterPlayIcon = function() {
@@ -664,6 +660,11 @@
                 const btn = document.getElementById('split-btn');
                 if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); btn.innerText = "START SPLIT ✨"; }
                 if (nameEl) { nameEl.innerText = file.name; nameEl.classList.add('neon-blue-text'); }
+                // Guarantee the wave objects exist before we try to load into them — without
+                // this, uploading before the page's 300ms auto-init timer fires silently skips
+                // .load() below (window.waves[id] is undefined) and the waveform never paints,
+                // even though the filename/duration bar looks fine. Safe no-op if already inited.
+                window.initSplitterWaves();
                 // Paint the waveform immediately so there's visual confirmation the upload worked.
                 // Double rAF ensures the container has finished laying out before WaveSurfer
                 // measures it — loading immediately on the same tick as a DOM update is a classic
