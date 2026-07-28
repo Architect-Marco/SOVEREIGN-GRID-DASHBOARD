@@ -4201,7 +4201,7 @@
             ['sidebar-avatar', 'home-avatar'].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
-                el.style.backgroundImage = `url(${dataUrl})`;
+                el.style.backgroundImage = `url('${dataUrl}')`;
                 el.classList.add('has-photo');
             });
         };
@@ -5132,7 +5132,7 @@
             }
             const box = document.getElementById('station-cover');
             if (box) {
-                box.style.backgroundImage = `url(${url})`;
+                box.style.backgroundImage = `url('${url}')`;
                 box.classList.add('has-photo');
             }
             try { localStorage.setItem('sbn-station-cover-' + window.currentStationKey, url); } catch (err) { console.error('Could not save station cover:', err); }
@@ -5182,7 +5182,7 @@
                 const box = document.getElementById('station-cover');
                 const cover = localStorage.getItem('sbn-station-cover-' + key);
                 if (box) {
-                    if (cover) { box.style.backgroundImage = `url(${cover})`; box.classList.add('has-photo'); }
+                    if (cover) { box.style.backgroundImage = `url('${cover}')`; box.classList.add('has-photo'); }
                     else { box.style.backgroundImage = ''; box.classList.remove('has-photo'); }
                 }
 
