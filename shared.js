@@ -4674,6 +4674,101 @@
             window.renderPressKits();
         };
 
+        // 6.65 TOKEN COUNTER / PULSE BEACON (Home > V6 Engine Intel) — simulated live stats
+        window.pulseBeaconState = {
+            tokenCount: 24576, totalSupply: 40000, pulseRate: 128.7, syncRate: 98.6,
+            efficiency: 92.7, nextPulseSec: 6.24, lastUpdateSec: 7, usageHistory: [],
+        };
+
+        function pbMulberry32(seed) {
+            let a = seed >>> 0;
+            return function () {
+                a |= 0; a = (a + 0x6D2B79F5) | 0;
+                let t = Math.imul(a ^ a >>> 15, 1 | a);
+                t = (t + Math.imul(t ^ t >>> 7, 61 | t)) ^ t;
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            };
+        }
+
+        window.renderPulseBeacon = function () {
+            const s = window.pulseBeaconState;
+            const el = id => document.getElementById(id);
+            if (!el('pb-token-count')) return; // Intel tab not in the DOM (shouldn't happen, but stay safe)
+
+            const usagePct = (s.tokenCount / s.totalSupply) * 100;
+            const remainingPct = 100 - usagePct;
+
+            el('pb-token-count').textContent = Math.round(s.tokenCount).toLocaleString();
+            el('pb-pulse-rate').innerHTML = s.pulseRate.toFixed(1) + '<span class="text-[9px] text-gray-500">/s</span>';
+            el('pb-sync-rate').textContent = s.syncRate.toFixed(1) + '%';
+            el('pb-usage-pct').textContent = usagePct.toFixed(1) + '%';
+            el('pb-remaining-pct').textContent = remainingPct.toFixed(1) + '%';
+            el('pb-tokens-used').textContent = Math.round(s.tokenCount).toLocaleString();
+            el('pb-tokens-remaining').textContent = Math.round(s.totalSupply - s.tokenCount).toLocaleString();
+            el('pb-efficiency').textContent = s.efficiency.toFixed(1) + '%';
+            el('pb-last-update').textContent = '00:00:' + String(Math.floor(s.lastUpdateSec)).padStart(2, '0') + ' ago';
+
+            const mins = Math.floor(s.nextPulseSec / 60);
+            const secs = (s.nextPulseSec % 60).toFixed(2).padStart(5, '0');
+            el('pb-next-pulse').textContent = String(mins).padStart(2, '0') + ':' + secs;
+
+            // Gauge ring — circumference 2*pi*88 ≈ 552.9
+            const ring = el('pb-gauge-ring');
+            if (ring) ring.style.strokeDashoffset = 552.9 * (1 - usagePct / 100);
+
+            // Usage sparkline
+            const chart = el('pb-usage-chart');
+            if (chart && s.usageHistory.length > 1) {
+                const w = 200, h = 60, max = 100;
+                const step = w / (s.usageHistory.length - 1);
+                const points = s.usageHistory.map((v, i) => `${(i * step).toFixed(1)},${(h - (v / max) * h).toFixed(1)}`).join(' ');
+                chart.innerHTML = `
+                    <polyline points="${points}" fill="none" stroke="#2fd0ff" stroke-width="1.5" stroke-linejoin="round"/>
+                    <polygon points="0,${h} ${points} ${w},${h}" fill="rgba(47,208,255,0.12)"/>
+                `;
+            }
+        };
+
+        window.appendPulseBeaconLog = function (entry) {
+            const log = document.getElementById('pb-log');
+            if (!log) return;
+            const time = new Date().toISOString().slice(11, 19);
+            const row = document.createElement('div');
+            row.textContent = `> ${entry} ${time}`;
+            log.insertBefore(row, log.firstChild);
+            while (log.children.length > 5) log.removeChild(log.lastChild);
+        };
+
+        window.initPulseBeacon = function () {
+            const s = window.pulseBeaconState;
+            const rand = pbMulberry32(Date.now() % 100000);
+            for (let i = 0; i < 20; i++) s.usageHistory.push(45 + rand() * 25);
+            ['Pulse Sync', 'Token Refresh', 'Cache Optimized', 'Beacon Stable'].forEach(window.appendPulseBeaconLog);
+            window.renderPulseBeacon();
+
+            setInterval(() => {
+                s.pulseRate = Math.max(90, Math.min(160, s.pulseRate + (Math.random() - 0.5) * 6));
+                s.syncRate = Math.max(94, Math.min(99.9, s.syncRate + (Math.random() - 0.5) * 0.6));
+                s.efficiency = Math.max(85, Math.min(99, s.efficiency + (Math.random() - 0.5) * 1));
+                s.tokenCount = Math.max(0, Math.min(s.totalSupply, s.tokenCount + Math.round((Math.random() - 0.35) * 40)));
+                s.lastUpdateSec = 0;
+                s.usageHistory.push((s.tokenCount / s.totalSupply) * 100);
+                if (s.usageHistory.length > 20) s.usageHistory.shift();
+                window.renderPulseBeacon();
+            }, 2500);
+
+            setInterval(() => {
+                const s2 = window.pulseBeaconState;
+                s2.nextPulseSec -= 1;
+                s2.lastUpdateSec += 1;
+                if (s2.nextPulseSec <= 0) {
+                    s2.nextPulseSec = 6 + Math.random() * 4;
+                    window.appendPulseBeaconLog(['Pulse Sync', 'Token Refresh', 'Cache Optimized', 'Beacon Stable'][Math.floor(Math.random() * 4)]);
+                }
+                window.renderPulseBeacon();
+            }, 1000);
+        };
+
         // 6.7 RADIO STATION
 
         // --- RADIO SYNC (pushes the On Air queue to WKOR/CDFM's public sites) ---
@@ -4911,7 +5006,11 @@
 
         window.openLibraryPicker = function() {
             const list = document.getElementById('library-picker-list');
-            list.innerHTML = window.libraryTracks.map((t, i) => `
+            const stationLabel = window.currentStationKey === 'cdfm' ? 'CDFM' : 'WKOR';
+            const filtered = window.libraryTracks
+                .map((t, i) => ({ t, i }))
+                .filter(({ t }) => (t.station || '').toUpperCase() === stationLabel);
+            list.innerHTML = filtered.map(({ t, i }) => `
                 <div onclick="window.addStationTrackFromLibrary(${i})" class="flex items-center justify-between gap-6 px-3 py-2.5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors">
                     <div class="min-w-max">
                         <div class="neon-blue-text text-xs font-bold whitespace-nowrap">${t.title}</div>
@@ -4919,7 +5018,7 @@
                     </div>
                     <span class="text-teal-400 text-[9px] font-black uppercase flex-shrink-0">+ Add</span>
                 </div>
-            `).join('');
+            `).join('') || `<div class="text-gray-500 text-xs text-center py-6">No ${stationLabel} tracks in the library yet.</div>`;
             document.getElementById('library-picker-modal').classList.remove('hidden');
         };
 
@@ -5720,6 +5819,7 @@
                 });
             } catch (err) { console.error('Station data migration failed:', err); }
             safeInit(window.loadStation, 'loadStation');
+            safeInit(window.initPulseBeacon, 'initPulseBeacon');
             safeInit(window.loadPressKits, 'loadPressKits');
             safeInit(window.loadArchiveFolders, 'loadArchiveFolders');
             safeInit(() => { if (typeof window.renderSyndicateRoster === 'function') window.renderSyndicateRoster(); }, 'renderSyndicateRoster');
