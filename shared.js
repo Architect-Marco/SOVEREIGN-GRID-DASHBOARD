@@ -4744,7 +4744,7 @@
 
         // Pixels-per-second for the timeline; changed by the zoom buttons.
         window.stationZoomPxPerSec = window.stationZoomPxPerSec || 14;
-        const STATION_ZOOM_MIN = 1.5, STATION_ZOOM_MAX = 160;
+        const STATION_ZOOM_MIN = 0.4, STATION_ZOOM_MAX = 400;
 
         window.zoomStationTimeline = function(direction) {
             window.stationZoomPxPerSec = Math.max(STATION_ZOOM_MIN, Math.min(STATION_ZOOM_MAX, window.stationZoomPxPerSec * (direction > 0 ? 1.3 : 1/1.3)));
