@@ -3721,14 +3721,24 @@
                 // was just re-rendered, e.g. from adding another track) and any existing instance for
                 // this key is now orphaned, pointing at a node that no longer exists in the document.
                 if (window.waves[key] && container.childElementCount > 0) return;
-                if (window.waves[key]) { try { window.waves[key].destroy(); } catch (e) {} }
+                let resumeAt = null;
+                if (window.waves[key]) {
+                    const old = window.waves[key];
+                    try {
+                        if (old.isPlaying()) resumeAt = old.getCurrentTime();
+                        old.destroy();
+                    } catch (e) {}
+                }
                 window.waves[key] = WaveSurfer.create({
                     container: `#wave-${key}`, waveColor: t.color, progressColor: t.color,
                     cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 50, normalize: true, interact: false
                 });
                 window.waves[key].setVolume((t.volume ?? 80) / 100);
                 window.waves[key].on('audioprocess', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
-                window.waves[key].on('ready', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
+                window.waves[key].on('ready', () => {
+                    window.updateDawTimer(key); window.updateDawPlayhead();
+                    if (resumeAt !== null) { window.waves[key].play(); window.waves[key].seekTo(resumeAt / window.waves[key].getDuration()); }
+                });
                 window.waves[key].on('seek', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
                 window.waves[key].on('finish', () => {
                     if (window.dawLoopOn) { window.dawSeekToStart(); window.playAllDaw(); window.playAllDaw(); }
