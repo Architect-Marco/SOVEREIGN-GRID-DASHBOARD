@@ -3707,7 +3707,7 @@
                 const container = document.querySelector(`#wave-${key}`);
                 if (!container) return;
                 window.waves[key] = WaveSurfer.create({
-                    container: `#wave-${key}`, waveColor: '#1a1a1a', progressColor: t.color,
+                    container: `#wave-${key}`, waveColor: t.color, progressColor: t.color,
                     cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 50, normalize: true, interact: false
                 });
                 window.waves[key].setVolume((t.volume ?? 80) / 100);
