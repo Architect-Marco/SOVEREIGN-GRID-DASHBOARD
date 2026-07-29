@@ -3625,22 +3625,22 @@
                 const parsed = paramMeta[label];
                 if (!parsed) {
                     return `
-                    <div class="flex flex-col items-center gap-2 opacity-60 flex-shrink-0">
-                        <div class="w-14 h-14 rounded-full border border-white/10 flex items-center justify-center text-gray-600 text-[7px] font-black uppercase text-center px-1">Fixed</div>
-                        <div class="text-[8px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
-                        <div class="text-[10px] text-gray-400 font-bold">${defaultStr}</div>
+                    <div class="flex flex-col items-center gap-1.5 opacity-60 flex-shrink-0">
+                        <div class="w-11 h-11 rounded-full border border-white/10 flex items-center justify-center text-gray-600 text-[6.5px] font-black uppercase text-center px-1">Fixed</div>
+                        <div class="text-[7.5px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
+                        <div class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:2px 6px; color:#9ca3af;">${defaultStr}</div>
                     </div>`;
                 }
                 const currentVal = state[label];
                 const pct = (currentVal - parsed.min) / (parsed.max - parsed.min);
                 const deg = -135 + pct * 270;
                 return `
-                <div class="flex flex-col items-center gap-2 flex-shrink-0">
-                    <div class="dpd-knob relative w-14 h-14 rounded-full bg-black border-2 border-[rgba(47,208,255,0.35)] cursor-ns-resize select-none" onmousedown="window.dpdKnobDrag(event,'${label}')" ontouchstart="window.dpdKnobDrag(event,'${label}')">
-                        <div id="dpd-knob-indicator-${label}" class="absolute top-1 left-1/2 w-0.5 h-5 bg-[#2fd0ff] origin-bottom" style="transform:translateX(-50%) rotate(${deg}deg);"></div>
+                <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
+                    <div class="dpd-knob relative w-11 h-11 rounded-full bg-black border-2 border-[rgba(47,208,255,0.35)] cursor-ns-resize select-none" onmousedown="window.dpdKnobDrag(event,'${label}')" ontouchstart="window.dpdKnobDrag(event,'${label}')">
+                        <div id="dpd-knob-indicator-${label}" class="absolute top-1 left-1/2 w-0.5 h-4 bg-[#2fd0ff] origin-bottom" style="transform:translateX(-50%) rotate(${deg}deg);"></div>
                     </div>
-                    <div class="text-[8px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
-                    <div id="dpd-val-${label}" class="text-[10px] neon-blue-text font-bold">${parsed.format(currentVal)}</div>
+                    <div class="text-[7.5px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
+                    <div id="dpd-val-${label}" class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:2px 6px;">${parsed.format(currentVal)}</div>
                 </div>`;
             }).join('');
 
