@@ -2160,13 +2160,7 @@
             tick();
         };
 
-        // ===== Dual-column LED level meters (green/yellow/red, like a real console) =====
-        const DAW_LED_SEGMENTS = 34;
-        function dawLedColHtml() {
-            let html = '';
-            for (let i = 0; i < DAW_LED_SEGMENTS; i++) html += `<span class="daw-led-seg"></span>`;
-            return html;
-        }
+        // ===== Single-column continuous LED bar meter (like a real console VU strip) =====
         const DAW_FADER_SCALE_MARKS = [0, 6, 12, 18, 24, 30, 36, 48, 60];
         function dawFaderScaleHtml() {
             return DAW_FADER_SCALE_MARKS.map(v => `<span>${v}</span>`).join('');
@@ -2174,20 +2168,9 @@
         window.dawUpdateLed = function(ledId, value) {
             const meter = document.getElementById(ledId);
             if (!meter) return;
-            const cols = meter.querySelectorAll('.daw-led-col');
-            cols.forEach(col => {
-                const segs = col.querySelectorAll('.daw-led-seg');
-                const total = segs.length;
-                const litCount = Math.round((value / 100) * total);
-                segs.forEach((seg, idx) => {
-                    seg.classList.remove('lit-green', 'lit-yellow', 'lit-red');
-                    if (idx < litCount) {
-                        if (idx < total - 4) seg.classList.add('lit-green');
-                        else if (idx < total - 1) seg.classList.add('lit-yellow');
-                        else seg.classList.add('lit-red');
-                    }
-                });
-            });
+            const mask = meter.querySelector('.daw-led-mask');
+            if (!mask) return;
+            mask.style.height = (100 - Math.max(0, Math.min(100, value))) + '%';
         };
 
         function dawParseParamValue(str) {
@@ -2371,7 +2354,7 @@
                     <div class="flex items-end gap-1">
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                         <div class="daw-fader-track"><input type="range" id="daw-fader-master" min="0" max="100" value="80" class="daw-fader-input"></div>
-                        <div class="daw-led-meter-dual" id="daw-led-master"><div class="daw-led-col">${dawLedColHtml()}</div><div class="daw-led-col">${dawLedColHtml()}</div></div>
+                        <div class="daw-led-meter-single" id="daw-led-master"><div class="daw-led-mask" style="height:100%;"></div></div>
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
 
@@ -2386,7 +2369,7 @@
                 const isExpanded = !!window.dawMixerFxExpanded[t.id];
                 const isSelected = window.dawSelectedTrackId === t.id;
                 return `
-                <div class="daw-mixer-strip" style="width:112px;${isSelected ? ' box-shadow: inset 0 0 0 1.5px rgba(47,208,255,0.7); background: rgba(47,208,255,0.04);' : ''}" onclick="window.selectDawTrack('${t.id}')" ondragover="window.dawAllowDrop(event)" ondrop="window.dawDropOnStrip(event,'${t.id}')">
+                <div class="daw-mixer-strip" style="width:84px;${isSelected ? ' box-shadow: inset 0 0 0 1.5px rgba(47,208,255,0.7); background: rgba(47,208,255,0.04);' : ''}" onclick="window.selectDawTrack('${t.id}')" ondragover="window.dawAllowDrop(event)" ondrop="window.dawDropOnStrip(event,'${t.id}')">
                     <div class="flex items-center gap-1.5">${insertDotsHtml(fxList.length)}</div>
 
                     <div class="daw-mixer-io-row">
@@ -2425,7 +2408,7 @@
                         <div class="daw-fader-track">
                             <input type="range" min="0" max="100" value="${t.volume}" class="daw-fader-input" oninput="setDawVolume('${t.id}', this.value)">
                         </div>
-                        <div class="daw-led-meter-dual" id="daw-led-${t.id}"><div class="daw-led-col">${dawLedColHtml()}</div><div class="daw-led-col">${dawLedColHtml()}</div></div>
+                        <div class="daw-led-meter-single" id="daw-led-${t.id}"><div class="daw-led-mask" style="height:100%;"></div></div>
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
 
