@@ -2210,7 +2210,7 @@
                 if (!dragging && Math.abs(delta) > 5) dragging = true;
                 if (dragging) {
                     ev.preventDefault();
-                    const newOffset = startOffset + delta;
+                    const newOffset = Math.max(0, startOffset + delta); // never drag left of the track's own start
                     window.dawClipOffsets[trackId] = newOffset;
                     wrap.style.transform = `translateX(${newOffset}px)`;
                 }
@@ -2273,9 +2273,9 @@
             }).join('');
 
             lanes.innerHTML = window.dawTracks.map((t, i) => `
-                <div class="relative border-b border-white/5 flex items-center overflow-hidden" style="height:${dawRowHeight(t)}px; overflow:hidden;">
-                    <div id="clip-wrap-${t.id}" class="relative w-full h-full" style="transform:translateX(${window.dawClipOffsets[t.id] || 0}px); overflow:hidden;">
-                        <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full" style="cursor:grab; overflow:hidden;"></div>
+                <div class="relative border-b border-white/5 flex items-center overflow-hidden" style="height:${dawRowHeight(t)}px; overflow:hidden; z-index:1;">
+                    <div id="clip-wrap-${t.id}" class="relative w-full h-full" style="transform:translateX(${window.dawClipOffsets[t.id] || 0}px); overflow:hidden; z-index:1;">
+                        <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full" style="cursor:grab; overflow:hidden; z-index:1;"></div>
                     </div>
                 </div>`).join('');
 
