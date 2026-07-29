@@ -3636,8 +3636,8 @@
                 const deg = -135 + pct * 270;
                 return `
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
-                    <div class="dpd-knob relative w-11 h-11 rounded-full bg-black border-2 border-[rgba(47,208,255,0.35)] cursor-ns-resize select-none" onmousedown="window.dpdKnobDrag(event,'${label}')" ontouchstart="window.dpdKnobDrag(event,'${label}')">
-                        <div id="dpd-knob-indicator-${label}" class="absolute top-1 left-1/2 w-0.5 h-4 bg-[#2fd0ff] origin-bottom" style="transform:translateX(-50%) rotate(${deg}deg);"></div>
+                    <div class="dpd-knob relative w-11 h-11 rounded-full bg-black cursor-ns-resize select-none" style="border:2px solid rgba(0,242,255,0.4);" onmousedown="window.dpdKnobDrag(event,'${label}')" ontouchstart="window.dpdKnobDrag(event,'${label}')">
+                        <div id="dpd-knob-indicator-${label}" class="absolute top-1 left-1/2 w-0.5 h-4 origin-bottom" style="background:#00f2ff; transform:translateX(-50%) rotate(${deg}deg);"></div>
                     </div>
                     <div class="text-[7.5px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
                     <div id="dpd-val-${label}" class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:2px 6px;">${parsed.format(currentVal)}</div>
@@ -3670,14 +3670,22 @@
             const startY = e.touches ? e.touches[0].clientY : e.clientY;
             const startVal = window.dawFxParams[ctx.trackId][ctx.pluginName][label];
             const range = parsed.max - parsed.min;
+            let pendingVal = null;
+            let rafScheduled = false;
+            const applyFrame = () => {
+                rafScheduled = false;
+                if (pendingVal === null) return;
+                window.dawFxParams[ctx.trackId][ctx.pluginName][label] = pendingVal;
+                window.dpdUpdateKnobVisual(label, pendingVal, parsed);
+            };
             const move = (ev) => {
                 const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
                 const deltaY = startY - clientY;
                 const sensitivity = range / 150;
                 let newVal = startVal + deltaY * sensitivity;
                 newVal = Math.max(parsed.min, Math.min(parsed.max, newVal));
-                window.dawFxParams[ctx.trackId][ctx.pluginName][label] = newVal;
-                window.dpdUpdateKnobVisual(label, newVal, parsed);
+                pendingVal = newVal;
+                if (!rafScheduled) { rafScheduled = true; requestAnimationFrame(applyFrame); }
             };
             const up = () => {
                 document.removeEventListener('mousemove', move);
