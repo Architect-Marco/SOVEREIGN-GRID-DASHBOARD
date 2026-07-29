@@ -2348,12 +2348,12 @@
 
                     <div class="daw-mixer-value-row">
                         <span class="daw-mixer-value-field" id="daw-mixer-peak-master">-Inf</span>
-                        <span class="daw-mixer-value-field">0.0dB</span>
+                        <span class="daw-mixer-value-field" id="daw-mixer-db-master">0.0dB</span>
                     </div>
 
                     <div class="flex items-end gap-1">
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
-                        <div class="daw-fader-track"><input type="range" id="daw-fader-master" min="0" max="100" value="80" class="daw-fader-input"></div>
+                        <div class="daw-fader-track"><input type="range" id="daw-fader-master" min="0" max="100" value="${window.dawMasterVolume ?? 80}" class="daw-fader-input" oninput="setDawMasterVolume(this.value)"></div>
                         <div class="daw-led-meter-single" id="daw-led-master"><div class="daw-led-mask" style="height:100%;"></div></div>
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
@@ -3824,6 +3824,17 @@
             if (w) w.setVolume(value / 100);
             const db = document.getElementById('daw-mixer-db-' + trackId);
             if (db) db.innerText = value == 0 ? '-inf' : (Math.round((20 * Math.log10(value / 100)) * 10) / 10) + 'dB';
+        };
+
+        window.setDawMasterVolume = function(value) {
+            window.dawMasterVolume = value; // persist so a re-render doesn't snap the fader back to a hardcoded default
+            const db = document.getElementById('daw-mixer-db-master');
+            if (db) db.innerText = value == 0 ? '-inf' : (Math.round((20 * Math.log10(value / 100)) * 10) / 10) + 'dB';
+            // Master has no single audio node of its own — apply the gain across every track relative to each track's own level
+            window.dawTracks.forEach(t => {
+                const w = window.waves['daw-' + t.id];
+                if (w) w.setVolume(((t.volume ?? 80) / 100) * (value / 100));
+            });
         };
 
         window.updateDawStatus = function() {
