@@ -170,6 +170,26 @@
                     <div class="flex overflow-x-auto" id="daw-mixer"></div>
                 </div>
 
+                <!-- DAW PLUGIN DETAIL — inline docked panel (not a modal) for a track's FX chain plugin, sits between the mixer and the Device Rack when open -->
+                <div id="daw-plugin-detail-modal" class="hidden bg-[#0a0a0a] noir-bezel rounded-2xl overflow-hidden">
+                    <div class="flex items-start justify-between px-4 pt-3 pb-2 border-b border-white/5">
+                        <div class="min-w-0">
+                            <h3 id="dpd-title" class="neon-blue-text text-sm font-black italic uppercase tracking-tight truncate">Plugin</h3>
+                            <p id="dpd-subtitle" class="text-gray-500 text-[8px] uppercase tracking-widest mt-0.5 truncate">Category</p>
+                        </div>
+                        <button onclick="window.closeDawPluginDetail()" class="text-gray-500 hover:text-white transition-colors flex-shrink-0 ml-3" title="Close">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+                        </button>
+                    </div>
+                    <div class="flex items-start gap-6 px-4 py-4">
+                        <div class="flex flex-col gap-2 flex-shrink-0" style="width:110px;">
+                            <button onclick="window.dpdResetDefaults()" class="py-2 rounded-lg bg-white/5 hover:bg-white/10 text-[9px] font-black uppercase text-gray-400 transition-colors">Reset</button>
+                            <button onclick="window.dpdRemoveFromChain()" class="py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-[9px] font-black uppercase text-red-400 transition-colors">Remove from Chain</button>
+                        </div>
+                        <div id="dpd-knobs" class="flex items-start gap-8 flex-1 overflow-x-auto"></div>
+                    </div>
+                </div>
+
                 <!-- DEVICE RACK — the FX chain of whichever track is currently selected, Ableton-style. Drop a plugin from the Browser here. -->
                 <div class="bg-[#0a0a0a] noir-bezel rounded-2xl overflow-hidden" ondragover="window.dawAllowDrop(event)" ondrop="window.dawDropOnRack(event)" id="daw-device-rack-panel">
                     <div class="px-4 pt-3 pb-2 flex items-center justify-between">
@@ -324,25 +344,6 @@
 
 
 
-    <!-- DAW PLUGIN DETAIL — draggable knobs for a track's FX chain plugin -->
-    <div id="daw-plugin-detail-modal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onclick="if(event.target===this) window.closeDawPluginDetail()">
-        <div class="w-full max-w-md bg-[#0a0a0a] border-[1.8px] border-white/10 rounded-3xl p-7 shadow-2xl">
-            <div class="flex items-center justify-between mb-1">
-                <div class="min-w-0">
-                    <h3 id="dpd-title" class="neon-blue-text text-lg font-black italic uppercase tracking-tight truncate">Plugin</h3>
-                    <p id="dpd-subtitle" class="text-gray-500 text-[9px] uppercase tracking-widest mt-1 truncate">Category</p>
-                </div>
-                <button onclick="window.closeDawPluginDetail()" class="text-gray-500 hover:text-white transition-colors flex-shrink-0 ml-3">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                </button>
-            </div>
-            <div id="dpd-knobs" class="grid grid-cols-2 gap-y-8 gap-x-4 mt-7"></div>
-            <div class="flex gap-3 mt-8">
-                <button onclick="window.dpdResetDefaults()" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase text-gray-400 transition-colors">Reset</button>
-                <button onclick="window.dpdRemoveFromChain()" class="flex-1 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-[10px] font-black uppercase text-red-400 transition-colors">Remove from Chain</button>
-            </div>
-        </div>
-    </div>
 
     <!-- DAW SETTINGS — preferences window -->
     <div id="daw-settings-modal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onclick="if(event.target===this) window.closeDawSettings()">
