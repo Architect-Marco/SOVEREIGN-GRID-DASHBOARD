@@ -3596,6 +3596,37 @@
         };
 
         // ============================================================
+        // DAW KNOB ARC HELPERS — 270° gapped-arc knob geometry (gap centered at bottom)
+        // ============================================================
+        function dawPolarPoint(cx, cy, r, angleDeg) {
+            const rad = (angleDeg * Math.PI) / 180;
+            return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
+        }
+        function dawArcPath(cx, cy, r, startDeg, endDeg) {
+            if (endDeg <= startDeg) endDeg = startDeg + 0.001;
+            const start = dawPolarPoint(cx, cy, r, startDeg);
+            const end = dawPolarPoint(cx, cy, r, endDeg);
+            const delta = endDeg - startDeg;
+            const largeArc = delta > 180 ? 1 : 0;
+            return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
+        }
+        function dawKnobSvg(label, pct) {
+            const cx = 22, cy = 22, r = 17;
+            const startDeg = -135, endDeg = 135;
+            const valDeg = startDeg + pct * (endDeg - startDeg);
+            const trackPath = dawArcPath(cx, cy, r, startDeg, endDeg);
+            const progressPath = dawArcPath(cx, cy, r, startDeg, valDeg);
+            const tip = dawPolarPoint(cx, cy, r, valDeg);
+            const tipInner = dawPolarPoint(cx, cy, r - 5, valDeg);
+            return `
+            <svg width="44" height="44" viewBox="0 0 44 44" style="overflow:visible;">
+                <path d="${trackPath}" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="3" stroke-linecap="round"/>
+                <path id="dpd-knob-arc-${label}" d="${progressPath}" fill="none" stroke="#2fd0ff" stroke-width="3" stroke-linecap="round" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.85));"/>
+                <line id="dpd-knob-tick-${label}" x1="${tipInner.x.toFixed(2)}" y1="${tipInner.y.toFixed(2)}" x2="${tip.x.toFixed(2)}" y2="${tip.y.toFixed(2)}" stroke="#e8fbff" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 3px rgba(232,251,255,0.9));"/>
+            </svg>`;
+        }
+
+        // ============================================================
         // DAW PLUGIN DETAIL — click a plugin in the FX chain to tweak it
         // ============================================================
         window.openDawPluginDetail = function(trackId, pluginName) {
@@ -3633,11 +3664,10 @@
                 }
                 const currentVal = state[label];
                 const pct = (currentVal - parsed.min) / (parsed.max - parsed.min);
-                const deg = -135 + pct * 270;
                 return `
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
-                    <div class="dpd-knob relative w-11 h-11 rounded-full bg-black cursor-ns-resize select-none" style="border:2px solid rgba(0,242,255,0.4);" onmousedown="window.dpdKnobDrag(event,'${label}')" ontouchstart="window.dpdKnobDrag(event,'${label}')">
-                        <div id="dpd-knob-indicator-${label}" class="absolute top-1 left-1/2 w-0.5 h-4 origin-bottom" style="background:#00f2ff; transform:translateX(-50%) rotate(${deg}deg);"></div>
+                    <div class="dpd-knob relative w-11 h-11 flex items-center justify-center cursor-ns-resize select-none" onmousedown="window.dpdKnobDrag(event,'${label}')" ontouchstart="window.dpdKnobDrag(event,'${label}')">
+                        ${dawKnobSvg(label, pct)}
                     </div>
                     <div class="text-[7.5px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
                     <div id="dpd-val-${label}" class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:2px 6px;">${parsed.format(currentVal)}</div>
@@ -3654,9 +3684,20 @@
 
         window.dpdUpdateKnobVisual = function(label, value, parsed) {
             const pct = (value - parsed.min) / (parsed.max - parsed.min);
-            const deg = -135 + pct * 270;
-            const indicator = document.getElementById('dpd-knob-indicator-' + label);
-            if (indicator) indicator.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+            const cx = 22, cy = 22, r = 17;
+            const startDeg = -135, endDeg = 135;
+            const valDeg = startDeg + pct * (endDeg - startDeg);
+            const arcEl = document.getElementById('dpd-knob-arc-' + label);
+            if (arcEl) arcEl.setAttribute('d', dawArcPath(cx, cy, r, startDeg, valDeg));
+            const tickEl = document.getElementById('dpd-knob-tick-' + label);
+            if (tickEl) {
+                const tip = dawPolarPoint(cx, cy, r, valDeg);
+                const tipInner = dawPolarPoint(cx, cy, r - 5, valDeg);
+                tickEl.setAttribute('x1', tipInner.x.toFixed(2));
+                tickEl.setAttribute('y1', tipInner.y.toFixed(2));
+                tickEl.setAttribute('x2', tip.x.toFixed(2));
+                tickEl.setAttribute('y2', tip.y.toFixed(2));
+            }
             const valEl = document.getElementById('dpd-val-' + label);
             if (valEl) valEl.innerText = parsed.format(value);
         };
