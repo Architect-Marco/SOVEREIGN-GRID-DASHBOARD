@@ -2359,8 +2359,7 @@
                     </div>
 
                     <div class="daw-mixer-footer">
-                        <span class="daw-track-num-chip flex-shrink-0" style="background:#2fd0ff;">M</span>
-                        <span class="text-[9px] font-black text-gray-300 uppercase tracking-wide truncate flex-1">Master</span>
+                        <input type="text" value="${window.dawMasterName || 'Master'}" onchange="window.renameDawMaster(this.value)" onclick="event.stopPropagation()" class="daw-name-box">
                     </div>
                 </div>`;
 
@@ -2413,8 +2412,7 @@
                     </div>
 
                     <div class="daw-mixer-footer">
-                        <span class="daw-track-num-chip flex-shrink-0" style="background:${t.color};">${i + 1}</span>
-                        <span class="text-[9px] font-black text-gray-300 uppercase tracking-wide truncate flex-1">${t.name}</span>
+                        <input type="text" value="${t.name}" onchange="window.renameDawTrack('${t.id}', this.value)" onclick="event.stopPropagation()" class="daw-name-box">
                     </div>
                 </div>`;
             }).join('');
@@ -2430,6 +2428,19 @@
         // ============================================================
         // DEVICE RACK + PLUGIN BROWSER — Ableton-style drag-and-drop
         // ============================================================
+        window.renameDawTrack = function(trackId, newName) {
+            const t = window.dawTracks.find(x => x.id === trackId);
+            if (!t || !newName || !newName.trim()) { window.renderDawTracks(); window.initDawWaves(); return; }
+            t.name = newName.trim();
+            window.renderDawTracks();
+            window.initDawWaves(); // renderDawTracks rebuilds the waveform containers too — reattach any already-loaded audio
+        };
+
+        window.renameDawMaster = function(newName) {
+            window.dawMasterName = (newName && newName.trim()) ? newName.trim() : 'Master';
+            window.renderDawMixer();
+        };
+
         window.selectDawTrack = function(trackId) {
             if (window.dawSelectedTrackId === trackId) return;
             window.dawSelectedTrackId = trackId;
@@ -2518,7 +2529,7 @@
             if (!rack) return;
             const trackId = window.dawSelectedTrackId;
             const track = trackId === 'master' ? null : window.dawTracks.find(t => t.id === trackId);
-            if (nameEl) nameEl.innerText = trackId === 'master' ? 'Master' : (track ? track.name : 'Master');
+            if (nameEl) nameEl.innerText = trackId === 'master' ? (window.dawMasterName || 'Master') : (track ? track.name : 'Master');
             const fxList = dawFxListFor(trackId) || [];
             if (!fxList.length) {
                 rack.innerHTML = `
