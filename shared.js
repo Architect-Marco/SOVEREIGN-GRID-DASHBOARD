@@ -2273,9 +2273,9 @@
             }).join('');
 
             lanes.innerHTML = window.dawTracks.map((t, i) => `
-                <div class="relative border-b border-white/5 flex items-center overflow-hidden" style="height:${dawRowHeight(t)}px;">
-                    <div id="clip-wrap-${t.id}" class="relative w-full h-full" style="transform:translateX(${window.dawClipOffsets[t.id] || 0}px);">
-                        <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full" style="cursor:grab;"></div>
+                <div class="relative border-b border-white/5 flex items-center overflow-hidden" style="height:${dawRowHeight(t)}px; overflow:hidden;">
+                    <div id="clip-wrap-${t.id}" class="relative w-full h-full" style="transform:translateX(${window.dawClipOffsets[t.id] || 0}px); overflow:hidden;">
+                        <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full" style="cursor:grab; overflow:hidden;"></div>
                     </div>
                 </div>`).join('');
 
@@ -3708,7 +3708,7 @@
                 if (!container) return;
                 window.waves[key] = WaveSurfer.create({
                     container: `#wave-${key}`, waveColor: '#1a1a1a', progressColor: t.color,
-                    cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 60, normalize: true, interact: false
+                    cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 50, normalize: true, interact: false
                 });
                 window.waves[key].setVolume((t.volume ?? 80) / 100);
                 window.waves[key].on('audioprocess', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
