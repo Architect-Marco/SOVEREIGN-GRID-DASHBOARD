@@ -2240,7 +2240,7 @@
         window.dawSnapOn = true;
         window.dawLoopOn = false;
         window.dawRecordArmed = false;
-        const DAW_ROW_H = 84; // compact row height so 4 tracks fit without the arrangement dwarfing the mixer
+        const DAW_ROW_H = 56; // thin, REAPER-style compact row height
 
         window.renderDawTracks = function() {
             const headers = document.getElementById('daw-track-headers');
@@ -2446,6 +2446,29 @@
                 </div>`).join('');
         };
 
+        window.dawPluginBrowserOpen = true;
+        window.toggleDawPluginBrowser = function() {
+            window.dawPluginBrowserOpen = !window.dawPluginBrowserOpen;
+            const aside = document.getElementById('daw-plugin-browser');
+            const label = document.getElementById('daw-plugin-browser-label');
+            const list = document.getElementById('daw-plugin-browser-list');
+            const toggleBtn = document.getElementById('daw-plugin-browser-toggle');
+            if (!aside) return;
+            if (window.dawPluginBrowserOpen) {
+                aside.style.width = '13rem';
+                if (list) list.style.display = '';
+                if (label) label.style.display = '';
+                if (toggleBtn) toggleBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m15 18-6-6 6-6"/></svg>';
+                toggleBtn.title = 'Collapse';
+            } else {
+                aside.style.width = '2.75rem';
+                if (list) list.style.display = 'none';
+                if (label) label.style.display = 'none';
+                if (toggleBtn) toggleBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m9 18 6-6-6-6"/></svg>';
+                toggleBtn.title = 'Expand';
+            }
+        };
+
         window.dawDragStartPlugin = function(e, pluginId) {
             e.dataTransfer.setData('text/plain', pluginId);
             e.dataTransfer.effectAllowed = 'copy';
@@ -2496,19 +2519,33 @@
             if (nameEl) nameEl.innerText = trackId === 'master' ? 'Master' : (track ? track.name : 'Master');
             const fxList = dawFxListFor(trackId) || [];
             if (!fxList.length) {
-                rack.innerHTML = `<div class="flex items-center text-[10px] font-bold text-gray-600 italic px-2">No plugins on this track — drag one in from the Plugin Browser</div>`;
+                rack.innerHTML = `
+                    <div class="flex-1 flex items-center justify-center border border-dashed border-white/15 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-600" style="min-height:76px;">
+                        Drop a plugin here
+                    </div>`;
                 return;
             }
-            rack.innerHTML = fxList.map(name => `
-                <div class="flex-shrink-0 w-32 bg-black/40 border border-[rgba(47,208,255,0.25)] rounded-xl p-2.5 relative group">
-                    <button onclick="window.dawRemovePluginFromRack('${trackId}','${name.replace(/'/g, "\\'")}')" title="Remove" class="absolute top-1.5 right-1.5 text-gray-600 hover:text-[#ef4444] transition-colors opacity-0 group-hover:opacity-100">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                    </button>
-                    <div onclick="window.openDawPluginDetail('${trackId}','${name.replace(/'/g, "\\'")}')" class="cursor-pointer">
-                        <div class="neon-blue-text text-[10px] font-black italic truncate pr-3">${name}</div>
-                        <div class="text-[7px] text-gray-600 uppercase font-black tracking-widest mt-3">Tap to edit</div>
+            rack.innerHTML = fxList.map(name => {
+                const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === name);
+                const chips = plugin ? plugin.values.slice(0, 3).map(v => `<span class="bg-black/50 border border-white/10 rounded px-1 py-0.5 text-[7px] font-black text-gray-400">${v[1]}</span>`).join('') : '';
+                return `
+                <div class="flex-shrink-0 w-36 bg-black/50 border border-[rgba(47,208,255,0.25)] rounded-lg overflow-hidden group">
+                    <div class="flex items-center justify-between gap-1 px-2 py-1.5 bg-white/5 border-b border-white/5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#2fd0ff] neon-blue-glow flex-shrink-0"></span>
+                        <span class="neon-blue-text text-[9px] font-black italic truncate flex-1">${name}</span>
+                        <button onclick="window.dawRemovePluginFromRack('${trackId}','${name.replace(/'/g, "\\'")}')" title="Remove" class="text-gray-600 hover:text-[#ef4444] transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0">
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
                     </div>
-                </div>`).join('');
+                    <div onclick="window.openDawPluginDetail('${trackId}','${name.replace(/'/g, "\\'")}')" class="p-2 cursor-pointer">
+                        <div class="flex flex-wrap gap-1">${chips}</div>
+                        <div class="text-[7px] text-gray-600 uppercase font-black tracking-widest mt-1.5">Tap to edit</div>
+                    </div>
+                </div>`;
+            }).join('') + `
+                <div class="flex-shrink-0 w-16 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-gray-700" style="min-height:76px;" title="Drop another plugin here">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                </div>`;
         };
 
         window.toggleDawHeaderFxBox = function(trackId) {
