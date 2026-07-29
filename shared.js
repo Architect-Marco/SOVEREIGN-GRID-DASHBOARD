@@ -2133,6 +2133,8 @@
                     const next = prev + (target - prev) * lerp;
                     window.dawMeterPeaks[key] = next;
                     window.dawUpdateLed('daw-led-' + t.id, Math.min(100, next));
+                    const peakEl = document.getElementById('daw-mixer-peak-' + t.id);
+                    if (peakEl) peakEl.innerText = next > 0.5 ? (Math.round(20 * Math.log10(next / 100) * 10) / 10) : '-Inf';
                 });
 
                 const masterFader = document.getElementById('daw-fader-master');
@@ -2150,6 +2152,8 @@
                 const masterNext = masterPrev + (masterTarget - masterPrev) * masterLerp;
                 window.dawMeterPeaks.master = masterNext;
                 window.dawUpdateLed('daw-led-master', Math.min(100, masterNext));
+                const masterPeakEl = document.getElementById('daw-mixer-peak-master');
+                if (masterPeakEl) masterPeakEl.innerText = masterNext > 0.5 ? (Math.round(20 * Math.log10(masterNext / 100) * 10) / 10) : '-Inf';
 
                 requestAnimationFrame(tick);
             };
@@ -2162,6 +2166,10 @@
             let html = '';
             for (let i = 0; i < DAW_LED_SEGMENTS; i++) html += `<span class="daw-led-seg"></span>`;
             return html;
+        }
+        const DAW_FADER_SCALE_MARKS = [0, 6, 12, 18, 24, 30, 36, 48, 60];
+        function dawFaderScaleHtml() {
+            return DAW_FADER_SCALE_MARKS.map(v => `<span>${v}</span>`).join('');
         }
         window.dawUpdateLed = function(ledId, value) {
             const meter = document.getElementById(ledId);
@@ -2355,14 +2363,20 @@
                         <button class="daw-chip-btn">S</button>
                     </div>
 
-                    <div class="flex items-end gap-2">
+                    <div class="daw-mixer-value-row">
+                        <span class="daw-mixer-value-field" id="daw-mixer-peak-master">-Inf</span>
+                        <span class="daw-mixer-value-field">0.0dB</span>
+                    </div>
+
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                         <div class="daw-fader-track"><input type="range" id="daw-fader-master" min="0" max="100" value="80" class="daw-fader-input"></div>
                         <div class="daw-led-meter-dual" id="daw-led-master"><div class="daw-led-col">${dawLedColHtml()}</div><div class="daw-led-col">${dawLedColHtml()}</div></div>
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
-                    <span class="text-[8px] text-gray-600 font-mono">0.00dB</span>
 
                     <div class="daw-mixer-footer">
-                        <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#2fd0ff;"></span>
+                        <span class="daw-track-num-chip flex-shrink-0" style="background:#2fd0ff;">M</span>
                         <span class="text-[9px] font-black text-gray-300 uppercase tracking-wide truncate flex-1">Master</span>
                     </div>
                 </div>`;
@@ -2401,18 +2415,23 @@
                         <button onclick="toggleDawSolo('${t.id}')" id="daw-mixer-solo-${t.id}" class="daw-chip-btn ${t.solo ? 'on-solo' : ''}">S</button>
                     </div>
 
-                    <div class="flex items-end gap-2">
+                    <div class="daw-mixer-value-row">
+                        <span class="daw-mixer-value-field" id="daw-mixer-peak-${t.id}">-Inf</span>
+                        <span class="daw-mixer-value-field" id="daw-mixer-db-${t.id}">-inf</span>
+                    </div>
+
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                         <div class="daw-fader-track">
                             <input type="range" min="0" max="100" value="${t.volume}" class="daw-fader-input" oninput="setDawVolume('${t.id}', this.value)">
                         </div>
                         <div class="daw-led-meter-dual" id="daw-led-${t.id}"><div class="daw-led-col">${dawLedColHtml()}</div><div class="daw-led-col">${dawLedColHtml()}</div></div>
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
-                    <span class="text-[8px] text-gray-600 font-mono" id="daw-mixer-db-${t.id}">-inf</span>
 
                     <div class="daw-mixer-footer">
-                        <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${t.color};"></span>
+                        <span class="daw-track-num-chip flex-shrink-0" style="background:${t.color};">${i + 1}</span>
                         <span class="text-[9px] font-black text-gray-300 uppercase tracking-wide truncate flex-1">${t.name}</span>
-                        <span class="daw-mixer-num flex-shrink-0">${i + 1}</span>
                     </div>
                 </div>`;
             }).join('');
