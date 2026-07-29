@@ -293,6 +293,10 @@
         .daw-led-seg.lit-yellow { background:#facc15; box-shadow:0 0 3px rgba(250,204,21,0.6); }
         .daw-led-seg.lit-red { background:#f87171; box-shadow:0 0 3px rgba(248,113,113,0.6); }
         .daw-mixer-footer { display:flex; align-items:center; gap:5px; width:100%; padding:4px 6px; border-radius:5px; background:rgba(0,0,0,0.5); }
+        .daw-fader-scale { display:flex; flex-direction:column; justify-content:space-between; height:150px; width:13px; flex-shrink:0; font-size:6.5px; font-weight:800; color:#52525b; text-align:center; padding:2px 0; }
+        .daw-mixer-value-row { display:flex; flex-direction:column; gap:2px; width:100%; }
+        .daw-mixer-value-field { width:100%; text-align:center; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.08); border-radius:4px; padding:2px 0; font-size:9px; font-weight:900; color:#d1d5db; font-variant-numeric:tabular-nums; }
+        .daw-track-num-chip { min-width:22px; height:20px; padding:0 5px; border-radius:5px; font-size:9px; font-weight:900; color:#000; display:flex; align-items:center; justify-content:center; }
         .daw-arrangement-scroll { max-height:404px; overflow-x:scroll; overflow-y:scroll; scrollbar-color: #2fd0ff #0a0a0a; }
         .daw-arrangement-scroll::-webkit-scrollbar { height:8px; width:8px; }
         .daw-arrangement-scroll::-webkit-scrollbar-track { background:#0a0a0a; }
