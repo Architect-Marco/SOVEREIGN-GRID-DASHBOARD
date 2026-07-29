@@ -3703,9 +3703,14 @@
         window.initDawWaves = function() {
             window.dawTracks.forEach(t => {
                 const key = 'daw-' + t.id;
-                if (window.waves[key]) return; // already initialized
                 const container = document.querySelector(`#wave-${key}`);
                 if (!container) return;
+                // If the container already has content, this track's WaveSurfer instance is still
+                // correctly attached — leave it alone. Otherwise this is a fresh DOM node (the panel
+                // was just re-rendered, e.g. from adding another track) and any existing instance for
+                // this key is now orphaned, pointing at a node that no longer exists in the document.
+                if (window.waves[key] && container.childElementCount > 0) return;
+                if (window.waves[key]) { try { window.waves[key].destroy(); } catch (e) {} }
                 window.waves[key] = WaveSurfer.create({
                     container: `#wave-${key}`, waveColor: t.color, progressColor: t.color,
                     cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 50, normalize: true, interact: false
@@ -3718,6 +3723,7 @@
                     if (window.dawLoopOn) { window.dawSeekToStart(); window.playAllDaw(); window.playAllDaw(); }
                     window.updateDawStatus();
                 });
+                if (window.dawUrls[t.id]) window.waves[key].load(window.dawUrls[t.id]); // restore audio that was already loaded before this re-render
             });
         };
 
