@@ -2451,34 +2451,26 @@
             const list = document.getElementById('daw-plugin-browser-list');
             if (!list) return;
             list.innerHTML = window.SOVEREIGN_12_PLUGINS.map(p => `
-                <div draggable="true" ondragstart="window.dawDragStartPlugin(event,'${p.id}')"
-                     class="bg-white/5 hover:bg-[#2fd0ff]/15 border border-white/10 hover:border-[rgba(47,208,255,0.4)] rounded-lg px-2.5 py-2 cursor-grab active:cursor-grabbing transition-colors select-none">
+                <div draggable="true" ondragstart="window.dawDragStartPlugin(event,'${p.id}')" onclick="window.dawAddPluginToTrack(window.dawSelectedTrackId,'${p.id}')"
+                     class="bg-white/5 hover:bg-[#2fd0ff]/15 border border-white/10 hover:border-[rgba(47,208,255,0.4)] rounded-lg px-2.5 py-2 cursor-pointer active:cursor-grabbing transition-colors select-none" title="Click to add to ${window.dawSelectedTrackId === 'master' ? 'Master' : 'selected track'}, or drag it">
                     <div class="neon-blue-text text-[10px] font-black italic truncate">${p.name}</div>
                     <div class="text-[7.5px] text-gray-500 uppercase tracking-widest truncate mt-0.5">${p.tagline}</div>
                     <div class="text-[7px] neon-blue-text uppercase font-black tracking-widest mt-1 opacity-70">${p.category}</div>
                 </div>`).join('');
         };
 
-        window.dawPluginBrowserOpen = true;
+        window.dawPluginBrowserOpen = false;
         window.toggleDawPluginBrowser = function() {
             window.dawPluginBrowserOpen = !window.dawPluginBrowserOpen;
             const aside = document.getElementById('daw-plugin-browser');
-            const label = document.getElementById('daw-plugin-browser-label');
-            const list = document.getElementById('daw-plugin-browser-list');
             const toggleBtn = document.getElementById('daw-plugin-browser-toggle');
             if (!aside) return;
             if (window.dawPluginBrowserOpen) {
-                aside.style.width = '13rem';
-                if (list) list.style.display = '';
-                if (label) label.style.display = '';
-                if (toggleBtn) toggleBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m15 18-6-6 6-6"/></svg>';
-                toggleBtn.title = 'Collapse';
+                aside.classList.remove('hidden');
+                if (toggleBtn) toggleBtn.style.display = 'none';
             } else {
-                aside.style.width = '2.75rem';
-                if (list) list.style.display = 'none';
-                if (label) label.style.display = 'none';
-                if (toggleBtn) toggleBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m9 18 6-6-6-6"/></svg>';
-                toggleBtn.title = 'Expand';
+                aside.classList.add('hidden');
+                if (toggleBtn) toggleBtn.style.display = '';
             }
         };
 
@@ -2534,7 +2526,7 @@
             if (!fxList.length) {
                 rack.innerHTML = `
                     <div class="flex-1 flex items-center justify-center border border-dashed border-white/15 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-600" style="min-height:76px;">
-                        Drop a plugin here
+                        Click plugins or drop one here
                     </div>`;
                 return;
             }
