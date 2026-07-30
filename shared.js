@@ -1648,7 +1648,7 @@
                         ${coverHtml}
                     </div>
                     <div class="min-w-0 flex-1 cursor-pointer" onclick="playCreation('${c.id}')">
-                        <div class="text-sm font-bold text-gray-200 group-hover:text-teal-400 italic truncate" id="creation-title-${c.id}">${safeTitle}</div>
+                        <div class="text-sm font-bold neon-blue-text group-hover:text-[#6fe0ff] italic truncate" id="creation-title-${c.id}">${safeTitle}</div>
                         <div class="text-[9px] text-gray-600 uppercase font-black tracking-widest mt-0.5">${c.duration} // THE SICK TEAM</div>
                     </div>
                     <span class="text-gray-500 text-[10px] font-black uppercase tracking-widest flex-shrink-0">${c.duration}</span>
@@ -1780,7 +1780,7 @@
                             <div class="w-8 h-8 rounded-lg bg-black border border-[rgba(47,208,255,0.4)] flex items-center justify-center flex-shrink-0">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="neon-blue-text"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
                             </div>
-                            <span id="archive-folder-name-${f.id}" class="text-gray-300 text-[11px] font-bold flex-1 truncate">${f.name}</span>
+                            <span id="archive-folder-name-${f.id}" class="neon-blue-text text-[11px] font-bold flex-1 truncate">${f.name}</span>
                             <span class="text-gray-600 text-[9px] flex-shrink-0">${(f.songs || []).length}</span>
                             <button onclick="event.stopPropagation(); window.renameArchiveFolder('${f.id}')" title="Rename folder" class="text-gray-600 hover:text-white transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
@@ -1797,7 +1797,7 @@
                                                 ? `<img src="${s.coverArt}" class="w-full h-full object-cover">`
                                                 : `<svg width="16" height="16" viewBox="0 0 24 24" fill="#2fd0ff"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`}
                                         </div>
-                                        <span class="text-gray-300 text-xs font-bold flex-1 truncate">${s.title}</span>
+                                        <span class="neon-blue-text text-xs font-bold flex-1 truncate">${s.title}</span>
                                         <span class="text-gray-500 text-[10px] font-black uppercase tracking-widest flex-shrink-0">${s.duration || ''}</span>
                                         <div class="relative flex-shrink-0 creation-menu-wrapper">
                                             <button onclick="event.stopPropagation(); window.toggleFolderSongMenu('${f.id}', '${s.id}')" class="neon-blue-text hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">
