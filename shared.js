@@ -2249,7 +2249,7 @@
                 const fxList = t.fx || [];
                 const isExpanded = window.dawHeaderFxExpanded[t.id] && fxList.length;
                 return `
-                <div class="daw-track-header-row" style="height:${dawRowHeight(t)}px;">
+                <div class="daw-track-header-row" oncontextmenu="window.openDawTrackContextMenu(event,'${t.id}')" style="height:${dawRowHeight(t)}px;">
                     <div class="flex items-center gap-2">
                         <span class="daw-grip">⋮⋮</span>
                         <span class="daw-rec-btn" title="Record Enable"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg></span>
@@ -2274,7 +2274,7 @@
             }).join('');
 
             lanes.innerHTML = window.dawTracks.map((t, i) => `
-                <div class="relative border-b border-white/5 flex items-center overflow-hidden" style="height:${dawRowHeight(t)}px; overflow:hidden; z-index:1;">
+                <div class="relative border-b border-white/5 flex items-center overflow-hidden" oncontextmenu="window.openDawTrackContextMenu(event,'${t.id}')" style="height:${dawRowHeight(t)}px; overflow:hidden; z-index:1;">
                     <div id="clip-wrap-${t.id}" class="relative w-full h-full" style="transform:translateX(${window.dawClipOffsets[t.id] || 0}px); overflow:hidden; z-index:1;">
                         <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full" style="cursor:grab; overflow:hidden; z-index:1;"></div>
                     </div>
@@ -3808,6 +3808,114 @@
             window.dawTracks.push(track);
             window.renderDawTracks();
             window.initDawWaves();
+        };
+
+        window.duplicateDawTrack = function(trackId) {
+            const track = window.dawTracks.find(t => t.id === trackId);
+            if (!track) return;
+            const copy = { ...track, id: String(Date.now()), name: track.name + ' Copy', fx: [...(track.fx || [])] };
+            const idx = window.dawTracks.findIndex(t => t.id === trackId);
+            window.dawTracks.splice(idx + 1, 0, copy);
+            window.renderDawTracks();
+            window.initDawWaves();
+        };
+
+        window.removeDawTrack = function(trackId) {
+            const track = window.dawTracks.find(t => t.id === trackId);
+            if (!track) return;
+            if (window.dawTracks.length <= 1) { alert('At least one track is required.'); return; }
+            if (!confirm(`Remove "${track.name}"? This can't be undone.`)) return;
+            window.dawTracks = window.dawTracks.filter(t => t.id !== trackId);
+            if (window.dawSelectedTrackId === trackId) window.dawSelectedTrackId = 'master';
+            window.renderDawTracks();
+            window.initDawWaves();
+        };
+
+        // ============================================================
+        // TRACK RIGHT-CLICK CONTEXT MENU — curated subset of DAW actions
+        // that this app actually supports, mapped from track header/lane.
+        // ============================================================
+        window.dawTrackContextMenuTrackId = null;
+        window.openDawTrackContextMenu = function(e, trackId) {
+            e.preventDefault();
+            e.stopPropagation();
+            const track = window.dawTracks.find(t => t.id === trackId);
+            const menu = document.getElementById('daw-track-context-menu');
+            const backdrop = document.getElementById('daw-track-context-backdrop');
+            if (!track || !menu || !backdrop) return;
+            window.dawTrackContextMenuTrackId = trackId;
+            const fxCount = (track.fx || []).length;
+            const itemCls = "w-full text-left px-3 py-1.5 text-[10px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/10 transition-colors";
+            const sep = `<div class="my-1 border-t border-[rgba(47,208,255,0.15)]"></div>`;
+            menu.innerHTML = `
+                <button class="${itemCls}" onclick="window.dawCtxRenameTrack()">Rename Track…</button>
+                <button class="${itemCls}" onclick="window.dawCtxDuplicateTrack()">Duplicate Track</button>
+                ${sep}
+                <button class="${itemCls}" onclick="window.dawCtxToggleMute()">${track.muted ? 'Unmute Track' : 'Mute Track'}</button>
+                <button class="${itemCls}" onclick="window.dawCtxToggleSolo()">${track.solo ? 'Unsolo Track' : 'Solo Track'}</button>
+                ${sep}
+                <button class="${itemCls}" onclick="window.dawCtxUpload()">Upload Audio…</button>
+                <button class="${itemCls}" onclick="window.dawCtxOpenFx()">Add / Edit Plugins</button>
+                ${fxCount ? `<button class="${itemCls}" onclick="window.dawCtxClearFx()">Clear FX Chain (${fxCount})</button>` : ''}
+                ${sep}
+                <button class="w-full text-left px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 transition-colors" onclick="window.dawCtxRemoveTrack()">Remove Track</button>
+            `;
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+            menu.classList.remove('hidden');
+            backdrop.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                const rect = menu.getBoundingClientRect();
+                if (rect.right > window.innerWidth) menu.style.left = Math.max(4, window.innerWidth - rect.width - 8) + 'px';
+                if (rect.bottom > window.innerHeight) menu.style.top = Math.max(4, window.innerHeight - rect.height - 8) + 'px';
+            });
+        };
+        window.closeDawTrackContextMenu = function() {
+            const menu = document.getElementById('daw-track-context-menu');
+            const backdrop = document.getElementById('daw-track-context-backdrop');
+            if (menu) menu.classList.add('hidden');
+            if (backdrop) backdrop.classList.add('hidden');
+        };
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.closeDawTrackContextMenu(); });
+
+        window.dawCtxRenameTrack = function() {
+            const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
+            const track = window.dawTracks.find(t => t.id === id);
+            if (!track) return;
+            const name = prompt('Rename track', track.name);
+            if (name && name.trim()) window.renameDawTrack(id, name.trim());
+        };
+        window.dawCtxDuplicateTrack = function() {
+            const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
+            window.duplicateDawTrack(id);
+        };
+        window.dawCtxToggleMute = function() {
+            const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
+            window.toggleDawMute(id);
+        };
+        window.dawCtxToggleSolo = function() {
+            const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
+            window.toggleDawSolo(id);
+        };
+        window.dawCtxUpload = function() {
+            const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
+            const input = document.getElementById('daw-upload-' + id);
+            if (input) input.click();
+        };
+        window.dawCtxOpenFx = function() {
+            const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
+            window.openDawFxPicker(id);
+        };
+        window.dawCtxClearFx = function() {
+            const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
+            const track = window.dawTracks.find(t => t.id === id);
+            if (!track) return;
+            track.fx = [];
+            dawRerenderFxOwner(id);
+        };
+        window.dawCtxRemoveTrack = function() {
+            const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
+            window.removeDawTrack(id);
         };
 
         window.handleDawUpload = function(event, trackId) {
