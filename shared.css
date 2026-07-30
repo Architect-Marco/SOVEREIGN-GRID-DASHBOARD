@@ -176,11 +176,11 @@
         .neon-blue-border { border-color: #2fd0ff !important; }
         .neon-blue-glow { box-shadow: 0 0 16px rgba(47,208,255,0.35); }
         .neon-blue-text-glow { text-shadow: 0 0 10px rgba(47,208,255,0.55); }
-        .slick-scroll::-webkit-scrollbar { height: 5px; width: 5px; }
-        .slick-scroll::-webkit-scrollbar-track { background: transparent; }
-        .slick-scroll::-webkit-scrollbar-thumb { background: rgba(47,208,255,0.35); border-radius: 10px; }
-        .slick-scroll::-webkit-scrollbar-thumb:hover { background: rgba(47,208,255,0.6); }
-        .slick-scroll { scrollbar-width: thin; scrollbar-color: rgba(47,208,255,0.35) transparent; }
+        .slick-scroll::-webkit-scrollbar { height: 3px !important; width: 3px !important; }
+        .slick-scroll::-webkit-scrollbar-track { background: transparent !important; }
+        .slick-scroll::-webkit-scrollbar-thumb { background: rgba(47,208,255,0.55) !important; border-radius: 0 !important; }
+        .slick-scroll::-webkit-scrollbar-thumb:hover { background: #2fd0ff !important; }
+        .slick-scroll { scrollbar-width: thin; scrollbar-color: rgba(47,208,255,0.55) transparent; }
         .station-timeline-scroll::-webkit-scrollbar,
         #station-timeline::-webkit-scrollbar { height: 12px !important; }
         .station-timeline-scroll::-webkit-scrollbar-track,
@@ -275,6 +275,10 @@
 
         .daw-mixer-strip { width:84px; flex-shrink:0; border-right:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; align-items:center; padding:14px 6px 10px; gap:8px; }
         .daw-mixer-strip.master { width:100px; padding:14px 10px 10px; }
+        .daw-mixer-strip, .daw-mixer-io-pill, .daw-fader-track, .daw-mixer-footer, .daw-name-box, .daw-mixer-value-field, .daw-led-meter-single,
+        .daw-tool-btn, .daw-mini-select, .daw-toggle-btn, .daw-transport-btn, .daw-position-display, .daw-mini-field, .daw-download-btn, .daw-chip-btn, .daw-checkbox {
+            border-radius: 0 !important;
+        }
         .daw-knob { width:26px; height:26px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #2c2c2c, #0a0a0a); border:1px solid rgba(47,208,255,0.3); box-shadow:0 0 0 3px rgba(255,255,255,0.03), inset 0 1px 2px rgba(0,0,0,0.6); position:relative; flex-shrink:0; }
         .daw-knob::after { content:''; position:absolute; top:3px; left:50%; width:3px; height:3px; border-radius:50%; background:#2fd0ff; box-shadow:0 0 4px rgba(47,208,255,0.9); transform:translateX(-50%); }
         .daw-fader-track { width:16px; height:150px; background:rgba(0,0,0,0.5); border-radius:4px; position:relative; border:1px solid rgba(47,208,255,0.15); overflow:visible; }
@@ -304,3 +308,13 @@
         .daw-arrangement-scroll::-webkit-scrollbar-track { background:#0a0a0a; }
         .daw-arrangement-scroll::-webkit-scrollbar-thumb { background:#2fd0ff !important; border-radius:10px; border:2px solid #0a0a0a; }
         .daw-grid-wrapper { padding-bottom:14px; }
+
+        /* ===== DAW: square edges + flush boxes (mixer, device rack, track headers, plugin list) ===== */
+        #daw-mixer .rounded, #daw-mixer .rounded-md, #daw-mixer .rounded-lg, #daw-mixer .rounded-xl,
+        #daw-device-rack .rounded, #daw-device-rack .rounded-md, #daw-device-rack .rounded-lg, #daw-device-rack .rounded-xl,
+        #daw-track-headers .rounded, #daw-track-headers .rounded-md, #daw-track-headers .rounded-lg, #daw-track-headers .rounded-xl,
+        #daw-plugin-browser-list .rounded, #daw-plugin-browser-list .rounded-md, #daw-plugin-browser-list .rounded-lg, #daw-plugin-browser-list .rounded-xl {
+            border-radius: 0 !important;
+        }
+        #daw-device-rack { gap: 0 !important; }
+        #daw-device-rack > div { border-radius: 0 !important; }
