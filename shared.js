@@ -6002,7 +6002,7 @@
                 <div class="mb-3 animate-fade-in ${rowClass}">
                     <span class="text-[8px] text-gray-600 font-mono">[${entry.time}]</span>
                     <span class="${colorClass} font-black italic ml-1">${entry.persona}:</span>
-                    <span class="text-gray-300 ml-1 font-medium">${safeMsg}</span>
+                    <span class="relay-msg-text ml-1 font-medium">${safeMsg}</span>
                     ${media}
                 </div>`;
             }).join('');
