@@ -2470,41 +2470,19 @@
             window.dawPluginBrowserOpen = !window.dawPluginBrowserOpen;
             const aside = document.getElementById('daw-plugin-browser');
             const backdrop = document.getElementById('daw-plugin-browser-backdrop');
-            const toggleBtn = document.getElementById('daw-plugin-browser-toggle');
             if (!aside) return;
             if (window.dawPluginBrowserOpen) {
-                const rect = toggleBtn ? toggleBtn.getBoundingClientRect() : { top: 96, bottom: 96, left: 260 };
-                const margin = 16;
-                const spaceBelow = window.innerHeight - rect.bottom - margin;
-                const spaceAbove = rect.top - margin;
-                let top, maxHeight;
-                if (spaceBelow >= 200 || spaceBelow >= spaceAbove) {
-                    top = rect.bottom + 8;
-                    maxHeight = Math.max(160, spaceBelow - 8);
-                } else {
-                    maxHeight = Math.max(160, spaceAbove - 8);
-                    top = rect.top - 8 - maxHeight;
-                }
-                aside.style.top = top + 'px';
-                aside.style.left = rect.left + 'px';
-                aside.style.maxHeight = maxHeight + 'px';
-                aside.classList.remove('hidden');
                 if (backdrop) backdrop.classList.remove('hidden');
                 requestAnimationFrame(() => {
-                    aside.style.opacity = '1';
-                    aside.style.transform = 'translateY(0)';
+                    aside.style.transform = 'translateX(0)';
                     if (backdrop) backdrop.style.opacity = '1';
                 });
             } else {
-                aside.style.opacity = '0';
-                aside.style.transform = 'translateY(8px)';
-                if (backdrop) backdrop.style.opacity = '0';
-                setTimeout(() => {
-                    if (!window.dawPluginBrowserOpen) {
-                        aside.classList.add('hidden');
-                        if (backdrop) backdrop.classList.add('hidden');
-                    }
-                }, 200);
+                aside.style.transform = 'translateX(-110%)';
+                if (backdrop) {
+                    backdrop.style.opacity = '0';
+                    setTimeout(() => { if (!window.dawPluginBrowserOpen) backdrop.classList.add('hidden'); }, 280);
+                }
             }
         };
 
@@ -2559,7 +2537,7 @@
             const fxList = dawFxListFor(trackId) || [];
             if (!fxList.length) {
                 rack.innerHTML = `
-                    <div class="flex-1 flex items-center justify-center border border-dashed border-white/15 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-600" style="min-height:76px;">
+                    <div onclick="window.toggleDawPluginBrowser()" class="flex-1 flex items-center justify-center border border-dashed border-white/15 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.35)] cursor-pointer transition-colors" style="min-height:76px;">
                         Click plugins or drop one here
                     </div>`;
                 return;
