@@ -3969,11 +3969,28 @@
         window.handleDawUpload = function(event, trackId) {
             const file = event.target.files[0];
             if (!file) return;
-            window.initDawWaves();
-            const url = URL.createObjectURL(file);
-            window.dawUrls[trackId] = url;
-            const key = 'daw-' + trackId;
-            if (window.waves[key]) window.waves[key].load(url);
+            try {
+                const url = URL.createObjectURL(file);
+                window.dawUrls[trackId] = url; // stored first so the load always has something to retry against
+                const key = 'daw-' + trackId;
+
+                if (!window.waves[key]) {
+                    try { window.initDawWaves(); }
+                    catch (initErr) { console.error('DAW wave engine failed to initialize:', initErr); }
+                }
+
+                if (window.waves[key]) {
+                    window.waves[key].load(url);
+                } else {
+                    console.error('DAW upload: no waveform instance for track ' + trackId + ' — audio engine may not be ready yet.');
+                    alert('The audio engine isn\'t ready yet — please wait a second and try uploading again.');
+                }
+            } catch (err) {
+                console.error('DAW upload failed:', err);
+                alert('Could not load that audio file. Please try a different file.');
+            } finally {
+                event.target.value = ''; // so choosing the same file again still fires this handler
+            }
         };
 
         window.playAllDaw = function() {
