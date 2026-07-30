@@ -2463,14 +2463,19 @@
         window.toggleDawPluginBrowser = function() {
             window.dawPluginBrowserOpen = !window.dawPluginBrowserOpen;
             const aside = document.getElementById('daw-plugin-browser');
+            const backdrop = document.getElementById('daw-plugin-browser-backdrop');
             const toggleBtn = document.getElementById('daw-plugin-browser-toggle');
             if (!aside) return;
             if (window.dawPluginBrowserOpen) {
+                const rect = toggleBtn ? toggleBtn.getBoundingClientRect() : { top: 96, right: 260 };
+                aside.style.top = rect.top + 'px';
+                aside.style.left = (rect.right + 8) + 'px';
+                aside.style.maxHeight = `calc(100vh - ${rect.top + 16}px)`;
                 aside.classList.remove('hidden');
-                if (toggleBtn) toggleBtn.style.display = 'none';
+                if (backdrop) backdrop.classList.remove('hidden');
             } else {
                 aside.classList.add('hidden');
-                if (toggleBtn) toggleBtn.style.display = '';
+                if (backdrop) backdrop.classList.add('hidden');
             }
         };
 
