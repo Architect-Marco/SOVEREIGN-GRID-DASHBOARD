@@ -22,9 +22,9 @@
             <nav class="flex-1 px-4 space-y-2">
                 <div onclick="switchView('home')" id="nav-home" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">HOME</div>
                 <div onclick="switchView('create')" id="nav-create" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">CREATE</div>
+                <div onclick="switchView('epk')" id="nav-epk" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">EPK SOUL FORGE</div>
                 <div onclick="switchView('splitter')" id="nav-splitter" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">SPLITTER / MASTERING</div>
                 <div onclick="switchView('daw')" id="nav-daw" class="nav-item nav-active flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">DAW</div>
-                <div onclick="switchView('epk')" id="nav-epk" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">EPK SOUL FORGE</div>
                 <div onclick="switchView('gallery')" id="nav-gallery" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">GALLERY</div>
                 <div onclick="switchView('station')" id="nav-station" class="nav-item flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg text-[11px] cursor-pointer font-black uppercase tracking-[0.3em]">RADIO STATION</div>
             </nav>
@@ -88,7 +88,7 @@
                     <div class="flex items-center gap-5 flex-wrap">
                         <div class="flex items-center gap-2">
                             <span class="daw-toolbar-label">Grid</span>
-                            <select id="daw-grid-select" class="daw-mini-select">
+                            <select id="daw-grid-select" onchange="window.setDawGridDivision(this.value)" class="daw-mini-select">
                                 <option>1/4</option><option>1/8</option><option selected>1/16</option><option>1/32</option>
                             </select>
                         </div>
@@ -122,7 +122,7 @@
                             <!-- RIGHT COLUMN: RULER + WAVEFORM LANES (sticky on the Y axis only — scrolls horizontally with the grid, slides beneath the header column) -->
                             <div class="relative z-10 flex-grow" id="daw-lanes-wrapper">
                                 <div id="daw-playhead" class="absolute top-9 bottom-0 w-px bg-[#2fd0ff] neon-blue-glow z-20 pointer-events-none" style="left:0%"></div>
-                                <div class="h-9 border-b border-white/5 flex items-center px-4 gap-8 select-none sticky top-0 z-10 bg-[#0a0a0a]" id="daw-ruler"></div>
+                                <div class="h-9 border-b border-white/5 flex items-center px-4 select-none sticky top-0 z-10 bg-[#0a0a0a]" id="daw-ruler"></div>
                                 <div id="daw-tracks"></div>
                             </div>
                         </div>
@@ -173,7 +173,7 @@
                 <!-- MIXER -->
                 <div class="bg-[#0a0a0a] noir-bezel rounded-2xl overflow-hidden">
                     <div class="px-4 pt-3 pb-1 text-[9px] font-black uppercase tracking-[0.3em] text-gray-600">Output 1 / Output 2</div>
-                    <div class="flex overflow-x-auto" id="daw-mixer"></div>
+                    <div class="flex overflow-x-auto slick-scroll" id="daw-mixer"></div>
                 </div>
 
                 <!-- DAW PLUGIN DETAIL — floating HUD overlay, centered over the DAW view -->
@@ -204,7 +204,7 @@
                         <span class="text-[9px] font-black uppercase tracking-[0.3em] text-gray-600">Device Rack — <span id="daw-rack-track-name" class="neon-blue-text">Master</span></span>
                         <span onclick="window.toggleDawPluginBrowser()" class="text-[8px] font-bold text-gray-600 uppercase tracking-widest cursor-pointer hover:text-[#2fd0ff] transition-colors">Click plugins or drag here</span>
                     </div>
-                    <div id="daw-device-rack" class="flex items-stretch gap-2 px-3 pb-3 overflow-x-auto slick-scroll" style="min-height:76px;"></div>
+                    <div id="daw-device-rack" class="flex items-stretch gap-0 px-3 pb-3 overflow-x-auto slick-scroll" style="min-height:76px;"></div>
                 </div>
 
                 </div>
