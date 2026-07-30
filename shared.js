@@ -2164,7 +2164,7 @@
         // ===== Single-column continuous LED bar meter (like a real console VU strip) =====
         const DAW_FADER_SCALE_MARKS = [0, 6, 12, 18, 24, 30, 36, 48, 60];
         function dawFaderScaleHtml() {
-            return DAW_FADER_SCALE_MARKS.map(v => `<span>${v}</span>`).join('');
+            return DAW_FADER_SCALE_MARKS.map(v => `<span style="color:#2fd0ff;">${v}</span>`).join('');
         }
         window.dawUpdateLed = function(ledId, value) {
             const meter = document.getElementById(ledId);
@@ -2253,14 +2253,14 @@
                     <div class="flex items-center gap-2">
                         <span class="daw-grip">⋮⋮</span>
                         <span class="daw-rec-btn" title="Record Enable"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg></span>
-                        <span class="text-[12px] font-bold text-gray-200 truncate flex-1">${t.name}</span>
+                        <span class="text-[12px] font-bold neon-blue-text truncate flex-1">${t.name}</span>
                         <button onclick="toggleDawMute('${t.id}')" id="daw-mute-${t.id}" class="daw-chip-btn ${t.muted ? 'on-mute' : ''}">M</button>
                         <button onclick="toggleDawSolo('${t.id}')" id="daw-solo-${t.id}" class="daw-chip-btn ${t.solo ? 'on-solo' : ''}">S</button>
                         <button onclick="window.openDawFxPicker('${t.id}')" id="daw-fx-${t.id}" class="daw-chip-btn ${fxList.length ? 'fx-assigned' : ''}" title="${fxList.length ? fxList.length + ' plugin(s) — click to add/remove' : 'Assign plugins'}">FX${fxList.length ? ' ' + fxList.length : ''}</button>
                     </div>
                     <div class="flex items-center gap-2 pl-6 min-w-0">
                         <input type="file" id="daw-upload-${t.id}" accept="audio/*" class="hidden" onchange="handleDawUpload(event, '${t.id}')">
-                        <label for="daw-upload-${t.id}" class="text-gray-500 hover:text-[#2fd0ff] transition-colors flex-shrink-0 cursor-pointer" title="Upload">${DAW_UPLOAD_ICON}</label>
+                        <span onclick="document.getElementById('daw-upload-${t.id}').click()" class="text-gray-500 hover:text-[#2fd0ff] transition-colors flex-shrink-0 cursor-pointer" title="Upload">${DAW_UPLOAD_ICON}</span>
                         <button onclick="window.toggleDawHeaderFxBox('${t.id}')" ${fxList.length ? '' : 'disabled'} class="flex-1 flex items-center justify-between gap-1 px-2 py-1 rounded-md bg-black/40 border ${fxList.length ? 'border-[rgba(47,208,255,0.3)]' : 'border-white/5'} text-[8px] font-black uppercase tracking-widest transition-colors ${fxList.length ? 'neon-blue-text' : 'text-gray-600'} min-w-0">
                             <span class="truncate">${fxList.length ? 'FX Chain (' + fxList.length + ')' : 'No plugin loaded'}</span>
                             ${fxList.length ? `<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0 transition-transform" style="${isExpanded ? 'transform:rotate(180deg);' : ''}"><path d="m6 9 6 6 6-6"/></svg>` : ''}
@@ -2370,7 +2370,7 @@
                     <div class="flex items-center gap-1.5">${insertDotsHtml(masterFxList.length)}</div>
 
                     <div class="daw-mixer-io-row">
-                        <span class="daw-mixer-io-label">I/O</span>
+                        <span class="daw-mixer-io-label" style="color:#2fd0ff;">I/O</span>
                         <span class="daw-mixer-io-pill on"></span>
                     </div>
 
@@ -2383,7 +2383,7 @@
                     </div>
 
                     <div class="daw-mixer-io-row">
-                        <span class="daw-mixer-io-label">Auto</span>
+                        <span class="daw-mixer-io-label" style="color:#2fd0ff;">Auto</span>
                         <span class="daw-mixer-io-pill"></span>
                     </div>
 
@@ -2396,8 +2396,8 @@
                     </div>
 
                     <div class="daw-mixer-value-row">
-                        <span class="daw-mixer-value-field" id="daw-mixer-peak-master">-Inf</span>
-                        <span class="daw-mixer-value-field" id="daw-mixer-db-master">0.0dB</span>
+                        <span class="daw-mixer-value-field" id="daw-mixer-peak-master" style="color:#2fd0ff;">-Inf</span>
+                        <span class="daw-mixer-value-field" id="daw-mixer-db-master" style="color:#2fd0ff;">0.0dB</span>
                     </div>
 
                     <div class="flex items-end gap-1">
@@ -2408,7 +2408,7 @@
                     </div>
 
                     <div class="daw-mixer-footer">
-                        <input type="text" value="${window.dawMasterName || 'Master'}" onchange="window.renameDawMaster(this.value)" onclick="event.stopPropagation()" class="daw-name-box">
+                        <input type="text" value="${window.dawMasterName || 'Master'}" onchange="window.renameDawMaster(this.value)" onclick="event.stopPropagation()" class="daw-name-box" style="color:#2fd0ff;">
                     </div>
                 </div>`;
 
@@ -2421,7 +2421,7 @@
                     <div class="flex items-center gap-1.5">${insertDotsHtml(fxList.length)}</div>
 
                     <div class="daw-mixer-io-row">
-                        <span class="daw-mixer-io-label">I/O</span>
+                        <span class="daw-mixer-io-label" style="color:#2fd0ff;">I/O</span>
                         <span class="daw-mixer-io-pill on"></span>
                     </div>
 
@@ -2434,7 +2434,7 @@
                     </div>
 
                     <div class="daw-mixer-io-row">
-                        <span class="daw-mixer-io-label">Auto</span>
+                        <span class="daw-mixer-io-label" style="color:#2fd0ff;">Auto</span>
                         <span class="daw-mixer-io-pill"></span>
                     </div>
 
@@ -2447,8 +2447,8 @@
                     </div>
 
                     <div class="daw-mixer-value-row">
-                        <span class="daw-mixer-value-field" id="daw-mixer-peak-${t.id}">-Inf</span>
-                        <span class="daw-mixer-value-field" id="daw-mixer-db-${t.id}">-inf</span>
+                        <span class="daw-mixer-value-field" id="daw-mixer-peak-${t.id}" style="color:#2fd0ff;">-Inf</span>
+                        <span class="daw-mixer-value-field" id="daw-mixer-db-${t.id}" style="color:#2fd0ff;">-inf</span>
                     </div>
 
                     <div class="flex items-end gap-1">
@@ -2461,7 +2461,7 @@
                     </div>
 
                     <div class="daw-mixer-footer">
-                        <input type="text" value="${t.name}" onchange="window.renameDawTrack('${t.id}', this.value)" onclick="event.stopPropagation()" class="daw-name-box">
+                        <input type="text" value="${t.name}" onchange="window.renameDawTrack('${t.id}', this.value)" onclick="event.stopPropagation()" class="daw-name-box" style="color:#2fd0ff;">
                     </div>
                 </div>`;
             }).join('');
