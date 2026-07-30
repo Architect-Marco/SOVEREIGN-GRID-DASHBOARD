@@ -1243,6 +1243,7 @@
         function dawRerenderFxOwner(trackId) {
             if (trackId === 'master') window.renderDawMixer();
             else window.renderDawTracks();
+            window.renderDawDeviceRack();
         }
 
         window.openDawFxPicker = function(trackId) {
@@ -2451,11 +2452,16 @@
             const list = document.getElementById('daw-plugin-browser-list');
             if (!list) return;
             list.innerHTML = window.SOVEREIGN_12_PLUGINS.map(p => `
-                <div draggable="true" ondragstart="window.dawDragStartPlugin(event,'${p.id}')" onclick="window.dawAddPluginToTrack(window.dawSelectedTrackId,'${p.id}')"
-                     class="bg-white/5 hover:bg-[#2fd0ff]/15 border border-white/10 hover:border-[rgba(47,208,255,0.4)] rounded-lg px-2.5 py-2 cursor-pointer active:cursor-grabbing transition-colors select-none" title="Click to add to ${window.dawSelectedTrackId === 'master' ? 'Master' : 'selected track'}, or drag it">
-                    <div class="neon-blue-text text-[10px] font-black italic truncate">${p.name}</div>
-                    <div class="text-[7.5px] text-gray-500 uppercase tracking-widest truncate mt-0.5">${p.tagline}</div>
-                    <div class="text-[7px] neon-blue-text uppercase font-black tracking-widest mt-1 opacity-70">${p.category}</div>
+                <div draggable="true" ondragstart="window.dawDragStartPlugin(event,'${p.id}')"
+                     class="bg-white/5 hover:bg-[#2fd0ff]/15 border border-white/10 hover:border-[rgba(47,208,255,0.4)] rounded-lg px-2.5 py-2 cursor-grab active:cursor-grabbing transition-colors select-none flex items-center gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="neon-blue-text text-[10px] font-black italic truncate">${p.name}</div>
+                        <div class="text-[7.5px] text-gray-500 uppercase tracking-widest truncate mt-0.5">${p.tagline}</div>
+                        <div class="text-[7px] neon-blue-text uppercase font-black tracking-widest mt-1 opacity-70">${p.category}</div>
+                    </div>
+                    <button draggable="false" onclick="event.stopPropagation(); window.dawAddPluginToTrack(window.dawSelectedTrackId,'${p.id}')" title="Add to ${window.dawSelectedTrackId === 'master' ? 'Master' : 'selected track'}" class="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center bg-black/40 border border-[rgba(47,208,255,0.3)] text-[#2fd0ff] hover:bg-[#2fd0ff]/20 transition-colors">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
                 </div>`).join('');
         };
 
@@ -2464,18 +2470,19 @@
             window.dawPluginBrowserOpen = !window.dawPluginBrowserOpen;
             const aside = document.getElementById('daw-plugin-browser');
             const backdrop = document.getElementById('daw-plugin-browser-backdrop');
-            const toggleBtn = document.getElementById('daw-plugin-browser-toggle');
             if (!aside) return;
             if (window.dawPluginBrowserOpen) {
-                const rect = toggleBtn ? toggleBtn.getBoundingClientRect() : { top: 96, right: 260 };
-                aside.style.top = rect.top + 'px';
-                aside.style.left = (rect.right + 8) + 'px';
-                aside.style.maxHeight = `calc(100vh - ${rect.top + 16}px)`;
-                aside.classList.remove('hidden');
                 if (backdrop) backdrop.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    aside.style.transform = 'translateX(0)';
+                    if (backdrop) backdrop.style.opacity = '1';
+                });
             } else {
-                aside.classList.add('hidden');
-                if (backdrop) backdrop.classList.add('hidden');
+                aside.style.transform = 'translateX(-110%)';
+                if (backdrop) {
+                    backdrop.style.opacity = '0';
+                    setTimeout(() => { if (!window.dawPluginBrowserOpen) backdrop.classList.add('hidden'); }, 280);
+                }
             }
         };
 
