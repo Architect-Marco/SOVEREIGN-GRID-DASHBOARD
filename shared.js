@@ -2302,6 +2302,54 @@
             ruler.innerHTML = html;
         };
 
+        // ============================================================
+        // DAW ARRANGEMENT ZOOM — "+"/"−" buttons or Ctrl/Cmd + mouse wheel,
+        // zooms the timeline horizontally around the cursor position.
+        // ============================================================
+        window.dawZoom = window.dawZoom || 1;
+        const DAW_ZOOM_MIN = 0.3, DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = 5200;
+
+        window.dawApplyZoom = function() {
+            const wrapper = document.querySelector('.daw-grid-wrapper');
+            const label = document.getElementById('daw-zoom-label');
+            if (wrapper) wrapper.style.minWidth = Math.round(DAW_BASE_GRID_WIDTH * window.dawZoom) + 'px';
+            if (label) label.innerText = Math.round(window.dawZoom * 100) + '%';
+        };
+
+        // clientX (optional): viewport X of the cursor to zoom around, so the point
+        // under the mouse stays put instead of the view jumping to the left edge.
+        window.dawSetZoom = function(newZoom, clientX) {
+            newZoom = Math.max(DAW_ZOOM_MIN, Math.min(DAW_ZOOM_MAX, newZoom));
+            const scrollEl = document.getElementById('master-scroll-container');
+            const prevZoom = window.dawZoom;
+            if (scrollEl && clientX !== undefined && prevZoom) {
+                const rect = scrollEl.getBoundingClientRect();
+                const pointerOffsetInContent = (clientX - rect.left) + scrollEl.scrollLeft;
+                const ratio = pointerOffsetInContent / (DAW_BASE_GRID_WIDTH * prevZoom);
+                window.dawZoom = newZoom;
+                window.dawApplyZoom();
+                scrollEl.scrollLeft = ratio * DAW_BASE_GRID_WIDTH * newZoom - (clientX - rect.left);
+            } else {
+                window.dawZoom = newZoom;
+                window.dawApplyZoom();
+            }
+        };
+
+        window.dawZoomIn = function() { window.dawSetZoom(window.dawZoom * 1.25); };
+        window.dawZoomOut = function() { window.dawSetZoom(window.dawZoom / 1.25); };
+
+        window.dawInitZoomWheel = function() {
+            const scrollEl = document.getElementById('master-scroll-container');
+            if (!scrollEl || scrollEl.dataset.zoomWheelBound) return;
+            scrollEl.dataset.zoomWheelBound = '1';
+            scrollEl.addEventListener('wheel', (e) => {
+                if (!e.ctrlKey && !e.metaKey) return; // plain scroll = normal pan/scroll; Ctrl/Cmd+scroll (or trackpad pinch) = zoom
+                e.preventDefault();
+                const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+                window.dawSetZoom(window.dawZoom * factor, e.clientX);
+            }, { passive: false });
+        };
+
         window.dawMasterFx = [];
 
         window.renderDawMixer = function() {
@@ -6178,4 +6226,10 @@
                     }
                 }
             }, 'dawInit');
+            safeInit(() => {
+                if (document.getElementById('master-scroll-container')) {
+                    window.dawApplyZoom();
+                    window.dawInitZoomWheel();
+                }
+            }, 'dawZoomInit');
         });
