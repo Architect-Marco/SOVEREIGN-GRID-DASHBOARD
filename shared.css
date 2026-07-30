@@ -191,8 +191,8 @@
         #station-timeline::-webkit-scrollbar-thumb:hover { background: #6fe0ff !important; }
         .station-timeline-scroll,
         #station-timeline { scrollbar-width: auto; scrollbar-color: #2fd0ff rgba(255,255,255,0.03); }
-        .station-tab { color: #6b7280; background: transparent; }
-        .station-tab:hover { color: #d1d5db; }
+        .station-tab { color: #2fd0ff; background: transparent; }
+        .station-tab:hover { color: #6fe0ff; }
         .station-tab-active, .station-tab-active:hover { background: #2fd0ff; color: #000; }
         .gallery-grid-mode { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; padding: 14px; }
         input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active,
