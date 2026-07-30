@@ -107,7 +107,15 @@
                 </div>
 
                 <!-- ARRANGEMENT: TRACK HEADERS (left) + WAVEFORM LANES (right) — ONE unified scroll container -->
-                <div class="daw-main-container bg-[#0a0a0a] noir-bezel rounded-2xl overflow-hidden flex flex-col">
+                <div class="daw-main-container bg-[#0a0a0a] noir-bezel rounded-2xl overflow-hidden flex flex-col relative">
+
+                    <!-- ZOOM CONTROL — fixed to the top-right corner of the panel, stays put while the arrangement scrolls beneath it -->
+                    <div class="absolute top-2 right-2 z-[60] flex items-center gap-0.5 bg-black/80 border border-[rgba(47,208,255,0.3)] rounded-lg px-1 py-1 backdrop-blur-sm select-none" style="box-shadow:0 4px 14px rgba(0,0,0,0.5);" title="Ctrl/Cmd + scroll wheel also zooms">
+                        <button onclick="window.dawZoomOut()" class="w-6 h-6 flex items-center justify-center rounded-md bg-white/5 hover:bg-[#2fd0ff]/25 text-[#2fd0ff] text-sm font-black leading-none transition-colors" title="Zoom Out">−</button>
+                        <span id="daw-zoom-label" class="text-[9px] font-black neon-blue-text w-10 text-center tabular-nums">100%</span>
+                        <button onclick="window.dawZoomIn()" class="w-6 h-6 flex items-center justify-center rounded-md bg-white/5 hover:bg-[#2fd0ff]/25 text-[#2fd0ff] text-sm font-black leading-none transition-colors" title="Zoom In">+</button>
+                    </div>
+
                     <!-- TRACK VIEWPORT — single scrollable area, both axes move as one unit -->
                     <div class="daw-arrangement-scroll" id="master-scroll-container">
                         <!-- GRID WRAPPER — wide enough for the full timeline so no track/bar gets clipped -->
