@@ -2259,8 +2259,8 @@
                         <button onclick="window.openDawFxPicker('${t.id}')" id="daw-fx-${t.id}" class="daw-chip-btn ${fxList.length ? 'fx-assigned' : ''}" title="${fxList.length ? fxList.length + ' plugin(s) — click to add/remove' : 'Assign plugins'}">FX${fxList.length ? ' ' + fxList.length : ''}</button>
                     </div>
                     <div class="flex items-center gap-2 pl-6 min-w-0">
-                        <input type="file" id="daw-upload-${t.id}" accept="audio/*" class="hidden" onchange="handleDawUpload(event, '${t.id}')">
-                        <span onclick="document.getElementById('daw-upload-${t.id}').click()" class="text-gray-500 hover:text-[#2fd0ff] transition-colors flex-shrink-0 cursor-pointer" title="Upload">${DAW_UPLOAD_ICON}</span>
+                        <input type="file" id="daw-upload-${t.id}" accept="audio/*,.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,.aiff,.wma,.webm" class="hidden" onchange="handleDawUpload(event, '${t.id}')">
+                        <span onclick="window.dawTriggerUpload('${t.id}')" class="text-gray-500 hover:text-[#2fd0ff] transition-colors flex-shrink-0 cursor-pointer" style="position:relative; z-index:5; pointer-events:auto; padding:4px; margin:-4px;" title="Upload">${DAW_UPLOAD_ICON}</span>
                         <button onclick="window.toggleDawHeaderFxBox('${t.id}')" ${fxList.length ? '' : 'disabled'} class="flex-1 flex items-center justify-between gap-1 px-2 py-1 rounded-md bg-black/40 border ${fxList.length ? 'border-[rgba(47,208,255,0.3)]' : 'border-white/5'} text-[8px] font-black uppercase tracking-widest transition-colors ${fxList.length ? 'neon-blue-text' : 'text-gray-600'} min-w-0">
                             <span class="truncate">${fxList.length ? 'FX Chain (' + fxList.length + ')' : 'No plugin loaded'}</span>
                             ${fxList.length ? `<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0 transition-transform" style="${isExpanded ? 'transform:rotate(180deg);' : ''}"><path d="m6 9 6 6 6-6"/></svg>` : ''}
@@ -3845,6 +3845,10 @@
                     if (window.dawLoopOn) { window.dawSeekToStart(); window.playAllDaw(); window.playAllDaw(); }
                     window.updateDawStatus();
                 });
+                window.waves[key].on('error', (err) => {
+                    console.error('[DAW] wave "' + key + '" failed to load/decode:', err);
+                    alert('That audio file couldn\'t be loaded (' + t.name + '). Try converting it to MP3 or WAV and upload again.');
+                });
                 if (window.dawUrls[t.id]) window.waves[key].load(window.dawUrls[t.id]); // restore audio that was already loaded before this re-render
             });
         };
@@ -3966,7 +3970,19 @@
             window.removeDawTrack(id);
         };
 
+        window.dawTriggerUpload = function(trackId) {
+            console.log('[DAW] Upload icon clicked for track', trackId);
+            const input = document.getElementById('daw-upload-' + trackId);
+            if (!input) {
+                console.error('[DAW] Could not find file input #daw-upload-' + trackId + ' — the track list may not have rendered yet.');
+                alert('Upload button isn\'t linked up right now — try refreshing the page.');
+                return;
+            }
+            input.click();
+        };
+
         window.handleDawUpload = function(event, trackId) {
+            console.log('[DAW] handleDawUpload fired for track', trackId, 'files:', event.target.files);
             const file = event.target.files[0];
             if (!file) return;
             try {
