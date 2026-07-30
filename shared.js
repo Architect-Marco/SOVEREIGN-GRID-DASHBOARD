@@ -2197,6 +2197,7 @@
         }
 
         window.dawUrls = {};
+        window.dawFiles = {}; // retains the actual File/Blob objects so audio can be (re)loaded via loadBlob() without depending on a fetchable blob: URL
         window.dawClipOffsets = window.dawClipOffsets || {};
 
         window.dawClipDragStart = function(e, trackId) {
@@ -3849,7 +3850,8 @@
                     console.error('[DAW] wave "' + key + '" failed to load/decode:', err);
                     alert('That audio file couldn\'t be loaded (' + t.name + '). Try converting it to MP3 or WAV and upload again.');
                 });
-                if (window.dawUrls[t.id]) window.waves[key].load(window.dawUrls[t.id]); // restore audio that was already loaded before this re-render
+                if (window.dawFiles[t.id]) window.waves[key].loadBlob(window.dawFiles[t.id]); // restore from the retained File — no network fetch involved
+                else if (window.dawUrls[t.id]) window.waves[key].load(window.dawUrls[t.id]); // fallback for older stored sessions with only a URL
             });
         };
 
@@ -3986,8 +3988,8 @@
             const file = event.target.files[0];
             if (!file) return;
             try {
-                const url = URL.createObjectURL(file);
-                window.dawUrls[trackId] = url; // stored first so the load always has something to retry against
+                window.dawFiles[trackId] = file; // keep the actual File so we can decode it directly, no network fetch involved
+                window.dawUrls[trackId] = URL.createObjectURL(file); // still kept for export/mixdown fetch
                 const key = 'daw-' + trackId;
 
                 if (!window.waves[key]) {
@@ -3996,7 +3998,7 @@
                 }
 
                 if (window.waves[key]) {
-                    window.waves[key].load(url);
+                    window.waves[key].loadBlob(file); // decodes the File directly in memory — sidesteps blob: URL fetch issues (extensions, browser quirks) entirely
                 } else {
                     console.error('DAW upload: no waveform instance for track ' + trackId + ' — audio engine may not be ready yet.');
                     alert('The audio engine isn\'t ready yet — please wait a second and try uploading again.');
