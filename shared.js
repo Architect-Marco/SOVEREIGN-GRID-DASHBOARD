@@ -2164,7 +2164,7 @@
         // ===== Single-column continuous LED bar meter (like a real console VU strip) =====
         const DAW_FADER_SCALE_MARKS = [0, 6, 12, 18, 24, 30, 36, 48, 60];
         function dawFaderScaleHtml() {
-            return DAW_FADER_SCALE_MARKS.map(v => `<span style="color:#2fd0ff;">${v}</span>`).join('');
+            return DAW_FADER_SCALE_MARKS.map(v => `<span>${v}</span>`).join('');
         }
         window.dawUpdateLed = function(ledId, value) {
             const meter = document.getElementById(ledId);
@@ -2253,14 +2253,14 @@
                     <div class="flex items-center gap-2">
                         <span class="daw-grip">⋮⋮</span>
                         <span class="daw-rec-btn" title="Record Enable"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg></span>
-                        <span class="text-[12px] font-bold neon-blue-text truncate flex-1">${t.name}</span>
+                        <span class="text-[12px] font-bold text-gray-200 truncate flex-1">${t.name}</span>
                         <button onclick="toggleDawMute('${t.id}')" id="daw-mute-${t.id}" class="daw-chip-btn ${t.muted ? 'on-mute' : ''}">M</button>
                         <button onclick="toggleDawSolo('${t.id}')" id="daw-solo-${t.id}" class="daw-chip-btn ${t.solo ? 'on-solo' : ''}">S</button>
                         <button onclick="window.openDawFxPicker('${t.id}')" id="daw-fx-${t.id}" class="daw-chip-btn ${fxList.length ? 'fx-assigned' : ''}" title="${fxList.length ? fxList.length + ' plugin(s) — click to add/remove' : 'Assign plugins'}">FX${fxList.length ? ' ' + fxList.length : ''}</button>
                     </div>
                     <div class="flex items-center gap-2 pl-6 min-w-0">
-                        <input type="file" id="daw-upload-${t.id}" accept="audio/*,.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,.aiff,.wma,.webm" class="hidden" onchange="handleDawUpload(event, '${t.id}')">
-                        <span onclick="window.dawTriggerUpload('${t.id}')" class="text-gray-500 hover:text-[#2fd0ff] transition-colors flex-shrink-0 cursor-pointer" style="position:relative; z-index:5; pointer-events:auto; padding:4px; margin:-4px;" title="Upload">${DAW_UPLOAD_ICON}</span>
+                        <input type="file" id="daw-upload-${t.id}" accept="audio/*" class="hidden" onchange="handleDawUpload(event, '${t.id}')">
+                        <label for="daw-upload-${t.id}" class="text-gray-500 hover:text-[#2fd0ff] transition-colors flex-shrink-0 cursor-pointer" title="Upload">${DAW_UPLOAD_ICON}</label>
                         <button onclick="window.toggleDawHeaderFxBox('${t.id}')" ${fxList.length ? '' : 'disabled'} class="flex-1 flex items-center justify-between gap-1 px-2 py-1 rounded-md bg-black/40 border ${fxList.length ? 'border-[rgba(47,208,255,0.3)]' : 'border-white/5'} text-[8px] font-black uppercase tracking-widest transition-colors ${fxList.length ? 'neon-blue-text' : 'text-gray-600'} min-w-0">
                             <span class="truncate">${fxList.length ? 'FX Chain (' + fxList.length + ')' : 'No plugin loaded'}</span>
                             ${fxList.length ? `<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0 transition-transform" style="${isExpanded ? 'transform:rotate(180deg);' : ''}"><path d="m6 9 6 6 6-6"/></svg>` : ''}
@@ -2276,7 +2276,7 @@
             lanes.innerHTML = window.dawTracks.map((t, i) => `
                 <div class="relative border-b border-white/5 flex items-center overflow-hidden" oncontextmenu="window.openDawTrackContextMenu(event,'${t.id}')" style="height:${dawRowHeight(t)}px; overflow:hidden; z-index:1;">
                     <div id="clip-wrap-${t.id}" class="relative w-full h-full" style="transform:translateX(${window.dawClipOffsets[t.id] || 0}px); overflow:hidden; z-index:1;">
-                        <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full flex items-center" style="cursor:grab; overflow:hidden; z-index:1;"></div>
+                        <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full" style="cursor:grab; overflow:hidden; z-index:1;"></div>
                     </div>
                 </div>`).join('');
 
@@ -2302,54 +2302,6 @@
             ruler.innerHTML = html;
         };
 
-        // ============================================================
-        // DAW ARRANGEMENT ZOOM — "+"/"−" buttons or Ctrl/Cmd + mouse wheel,
-        // zooms the timeline horizontally around the cursor position.
-        // ============================================================
-        window.dawZoom = window.dawZoom || 1;
-        const DAW_ZOOM_MIN = 0.3, DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = 5200;
-
-        window.dawApplyZoom = function() {
-            const wrapper = document.querySelector('.daw-grid-wrapper');
-            const label = document.getElementById('daw-zoom-label');
-            if (wrapper) wrapper.style.minWidth = Math.round(DAW_BASE_GRID_WIDTH * window.dawZoom) + 'px';
-            if (label) label.innerText = Math.round(window.dawZoom * 100) + '%';
-        };
-
-        // clientX (optional): viewport X of the cursor to zoom around, so the point
-        // under the mouse stays put instead of the view jumping to the left edge.
-        window.dawSetZoom = function(newZoom, clientX) {
-            newZoom = Math.max(DAW_ZOOM_MIN, Math.min(DAW_ZOOM_MAX, newZoom));
-            const scrollEl = document.getElementById('master-scroll-container');
-            const prevZoom = window.dawZoom;
-            if (scrollEl && clientX !== undefined && prevZoom) {
-                const rect = scrollEl.getBoundingClientRect();
-                const pointerOffsetInContent = (clientX - rect.left) + scrollEl.scrollLeft;
-                const ratio = pointerOffsetInContent / (DAW_BASE_GRID_WIDTH * prevZoom);
-                window.dawZoom = newZoom;
-                window.dawApplyZoom();
-                scrollEl.scrollLeft = ratio * DAW_BASE_GRID_WIDTH * newZoom - (clientX - rect.left);
-            } else {
-                window.dawZoom = newZoom;
-                window.dawApplyZoom();
-            }
-        };
-
-        window.dawZoomIn = function() { window.dawSetZoom(window.dawZoom * 1.25); };
-        window.dawZoomOut = function() { window.dawSetZoom(window.dawZoom / 1.25); };
-
-        window.dawInitZoomWheel = function() {
-            const scrollEl = document.getElementById('master-scroll-container');
-            if (!scrollEl || scrollEl.dataset.zoomWheelBound) return;
-            scrollEl.dataset.zoomWheelBound = '1';
-            scrollEl.addEventListener('wheel', (e) => {
-                if (!e.ctrlKey && !e.metaKey) return; // plain scroll = normal pan/scroll; Ctrl/Cmd+scroll (or trackpad pinch) = zoom
-                e.preventDefault();
-                const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-                window.dawSetZoom(window.dawZoom * factor, e.clientX);
-            }, { passive: false });
-        };
-
         window.dawMasterFx = [];
 
         window.renderDawMixer = function() {
@@ -2370,7 +2322,7 @@
                     <div class="flex items-center gap-1.5">${insertDotsHtml(masterFxList.length)}</div>
 
                     <div class="daw-mixer-io-row">
-                        <span class="daw-mixer-io-label" style="color:#2fd0ff;">I/O</span>
+                        <span class="daw-mixer-io-label">I/O</span>
                         <span class="daw-mixer-io-pill on"></span>
                     </div>
 
@@ -2383,7 +2335,7 @@
                     </div>
 
                     <div class="daw-mixer-io-row">
-                        <span class="daw-mixer-io-label" style="color:#2fd0ff;">Auto</span>
+                        <span class="daw-mixer-io-label">Auto</span>
                         <span class="daw-mixer-io-pill"></span>
                     </div>
 
@@ -2396,8 +2348,8 @@
                     </div>
 
                     <div class="daw-mixer-value-row">
-                        <span class="daw-mixer-value-field" id="daw-mixer-peak-master" style="color:#2fd0ff;">-Inf</span>
-                        <span class="daw-mixer-value-field" id="daw-mixer-db-master" style="color:#2fd0ff;">0.0dB</span>
+                        <span class="daw-mixer-value-field" id="daw-mixer-peak-master">-Inf</span>
+                        <span class="daw-mixer-value-field" id="daw-mixer-db-master">0.0dB</span>
                     </div>
 
                     <div class="flex items-end gap-1">
@@ -2408,7 +2360,7 @@
                     </div>
 
                     <div class="daw-mixer-footer">
-                        <input type="text" value="${window.dawMasterName || 'Master'}" onchange="window.renameDawMaster(this.value)" onclick="event.stopPropagation()" class="daw-name-box" style="color:#2fd0ff;">
+                        <input type="text" value="${window.dawMasterName || 'Master'}" onchange="window.renameDawMaster(this.value)" onclick="event.stopPropagation()" class="daw-name-box">
                     </div>
                 </div>`;
 
@@ -2421,7 +2373,7 @@
                     <div class="flex items-center gap-1.5">${insertDotsHtml(fxList.length)}</div>
 
                     <div class="daw-mixer-io-row">
-                        <span class="daw-mixer-io-label" style="color:#2fd0ff;">I/O</span>
+                        <span class="daw-mixer-io-label">I/O</span>
                         <span class="daw-mixer-io-pill on"></span>
                     </div>
 
@@ -2434,7 +2386,7 @@
                     </div>
 
                     <div class="daw-mixer-io-row">
-                        <span class="daw-mixer-io-label" style="color:#2fd0ff;">Auto</span>
+                        <span class="daw-mixer-io-label">Auto</span>
                         <span class="daw-mixer-io-pill"></span>
                     </div>
 
@@ -2447,8 +2399,8 @@
                     </div>
 
                     <div class="daw-mixer-value-row">
-                        <span class="daw-mixer-value-field" id="daw-mixer-peak-${t.id}" style="color:#2fd0ff;">-Inf</span>
-                        <span class="daw-mixer-value-field" id="daw-mixer-db-${t.id}" style="color:#2fd0ff;">-inf</span>
+                        <span class="daw-mixer-value-field" id="daw-mixer-peak-${t.id}">-Inf</span>
+                        <span class="daw-mixer-value-field" id="daw-mixer-db-${t.id}">-inf</span>
                     </div>
 
                     <div class="flex items-end gap-1">
@@ -2461,7 +2413,7 @@
                     </div>
 
                     <div class="daw-mixer-footer">
-                        <input type="text" value="${t.name}" onchange="window.renameDawTrack('${t.id}', this.value)" onclick="event.stopPropagation()" class="daw-name-box" style="color:#2fd0ff;">
+                        <input type="text" value="${t.name}" onchange="window.renameDawTrack('${t.id}', this.value)" onclick="event.stopPropagation()" class="daw-name-box">
                     </div>
                 </div>`;
             }).join('');
@@ -3812,6 +3764,56 @@
             window.closeDawPluginDetail();
         };
 
+        // ============================================================
+        // DAW ARRANGEMENT ZOOM — scroll the mouse wheel over the ruler/waveform
+        // area to zoom the timeline in and out. Scales the ruler bar spacing,
+        // the overall grid width, and each track's WaveSurfer render width.
+        // ============================================================
+        window.dawZoom = 1;
+        const DAW_ZOOM_MIN = 0.35;
+        const DAW_ZOOM_MAX = 4;
+        const DAW_ZOOM_BASE_WIDTH = 5200;   // matches .daw-grid-wrapper's original min-width
+        const DAW_ZOOM_BASE_GAP = 32;       // matches the ruler's original gap-8 (2rem)
+        const DAW_ZOOM_BASE_PXSEC = 60;     // baseline WaveSurfer minPxPerSec
+
+        window.dawApplyZoom = function() {
+            const gridWrapper = document.querySelector('.daw-grid-wrapper');
+            if (gridWrapper) gridWrapper.style.minWidth = (DAW_ZOOM_BASE_WIDTH * window.dawZoom) + 'px';
+            const ruler = document.getElementById('daw-ruler');
+            if (ruler) ruler.style.gap = (DAW_ZOOM_BASE_GAP * window.dawZoom) + 'px';
+            window.dawTracks.forEach(t => {
+                const w = window.waves['daw-' + t.id];
+                if (w && typeof w.zoom === 'function') {
+                    try { if (w.getDuration && w.getDuration() > 0) w.zoom(DAW_ZOOM_BASE_PXSEC * window.dawZoom); } catch (e) {}
+                }
+            });
+        };
+
+        window.dawHandleZoomWheel = function(e) {
+            e.preventDefault();
+            const container = document.getElementById('master-scroll-container');
+            const oldZoom = window.dawZoom;
+            const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+            const newZoom = Math.min(DAW_ZOOM_MAX, Math.max(DAW_ZOOM_MIN, oldZoom * factor));
+            if (newZoom === oldZoom) return;
+            if (container) {
+                const rect = container.getBoundingClientRect();
+                const cursorX = e.clientX - rect.left + container.scrollLeft;
+                const ratio = newZoom / oldZoom;
+                window.dawZoom = newZoom;
+                window.dawApplyZoom();
+                requestAnimationFrame(() => { container.scrollLeft = cursorX * ratio - (e.clientX - rect.left); });
+            } else {
+                window.dawZoom = newZoom;
+                window.dawApplyZoom();
+            }
+        };
+
+        (function dawInitZoomListener() {
+            const lanesWrapper = document.getElementById('daw-lanes-wrapper');
+            if (lanesWrapper) lanesWrapper.addEventListener('wheel', window.dawHandleZoomWheel, { passive: false });
+        })();
+
         window.initDawWaves = function() {
             window.dawTracks.forEach(t => {
                 const key = 'daw-' + t.id;
@@ -3832,12 +3834,13 @@
                 }
                 window.waves[key] = WaveSurfer.create({
                     container: `#wave-${key}`, waveColor: t.color, progressColor: t.color,
-                    cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 30, normalize: true, interact: false
+                    cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 50, normalize: true, interact: false
                 });
                 window.waves[key].setVolume((t.volume ?? 80) / 100);
                 window.waves[key].on('audioprocess', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
                 window.waves[key].on('ready', () => {
                     window.updateDawTimer(key); window.updateDawPlayhead();
+                    try { window.waves[key].zoom(DAW_ZOOM_BASE_PXSEC * window.dawZoom); } catch (e) {}
                     if (resumeAt !== null) { window.waves[key].play(); window.waves[key].seekTo(resumeAt / window.waves[key].getDuration()); }
                 });
                 window.waves[key].on('seek', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
@@ -3845,12 +3848,9 @@
                     if (window.dawLoopOn) { window.dawSeekToStart(); window.playAllDaw(); window.playAllDaw(); }
                     window.updateDawStatus();
                 });
-                window.waves[key].on('error', (err) => {
-                    console.error('[DAW] wave "' + key + '" failed to load/decode:', err);
-                    alert('That audio file couldn\'t be loaded (' + t.name + '). Try converting it to MP3 or WAV and upload again.');
-                });
                 if (window.dawUrls[t.id]) window.waves[key].load(window.dawUrls[t.id]); // restore audio that was already loaded before this re-render
             });
+            window.dawApplyZoom();
         };
 
         window.addDawTrack = function() {
@@ -3970,43 +3970,14 @@
             window.removeDawTrack(id);
         };
 
-        window.dawTriggerUpload = function(trackId) {
-            console.log('[DAW] Upload icon clicked for track', trackId);
-            const input = document.getElementById('daw-upload-' + trackId);
-            if (!input) {
-                console.error('[DAW] Could not find file input #daw-upload-' + trackId + ' — the track list may not have rendered yet.');
-                alert('Upload button isn\'t linked up right now — try refreshing the page.');
-                return;
-            }
-            input.click();
-        };
-
         window.handleDawUpload = function(event, trackId) {
-            console.log('[DAW] handleDawUpload fired for track', trackId, 'files:', event.target.files);
             const file = event.target.files[0];
             if (!file) return;
-            try {
-                const url = URL.createObjectURL(file);
-                window.dawUrls[trackId] = url; // stored first so the load always has something to retry against
-                const key = 'daw-' + trackId;
-
-                if (!window.waves[key]) {
-                    try { window.initDawWaves(); }
-                    catch (initErr) { console.error('DAW wave engine failed to initialize:', initErr); }
-                }
-
-                if (window.waves[key]) {
-                    window.waves[key].load(url);
-                } else {
-                    console.error('DAW upload: no waveform instance for track ' + trackId + ' — audio engine may not be ready yet.');
-                    alert('The audio engine isn\'t ready yet — please wait a second and try uploading again.');
-                }
-            } catch (err) {
-                console.error('DAW upload failed:', err);
-                alert('Could not load that audio file. Please try a different file.');
-            } finally {
-                event.target.value = ''; // so choosing the same file again still fires this handler
-            }
+            window.initDawWaves();
+            const url = URL.createObjectURL(file);
+            window.dawUrls[trackId] = url;
+            const key = 'daw-' + trackId;
+            if (window.waves[key]) window.waves[key].load(url);
         };
 
         window.playAllDaw = function() {
@@ -6259,10 +6230,4 @@
                     }
                 }
             }, 'dawInit');
-            safeInit(() => {
-                if (document.getElementById('master-scroll-container')) {
-                    window.dawApplyZoom();
-                    window.dawInitZoomWheel();
-                }
-            }, 'dawZoomInit');
         });
