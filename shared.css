@@ -1,4 +1,4 @@
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Share+Tech+Mono&display=swap');
         body { background-color: #050505; color: #ffffff; font-family: 'JetBrains Mono', monospace; margin: 0; overflow: hidden; height: 100vh; }
         .noir-bezel { border: 1.8px solid rgba(255, 255, 255, 0.05); }
         .mastering-bezel { border: 1px solid rgba(255, 255, 255, 0.05); }
@@ -214,8 +214,10 @@
         .neon-blue-dot { background: #2fd0ff !important; box-shadow: 0 0 8px rgba(47,208,255,0.9); }
 
         /* ===== LEXI-CON IDENTITY (#00FFFF Teal/Cyan) — her messages are visually prioritized in the Relay ===== */
-        .lexi-identity-text { color: #00FFFF !important; text-shadow: 0 0 8px rgba(0,255,255,0.6); }
-        .lexi-message-priority { border-left: 2px solid rgba(0,255,255,0.5); padding-left: 8px; background: rgba(0,255,255,0.04); border-radius: 4px; }
+        .lexi-identity-text { color: #2fd0ff !important; text-shadow: 0 0 8px rgba(47,208,255,0.6); }
+        .lexi-message-priority { border-left: 2px solid rgba(47,208,255,0.5); padding-left: 8px; background: rgba(47,208,255,0.04); border-radius: 4px; }
+        #relay-feed, #relay-feed * { font-family: 'Share Tech Mono', monospace !important; }
+        .relay-msg-text { color: #2fd0ff !important; text-shadow: 0 0 6px rgba(47,208,255,0.35); }
         .neon-blue-row-bg { background: rgba(47,208,255,0.08) !important; }
         .neon-blue-badge { background: rgba(47,208,255,0.18) !important; color: #2fd0ff !important; }
         #tab-intel.tab-active, #tab-overview.tab-active, #tab-releases.tab-active, #tab-syndicate.tab-active { border-bottom-color: #2fd0ff !important; color: #2fd0ff !important; text-shadow: 0 0 8px rgba(47,208,255,0.6); }
