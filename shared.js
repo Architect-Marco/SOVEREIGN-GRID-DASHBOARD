@@ -2265,12 +2265,9 @@
                         <button onclick="window.openDawFxPicker('${t.id}')" id="daw-fx-${t.id}" class="daw-chip-btn ${fxList.length ? 'fx-assigned' : ''}" title="${fxList.length ? fxList.length + ' plugin(s) — click to add/remove' : 'Assign plugins'}">FX${fxList.length ? ' ' + fxList.length : ''}</button>
                     </div>
                     <div class="flex items-center gap-2 pl-6 min-w-0">
-                        <span style="position:relative; display:inline-flex; width:18px; height:18px; flex-shrink:0;" title="Upload">
-                            <input type="file" id="daw-upload-${t.id}" accept="audio/*,.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,.aiff,.wma,.webm" onchange="handleDawUpload(event, '${t.id}')" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; margin:0; padding:0; border:0; cursor:pointer; z-index:5;">
-                            <span class="text-gray-500 flex items-center justify-center" style="width:100%; height:100%; pointer-events:none;">${DAW_UPLOAD_ICON}</span>
-                        </span>
-                        <button onclick="window.toggleDawHeaderFxBox('${t.id}')" ${fxList.length ? '' : 'disabled'} class="flex-1 flex items-center justify-between gap-1 px-2 py-1 rounded-md bg-black/40 border ${fxList.length ? 'border-[rgba(47,208,255,0.3)]' : 'border-white/5'} text-[8px] font-black uppercase tracking-widest transition-colors ${fxList.length ? 'neon-blue-text' : 'text-gray-600'} min-w-0">
-                            <span class="truncate">${fxList.length ? 'FX Chain (' + fxList.length + ')' : 'No plugin loaded'}</span>
+                        <input type="file" id="daw-upload-${t.id}" accept="audio/*,.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,.aiff,.wma,.webm" onchange="handleDawUpload(event, '${t.id}')" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">
+                        <button onclick="${fxList.length ? `window.toggleDawHeaderFxBox('${t.id}')` : `window.openDawFxPicker('${t.id}')`}" class="flex-1 flex items-center justify-between gap-1 px-2 py-1 rounded-md bg-black/40 border ${fxList.length ? 'border-[rgba(47,208,255,0.3)]' : 'border-white/5'} text-[8px] font-black uppercase tracking-widest transition-colors ${fxList.length ? 'neon-blue-text' : 'text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.3)]'} min-w-0">
+                            <span class="truncate">${fxList.length ? 'FX Chain (' + fxList.length + ')' : 'Assign FX / Select Plugins'}</span>
                             ${fxList.length ? `<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0 transition-transform" style="${isExpanded ? 'transform:rotate(180deg);' : ''}"><path d="m6 9 6 6 6-6"/></svg>` : ''}
                         </button>
                     </div>
