@@ -3895,7 +3895,6 @@
                 });
                 window.waves[key].on('seek', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
                 window.waves[key].on('finish', () => {
-                    if (window.dawLoopOn) { window.dawSeekToStart(); window.playAllDaw(); window.playAllDaw(); }
                     window.updateDawStatus();
                 });
                 window.waves[key].on('error', (err) => {
@@ -4192,36 +4191,132 @@
             }
         };
 
-        window.playAllDaw = function() {
-            const anyPlaying = window.dawTracks.some(t => window.waves['daw-' + t.id] && window.waves['daw-' + t.id].isPlaying());
+        // ============================================================
+        // ARRANGEMENT-AWARE TRANSPORT — a single master clock drives playback,
+        // so each track's clip starts exactly when the playhead reaches wherever
+        // it's been dragged to on the timeline, instead of every track starting
+        // from its own beginning the moment you hit Play.
+        // ============================================================
+        window.dawTransportTime = window.dawTransportTime || 0; // seconds — current arrangement playhead position
+        window.dawIsPlaying = false;
+        window.dawPendingTimeouts = window.dawPendingTimeouts || [];
+        window.dawTransportRafId = null;
+
+        function dawClipStartSeconds(trackId) {
+            const px = window.dawClipOffsets[trackId] || 0;
+            const bpm = parseFloat(window.dawBpm) || 120;
+            const secPerBar = (60 / bpm) * 4; // 4/4 time signature
+            const logicalPxPerBar = 108; // same logical unit the drag/snap system uses, independent of visual zoom
+            return (px / logicalPxPerBar) * secPerBar;
+        }
+
+        function dawArrangementDuration() {
+            let max = 0;
             window.dawTracks.forEach(t => {
                 const w = window.waves['daw-' + t.id];
-                if (!w) return;
-                if (anyPlaying) w.pause();
-                else if (!t.muted) w.play();
+                if (!w || !w.getDuration()) return;
+                const end = dawClipStartSeconds(t.id) + w.getDuration();
+                if (end > max) max = end;
             });
+            return max;
+        }
+
+        function dawClearPendingTimeouts() {
+            window.dawPendingTimeouts.forEach(id => clearTimeout(id));
+            window.dawPendingTimeouts = [];
+        }
+
+        function dawTransportTick() {
+            if (!window.dawIsPlaying) return;
+            const elapsed = (Date.now() - window.dawPlayWallClockStart) / 1000;
+            window.dawTransportTime = window.dawPlayStartTransportTime + elapsed;
+            const total = dawArrangementDuration();
+            if (total > 0 && window.dawTransportTime >= total) {
+                if (window.dawLoopOn) {
+                    window.dawPauseAll();
+                    window.dawTransportTime = 0;
+                    window.playAllDaw();
+                    return;
+                }
+                window.dawTransportTime = total;
+                window.dawPauseAll();
+                window.updateDawPlayhead();
+                return;
+            }
+            window.updateDawPlayhead();
+            window.updateDawTimer();
+            window.dawTransportRafId = requestAnimationFrame(dawTransportTick);
+        }
+
+        window.dawPauseAll = function() {
+            window.dawIsPlaying = false;
+            dawClearPendingTimeouts();
+            if (window.dawTransportRafId) { cancelAnimationFrame(window.dawTransportRafId); window.dawTransportRafId = null; }
+            window.dawTracks.forEach(t => {
+                const w = window.waves['daw-' + t.id];
+                if (w && w.isPlaying()) w.pause();
+            });
+            window.updateDawStatus();
+        };
+
+        window.playAllDaw = function() {
+            if (window.dawIsPlaying) { window.dawPauseAll(); return; }
+
+            window.dawIsPlaying = true;
+            window.dawPlayWallClockStart = Date.now();
+            window.dawPlayStartTransportTime = window.dawTransportTime;
+            dawClearPendingTimeouts();
+
+            const anySolo = window.dawTracks.some(t => t.solo);
+            window.dawTracks.forEach(t => {
+                const w = window.waves['daw-' + t.id];
+                if (!w || !w.getDuration()) return;
+                const shouldPlay = anySolo ? t.solo : !t.muted;
+                if (!shouldPlay) return;
+
+                const clipStart = dawClipStartSeconds(t.id);
+                const clipEnd = clipStart + w.getDuration();
+                if (window.dawTransportTime >= clipEnd) return; // playhead already passed this clip entirely
+                if (window.dawTransportTime >= clipStart) {
+                    // playhead is already inside this clip — jump in at the right point and play now
+                    w.seekTo(Math.max(0, Math.min(0.999, (window.dawTransportTime - clipStart) / w.getDuration())));
+                    w.play();
+                } else {
+                    // playhead hasn't reached this clip yet — schedule it for exactly when it should start
+                    const delayMs = (clipStart - window.dawTransportTime) * 1000;
+                    const timeoutId = setTimeout(() => { w.seekTo(0); w.play(); }, delayMs);
+                    window.dawPendingTimeouts.push(timeoutId);
+                }
+            });
+
+            window.dawTransportRafId = requestAnimationFrame(dawTransportTick);
             window.updateDawStatus();
         };
 
         window.dawStopAll = function() {
-            window.dawTracks.forEach(t => {
-                const w = window.waves['daw-' + t.id];
-                if (!w) return;
-                w.pause();
-                w.seekTo(0);
-            });
-            window.updateDawStatus();
+            window.dawPauseAll();
+            window.dawTransportTime = 0;
+            window.dawTracks.forEach(t => { const w = window.waves['daw-' + t.id]; if (w) w.seekTo(0); });
             window.updateDawPlayhead();
+            window.updateDawTimer();
         };
 
         window.dawSeekToStart = function() {
+            const wasPlaying = window.dawIsPlaying;
+            if (wasPlaying) window.dawPauseAll();
+            window.dawTransportTime = 0;
             window.dawTracks.forEach(t => { const w = window.waves['daw-' + t.id]; if (w) w.seekTo(0); });
             window.updateDawPlayhead();
+            window.updateDawTimer();
+            if (wasPlaying) window.playAllDaw();
         };
 
         window.dawSeekToEnd = function() {
-            window.dawTracks.forEach(t => { const w = window.waves['daw-' + t.id]; if (w && w.getDuration() > 0) w.seekTo(0.999); });
+            const wasPlaying = window.dawIsPlaying;
+            if (wasPlaying) window.dawPauseAll();
+            window.dawTransportTime = dawArrangementDuration();
             window.updateDawPlayhead();
+            window.updateDawTimer();
         };
 
         window.toggleDawLoop = function() {
@@ -4266,7 +4361,7 @@
             const status = document.getElementById('daw-status');
             const playBtn = document.getElementById('daw-play-btn');
             if (!status) return;
-            const isPlaying = window.dawTracks.some(t => window.waves['daw-' + t.id] && window.waves['daw-' + t.id].isPlaying());
+            const isPlaying = !!window.dawIsPlaying;
             status.innerText = isPlaying ? '[Playing]' : '[Stopped]';
             if (playBtn) playBtn.classList.toggle('is-playing', isPlaying);
         };
@@ -4275,24 +4370,16 @@
         window.updateDawPlayhead = function() {
             const playhead = document.getElementById('daw-playhead');
             if (!playhead) return;
-            const durations = window.dawTracks.map(t => window.waves['daw-' + t.id]).filter(Boolean).map(w => w.getDuration()).filter(d => d > 0);
-            if (durations.length === 0) return;
-            const totalDuration = Math.max(...durations);
+            const totalDuration = dawArrangementDuration();
+            if (totalDuration <= 0) return;
 
-            // Reference clock: whichever track is playing, else the longest loaded track
-            let referenceWave = window.dawTracks.map(t => window.waves['daw-' + t.id]).find(w => w && w.isPlaying());
-            if (!referenceWave) {
-                referenceWave = window.dawTracks.map(t => window.waves['daw-' + t.id]).filter(Boolean).sort((a, b) => b.getDuration() - a.getDuration())[0];
-            }
-            if (!referenceWave) return;
-
-            const pct = totalDuration > 0 ? (referenceWave.getCurrentTime() / totalDuration) * 100 : 0;
+            const pct = (window.dawTransportTime / totalDuration) * 100;
             playhead.style.left = Math.min(100, Math.max(0, pct)) + '%';
 
-            // Bar.Beat.Tick position readout, derived from the reference clock and current BPM
+            // Bar.Beat.Tick position readout, derived from the master transport clock and current BPM
             const bpm = parseFloat(window.dawBpm) || 120;
             const secPerBeat = 60 / bpm;
-            const totalBeats = referenceWave.getCurrentTime() / secPerBeat;
+            const totalBeats = window.dawTransportTime / secPerBeat;
             const bar = Math.floor(totalBeats / 4) + 1;
             const beat = Math.floor(totalBeats % 4) + 1;
             const tick = Math.floor((totalBeats % 1) * 100);
@@ -4541,11 +4628,10 @@
             }
         };
 
-        window.updateDawTimer = function(key) {
-            const w = window.waves[key];
-            if (!w) return;
+        window.updateDawTimer = function() {
             const cur = document.getElementById('daw-timer-current');
-            if (cur) cur.innerText = window.formatTime(w.getCurrentTime()) + '.' + String(Math.floor((w.getCurrentTime() % 1) * 1000)).padStart(3, '0');
+            const t = window.dawTransportTime || 0;
+            if (cur) cur.innerText = window.formatTime(t) + '.' + String(Math.floor((t % 1) * 1000)).padStart(3, '0');
         };
 
 
