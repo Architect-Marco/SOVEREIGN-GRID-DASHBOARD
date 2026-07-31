@@ -2362,6 +2362,25 @@
         window.dawZoomIn = function() { window.dawSetZoom(window.dawZoom * 1.25); };
         window.dawZoomOut = function() { window.dawSetZoom(window.dawZoom / 1.25); };
 
+        // Scales the timeline so a clip of the given duration comfortably fills the visible
+        // viewport (with a little breathing room), the way importing audio auto-fits the view
+        // in Ableton/Logic/Pro Tools — instead of always opening at whatever zoom % was last set.
+        const DAW_PIXELS_PER_BAR = 108; // matches .daw-ruler-mark width at zoom 1
+        const DAW_HEADER_SIDEBAR_WIDTH = 288; // w-72 track-header column, not part of the scrollable timeline
+        window.dawZoomToFitDuration = function(durationSec) {
+            if (!durationSec || durationSec <= 0) return;
+            const scrollEl = document.getElementById('master-scroll-container');
+            if (!scrollEl) return;
+            const bpm = parseFloat(window.dawBpm) || 120;
+            const secPerBar = (60 / bpm) * 4; // 4/4 time signature
+            const clipBars = durationSec / secPerBar;
+            const paddingBars = Math.max(1, clipBars * 0.15); // a little headroom after the clip ends
+            const visibleLaneWidth = Math.max(200, scrollEl.clientWidth - DAW_HEADER_SIDEBAR_WIDTH);
+            const targetZoom = visibleLaneWidth / (DAW_PIXELS_PER_BAR * (clipBars + paddingBars));
+            window.dawSetZoom(targetZoom);
+            scrollEl.scrollLeft = 0; // fitting always starts from the top of the timeline
+        };
+
         window.dawInitZoomWheel = function() {
             const scrollEl = document.getElementById('master-scroll-container');
             if (!scrollEl || scrollEl.dataset.zoomWheelBound) return;
@@ -4013,7 +4032,10 @@
                 if (window.waves[key]) {
                     console.log('[DAW] calling loadBlob() for', key, 'file:', file.name, file.type, file.size + ' bytes');
                     window.waves[key].loadBlob(file) // decodes the File directly in memory — sidesteps blob: URL fetch issues (extensions, browser quirks) entirely
-                        .then(() => console.log('[DAW] loadBlob() resolved OK for', key))
+                        .then(() => {
+                            console.log('[DAW] loadBlob() resolved OK for', key);
+                            window.dawZoomToFitDuration(window.waves[key].getDuration());
+                        })
                         .catch(err => {
                             console.error('[DAW] loadBlob() rejected for', key, err);
                             alert('Could not decode that audio file (' + (err && err.message ? err.message : err) + ').');
