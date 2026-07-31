@@ -2336,7 +2336,7 @@
         window.dawApplyZoom = function() {
             const wrapper = document.querySelector('.daw-grid-wrapper');
             const label = document.getElementById('daw-zoom-label');
-            if (wrapper) wrapper.style.minWidth = Math.round(DAW_BASE_GRID_WIDTH * window.dawZoom) + 'px';
+            if (wrapper) wrapper.style.width = Math.round(DAW_BASE_GRID_WIDTH * window.dawZoom) + 'px';
             if (label) label.innerText = Math.round(window.dawZoom * 100) + '%';
         };
 
