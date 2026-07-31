@@ -2330,8 +2330,8 @@
         // DAW ARRANGEMENT ZOOM — "+"/"−" buttons or Ctrl/Cmd + mouse wheel,
         // zooms the timeline horizontally around the cursor position.
         // ============================================================
-        window.dawZoom = window.dawZoom || 1;
-        const DAW_ZOOM_MIN = 0.3, DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = 5200;
+        window.dawZoom = window.dawZoom || 0.4;
+        const DAW_ZOOM_MIN = 0.1, DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = 5200;
 
         window.dawApplyZoom = function() {
             const wrapper = document.querySelector('.daw-grid-wrapper');
