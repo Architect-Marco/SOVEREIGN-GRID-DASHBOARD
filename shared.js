@@ -2340,17 +2340,8 @@
         const DAW_RULER_BASE_MARK_WIDTH = 76; // matches the .daw-ruler-mark CSS floor at zoom 1
         const DAW_RULER_TOTAL_BARS = 48;
         window.dawZoom = window.dawZoom || 0.4;
-        const DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = DAW_RULER_BASE_MARK_WIDTH * DAW_RULER_TOTAL_BARS;
+        const DAW_ZOOM_MIN = 0.02, DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = DAW_RULER_BASE_MARK_WIDTH * DAW_RULER_TOTAL_BARS;
         const DAW_HEADER_SIDEBAR_WIDTH = 288; // w-72 track-header column, not part of the scrollable timeline
-        // The floor isn't a fixed percentage — it's whatever zoom makes the full 48-bar timeline
-        // exactly fill the visible viewport, so zooming out never leaves dead empty space past
-        // the ruler, and never lets you shrink content smaller than the screen needs it to be.
-        function dawZoomMinFloor() {
-            const scrollEl = document.getElementById('master-scroll-container');
-            if (!scrollEl) return 0.02;
-            const visibleLaneWidth = Math.max(100, scrollEl.clientWidth - DAW_HEADER_SIDEBAR_WIDTH);
-            return Math.min(0.3, Math.max(0.01, visibleLaneWidth / DAW_BASE_GRID_WIDTH));
-        }
 
         window.dawApplyZoom = function() {
             const wrapper = document.querySelector('.daw-grid-wrapper');
@@ -2363,7 +2354,7 @@
         // clientX (optional): viewport X of the cursor to zoom around, so the point
         // under the mouse stays put instead of the view jumping to the left edge.
         window.dawSetZoom = function(newZoom, clientX) {
-            newZoom = Math.max(dawZoomMinFloor(), Math.min(DAW_ZOOM_MAX, newZoom));
+            newZoom = Math.max(DAW_ZOOM_MIN, Math.min(DAW_ZOOM_MAX, newZoom));
             const scrollEl = document.getElementById('master-scroll-container');
             const prevZoom = window.dawZoom;
             if (scrollEl && clientX !== undefined && prevZoom) {
