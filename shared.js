@@ -4410,7 +4410,7 @@
             strip.innerHTML = cards.map(item => {
                 if (item.type === 'folder') {
                     return `
-                    <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-48 h-48 rounded-xl bg-black/30 border border-white/5 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[rgba(47,208,255,0.4)] transition-colors">
+                    <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-64 h-64 bg-black/30 border border-white/5 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[rgba(47,208,255,0.4)] transition-colors">
                         <span class="neon-blue-text">${GALLERY_ICON_FOLDER}</span>
                         <span class="text-[8px] text-gray-400 font-bold text-center px-2 truncate w-full">${item.name}</span>
                     </div>`;
@@ -4419,7 +4419,7 @@
                 const icon = item.type === 'video' ? GALLERY_ICON_VIDEO : (item.type === 'audio' ? GALLERY_ICON_AUDIO : GALLERY_ICON_IMAGE);
                 const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:120%;background-position:center;` : '';
                 return `
-                <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-48 h-60 rounded-xl bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all relative overflow-hidden" style="${coverStyle}">
+                <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-64 h-80 bg-[#242424] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all relative overflow-hidden" style="${coverStyle}">
                     ${!item.coverArt ? '<span class="neon-blue-text opacity-70">' + icon + '</span>' : ''}
                     ${item.type === 'video' || item.type === 'audio' ? '<span class="absolute bottom-2 left-2 right-2 text-[7px] text-gray-400 font-bold truncate bg-black/60 px-1.5 py-0.5 rounded">' + item.name + '</span>' : ''}
                 </div>`;
@@ -4508,7 +4508,7 @@
                     const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:112%;background-position:center;` : '';
                     const safeName = item.name.replace(/'/g, "\\'");
                     return `
-                    <div onclick="window.gallerySelect('${safeName}')" class="group relative aspect-square rounded-lg bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex items-center justify-center cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all overflow-hidden" style="${coverStyle}">
+                    <div onclick="window.gallerySelect('${safeName}')" class="group relative aspect-square bg-[#242424] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex items-center justify-center cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all overflow-hidden" style="${coverStyle}">
                         ${!item.coverArt ? '<span class="neon-blue-text opacity-70 [&_svg]:w-6 [&_svg]:h-6">' + icon + '</span>' : ''}
                         <span class="absolute bottom-0 inset-x-0 text-[7px] text-gray-300 font-bold truncate bg-black/70 px-1.5 py-1">${item.name}</span>
                         <button onclick="window.deleteGalleryItem('${safeName}', event)" title="Delete" class="absolute top-1 right-1 w-5 h-5 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 neon-blue-text hover:bg-white/20">
