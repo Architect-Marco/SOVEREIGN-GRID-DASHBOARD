@@ -2299,18 +2299,29 @@
             window.renderDawRuler();
         };
 
+        // Shared by the ruler and the zoom wrapper so they never disagree: at any zoom level,
+        // generate enough bars to at least fill the visible viewport (never fewer than the
+        // baseline 48), so there's never a stretch of dead space past the end of the ruler.
+        function dawComputeTimelineLayout() {
+            const markPx = Math.max(2, Math.round(DAW_RULER_BASE_MARK_WIDTH * (window.dawZoom || 1)));
+            const scrollEl = document.getElementById('master-scroll-container');
+            const visibleLaneWidth = scrollEl ? Math.max(200, scrollEl.clientWidth - DAW_HEADER_SIDEBAR_WIDTH) : 900;
+            const barsToFillScreen = Math.ceil(visibleLaneWidth / markPx) + 1;
+            const totalBars = Math.max(DAW_RULER_TOTAL_BARS, barsToFillScreen);
+            return { markPx, totalBars, totalWidthPx: markPx * totalBars };
+        }
+
         window.renderDawRuler = function() {
             const ruler = document.getElementById('daw-ruler');
             if (!ruler) return;
             const bpm = parseFloat(window.dawBpm) || 120;
             const secPerBar = (60 / bpm) * 4; // 4/4 time signature
-            const totalBars = 48;
             const subdivisions = window.dawGridDivision || 16;
             const beatEvery = Math.max(1, subdivisions / 4); // ticks-per-quarter-note boundary
             // .daw-ruler-mark has a CSS min-width:76px floor meant for the default (100%) zoom —
             // override it inline per-mark so the ruler (and the waveform lanes that align to it)
             // can actually shrink below that floor when zoomed out, not just stop shrinking at ~75%.
-            const markPx = Math.max(2, Math.round(DAW_RULER_BASE_MARK_WIDTH * (window.dawZoom || 1)));
+            const { markPx, totalBars } = dawComputeTimelineLayout();
             // Below ~40px a bar mark is narrower than its own "N.1" + timecode text, so labels
             // start colliding into their neighbors — thin them out to every Nth bar instead.
             const labelStride = markPx >= 40 ? 1 : markPx >= 20 ? 2 : markPx >= 10 ? 4 : markPx >= 5 ? 8 : 16;
@@ -2346,7 +2357,7 @@
         window.dawApplyZoom = function() {
             const wrapper = document.querySelector('.daw-grid-wrapper');
             const label = document.getElementById('daw-zoom-label');
-            if (wrapper) wrapper.style.width = Math.round(DAW_BASE_GRID_WIDTH * window.dawZoom) + 'px';
+            if (wrapper) wrapper.style.width = dawComputeTimelineLayout().totalWidthPx + 'px';
             if (label) label.innerText = Math.round(window.dawZoom * 100) + '%';
             if (document.getElementById('daw-ruler')) window.renderDawRuler(); // re-scale bar marks to match
         };
