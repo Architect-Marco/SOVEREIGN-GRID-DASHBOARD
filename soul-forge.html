@@ -79,10 +79,10 @@
 
                         <!-- DROP ZONE (FUNCTIONAL) -->
                         <div id="epk-dropzone" onclick="document.getElementById('epk-audio-input').click()"
-                             ondragover="event.preventDefault(); this.classList.add('border-teal-400');"
-                             ondragleave="this.classList.remove('border-teal-400');"
+                             ondragover="event.preventDefault(); this.style.borderColor='#2fd0ff'; this.style.boxShadow='0 0 0 2px rgba(47,208,255,0.4)';"
+                             ondragleave="this.style.borderColor=''; this.style.boxShadow='none';"
                              ondrop="window.handleEpkAudioDrop(event)"
-                             class="border-2 border-dashed border-white/10 rounded-2xl py-10 flex flex-col items-center justify-center text-center cursor-pointer hover:border-teal-400/60 transition-all mb-6">
+                             class="border-2 border-dashed border-white/10 rounded-2xl py-10 flex flex-col items-center justify-center text-center cursor-pointer hover:border-[rgba(47,208,255,0.6)] transition-all mb-6">
                             <div id="epk-dropzone-icon" class="text-2xl mb-3">🎵</div>
                             <div id="epk-dropzone-title" class="neon-blue-text font-black uppercase text-sm tracking-tight mb-1">Drop Your Track</div>
                             <div id="epk-dropzone-sub" class="text-gray-500 text-[10px] uppercase font-black tracking-widest">Drag & drop or click to browse</div>
@@ -101,14 +101,14 @@
                             </div>
                             <input type="file" id="epk-photo-input" accept="image/*" class="hidden" onchange="window.handleEpkPhotoUpload(event)">
                             <div class="flex-1 space-y-2.5 self-stretch flex flex-col justify-center">
-                                <input type="text" id="epk-band-name" autocomplete="off" placeholder="Artist / Band Name" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3.5 text-white text-base font-bold outline-none focus:border-teal-400">
-                                <input type="text" id="epk-song-title" autocomplete="off" placeholder="Song Title" class="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-teal-400">
+                                <input type="text" id="epk-band-name" autocomplete="off" placeholder="Artist / Band Name" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3.5 text-white text-base font-bold outline-none focus:border-[#2fd0ff]" onfocus="this.style.boxShadow='0 0 0 2px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
+                                <input type="text" id="epk-song-title" autocomplete="off" placeholder="Song Title" class="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#2fd0ff]" onfocus="this.style.boxShadow='0 0 0 2px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
                             </div>
                         </div>
 
                         <!-- MEMBERS + LEAD VOCALS -->
                         <div class="mb-2">
-                            <input type="text" id="epk-members" autocomplete="off" placeholder="# Members" class="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-teal-400 mb-4">
+                            <input type="text" id="epk-members" autocomplete="off" placeholder="# Members" class="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#2fd0ff] mb-4" onfocus="this.style.boxShadow='0 0 0 2px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
                             <div class="text-gray-500 text-[9px] font-black uppercase tracking-widest mb-2">Lead Vocals</div>
                             <div class="flex gap-2">
                                 <button onclick="setEpkVocals('ai', this)" class="epk-vocal-btn flex-1 py-2 rounded-lg bg-transparent border neon-blue-border neon-blue-text text-[10px] font-black uppercase tracking-widest transition-all">AI Picks</button>
