@@ -1,4 +1,4 @@
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Share+Tech+Mono&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap');
         body { background-color: #050505; color: #ffffff; font-family: 'JetBrains Mono', monospace; margin: 0; overflow: hidden; height: 100vh; }
         .noir-bezel { border: 1.8px solid rgba(255, 255, 255, 0.05); }
         .mastering-bezel { border: 1px solid rgba(255, 255, 255, 0.05); }
@@ -176,11 +176,11 @@
         .neon-blue-border { border-color: #2fd0ff !important; }
         .neon-blue-glow { box-shadow: 0 0 16px rgba(47,208,255,0.35); }
         .neon-blue-text-glow { text-shadow: 0 0 10px rgba(47,208,255,0.55); }
-        .slick-scroll::-webkit-scrollbar { height: 6px !important; width: 6px !important; }
-        .slick-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.04) !important; }
-        .slick-scroll::-webkit-scrollbar-thumb { background: #2fd0ff !important; border-radius: 0 !important; }
-        .slick-scroll::-webkit-scrollbar-thumb:hover { background: #6fe0ff !important; }
-        .slick-scroll { scrollbar-width: thin; scrollbar-color: #2fd0ff rgba(255,255,255,0.04); }
+        .slick-scroll::-webkit-scrollbar { height: 5px; width: 5px; }
+        .slick-scroll::-webkit-scrollbar-track { background: transparent; }
+        .slick-scroll::-webkit-scrollbar-thumb { background: rgba(47,208,255,0.35); border-radius: 10px; }
+        .slick-scroll::-webkit-scrollbar-thumb:hover { background: rgba(47,208,255,0.6); }
+        .slick-scroll { scrollbar-width: thin; scrollbar-color: rgba(47,208,255,0.35) transparent; }
         .station-timeline-scroll::-webkit-scrollbar,
         #station-timeline::-webkit-scrollbar { height: 12px !important; }
         .station-timeline-scroll::-webkit-scrollbar-track,
@@ -191,10 +191,10 @@
         #station-timeline::-webkit-scrollbar-thumb:hover { background: #6fe0ff !important; }
         .station-timeline-scroll,
         #station-timeline { scrollbar-width: auto; scrollbar-color: #2fd0ff rgba(255,255,255,0.03); }
-        .station-tab { color: #2fd0ff; background: transparent; }
-        .station-tab:hover { color: #6fe0ff; }
+        .station-tab { color: #6b7280; background: transparent; }
+        .station-tab:hover { color: #d1d5db; }
         .station-tab-active, .station-tab-active:hover { background: #2fd0ff; color: #000; }
-        .gallery-grid-mode { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 14px; }
+        .gallery-grid-mode { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; padding: 14px; }
         input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active,
         textarea:-webkit-autofill, textarea:-webkit-autofill:hover, textarea:-webkit-autofill:focus,
         select:-webkit-autofill, select:-webkit-autofill:hover, select:-webkit-autofill:focus {
@@ -214,13 +214,11 @@
         .neon-blue-dot { background: #2fd0ff !important; box-shadow: 0 0 8px rgba(47,208,255,0.9); }
 
         /* ===== LEXI-CON IDENTITY (#00FFFF Teal/Cyan) — her messages are visually prioritized in the Relay ===== */
-        .lexi-identity-text { color: #2fd0ff !important; text-shadow: 0 0 8px rgba(47,208,255,0.6); }
-        .lexi-message-priority { border-left: 2px solid rgba(47,208,255,0.5); padding-left: 8px; background: rgba(47,208,255,0.04); border-radius: 4px; }
-        #relay-feed, #relay-feed * { font-family: 'Share Tech Mono', monospace !important; }
-        .relay-msg-text { color: #2fd0ff !important; text-shadow: 0 0 6px rgba(47,208,255,0.35); }
+        .lexi-identity-text { color: #00FFFF !important; text-shadow: 0 0 8px rgba(0,255,255,0.6); }
+        .lexi-message-priority { border-left: 2px solid rgba(0,255,255,0.5); padding-left: 8px; background: rgba(0,255,255,0.04); border-radius: 4px; }
         .neon-blue-row-bg { background: rgba(47,208,255,0.08) !important; }
         .neon-blue-badge { background: rgba(47,208,255,0.18) !important; color: #2fd0ff !important; }
-        #tab-intel.tab-active, #tab-overview.tab-active, #tab-releases.tab-active, #tab-syndicate.tab-active { border-bottom-color: #2fd0ff !important; color: #2fd0ff !important; text-shadow: 0 0 8px rgba(47,208,255,0.6); }
+        #tab-intel.tab-active, #tab-overview.tab-active, #tab-releases.tab-active { border-bottom-color: #2fd0ff !important; color: #2fd0ff !important; text-shadow: 0 0 8px rgba(47,208,255,0.6); }
         .materialize { opacity: 1 !important; transform: scale(1) !important; filter: blur(0px) !important; }
 
         /* ===== UPLOADABLE AVATAR / ICON PROTOCOL ===== */
@@ -261,10 +259,7 @@
         .daw-download-btn { display:flex; align-items:center; gap:6px; padding:8px 14px; background:#111; border:1px solid #2fd0ff; color:#2fd0ff; border-radius:8px; font-size:10px; font-weight:900; text-transform:uppercase; transition:all .15s; cursor:pointer; white-space:nowrap; }
         .daw-download-btn:hover { background:rgba(47,208,255,0.12); }
 
-        .daw-ruler-mark { display:flex; flex-direction:column; gap:2px; width:108px; min-width:108px; flex-shrink:0; }
-        .daw-ruler-ticks { position:relative; width:100%; height:5px; }
-        .daw-ruler-tick { position:absolute; top:0; width:1px; height:3px; background:rgba(47,208,255,0.2); }
-        .daw-ruler-tick.beat { height:5px; background:rgba(47,208,255,0.45); }
+        .daw-ruler-mark { display:flex; flex-direction:column; gap:2px; min-width:76px; flex-shrink:0; }
         .daw-ruler-bar { color:#2fd0ff; font-weight:800; font-size:10px; }
         .daw-ruler-time { color:#4b5563; font-size:8.5px; }
 
@@ -274,16 +269,12 @@
         .daw-rec-btn svg { width:7px; height:7px; }
         .daw-chip-btn { min-width:22px; height:20px; padding:0 6px; border-radius:5px; font-size:8.5px; font-weight:900; background:rgba(255,255,255,0.05); color:#9ca3af; transition:all .15s; border:none; cursor:pointer; }
         .daw-chip-btn:hover { background:rgba(47,208,255,0.15); color:#2fd0ff; }
-        .daw-chip-btn.on-mute { background:#ef4444; color:#000; }
-        .daw-chip-btn.on-solo { background:#2fd0ff; color:#000; }
+        .daw-chip-btn.on-mute { background:rgba(239,68,68,0.1); color:#ef4444; border:1.5px solid #ef4444; box-shadow:0 0 6px rgba(239,68,68,0.35); }
+        .daw-chip-btn.on-solo { background:rgba(47,208,255,0.1); color:#2fd0ff; border:1.5px solid #2fd0ff; box-shadow:0 0 6px rgba(47,208,255,0.35); }
         .daw-chip-btn.fx-assigned { background:rgba(47,208,255,0.25); color:#2fd0ff; box-shadow:0 0 8px rgba(47,208,255,0.4); }
 
         .daw-mixer-strip { width:84px; flex-shrink:0; border-right:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; align-items:center; padding:14px 6px 10px; gap:8px; }
         .daw-mixer-strip.master { width:100px; padding:14px 10px 10px; }
-        .daw-mixer-strip, .daw-mixer-io-pill, .daw-fader-track, .daw-mixer-footer, .daw-name-box, .daw-mixer-value-field, .daw-led-meter-single,
-        .daw-tool-btn, .daw-mini-select, .daw-toggle-btn, .daw-transport-btn, .daw-position-display, .daw-mini-field, .daw-download-btn, .daw-chip-btn, .daw-checkbox {
-            border-radius: 0 !important;
-        }
         .daw-knob { width:26px; height:26px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #2c2c2c, #0a0a0a); border:1px solid rgba(47,208,255,0.3); box-shadow:0 0 0 3px rgba(255,255,255,0.03), inset 0 1px 2px rgba(0,0,0,0.6); position:relative; flex-shrink:0; }
         .daw-knob::after { content:''; position:absolute; top:3px; left:50%; width:3px; height:3px; border-radius:50%; background:#2fd0ff; box-shadow:0 0 4px rgba(47,208,255,0.9); transform:translateX(-50%); }
         .daw-fader-track { width:16px; height:150px; background:rgba(0,0,0,0.5); border-radius:4px; position:relative; border:1px solid rgba(47,208,255,0.15); overflow:visible; }
@@ -311,16 +302,5 @@
         .daw-arrangement-scroll { max-height:404px; overflow-x:scroll; overflow-y:scroll; scrollbar-color: #2fd0ff #0a0a0a; }
         .daw-arrangement-scroll::-webkit-scrollbar { height:8px; width:8px; }
         .daw-arrangement-scroll::-webkit-scrollbar-track { background:#0a0a0a; }
-        .daw-arrangement-scroll::-webkit-scrollbar-thumb { background:#2fd0ff !important; border-radius:0 !important; border:2px solid #0a0a0a; }
+        .daw-arrangement-scroll::-webkit-scrollbar-thumb { background:#2fd0ff !important; border-radius:10px; border:2px solid #0a0a0a; }
         .daw-grid-wrapper { padding-bottom:14px; }
-
-        /* ===== DAW: square edges + flush boxes — everything inside the DAW view ===== */
-        #view-daw [class*="rounded"]:not([class*="rounded-full"]) {
-            border-radius: 0 !important;
-        }
-        #daw-mixer, #daw-device-rack {
-            gap: 0 !important;
-        }
-        #daw-device-rack > div {
-            border-radius: 0 !important;
-        }
