@@ -249,10 +249,10 @@
         .daw-toggle-btn.off { background:rgba(255,255,255,0.05); color:#6b7280; border-color:rgba(255,255,255,0.1); }
         .daw-transport-btn { display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; color:#9ca3af; background:rgba(255,255,255,0.03); transition:all .15s; border:1.5px solid transparent; cursor:pointer; flex-shrink:0; }
         .daw-transport-btn:hover { color:#2fd0ff; background:rgba(47,208,255,0.08); }
-        .daw-transport-btn.play { color:#2fd0ff; border-color:#2fd0ff; }
-        .daw-transport-btn.play.is-playing { background:rgba(47,208,255,0.18); }
-        .daw-transport-btn.record { color:#ef4444; border-color:#ef4444; }
-        .daw-transport-btn.record.armed { background:rgba(239,68,68,0.2); }
+        .daw-transport-btn.play { color:#2fd0ff; border-color:rgba(47,208,255,0.3); }
+        .daw-transport-btn.play.is-playing { color:#2fd0ff; border-color:#2fd0ff; background:rgba(47,208,255,0.25); box-shadow:0 0 10px rgba(47,208,255,0.6); }
+        .daw-transport-btn.record { color:#ef4444; border-color:rgba(239,68,68,0.3); }
+        .daw-transport-btn.record.armed { color:#ef4444; border-color:#ef4444; background:rgba(239,68,68,0.25); box-shadow:0 0 10px rgba(239,68,68,0.6); }
         .daw-position-display { font-size:12px; font-weight:700; color:#2fd0ff; background:rgba(0,0,0,0.4); border:1px solid rgba(47,208,255,0.2); border-radius:8px; padding:6px 12px; letter-spacing:.02em; white-space:nowrap; }
         .daw-status-pill { font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:.15em; color:#6b7280; white-space:nowrap; }
         .daw-mini-field { font-size:10px; font-weight:700; color:#2fd0ff; background:rgba(0,0,0,0.4); border:1px solid rgba(47,208,255,0.2); border-radius:6px; padding:5px 9px; }
@@ -265,7 +265,9 @@
 
         .daw-track-header-row { border-bottom:1px solid rgba(255,255,255,0.05); padding:10px 12px; display:flex; flex-direction:column; justify-content:center; gap:8px; }
         .daw-grip { color:#3f3f46; font-size:9px; letter-spacing:1px; line-height:1; flex-shrink:0; }
-        .daw-rec-btn { width:16px; height:16px; border-radius:50%; border:1.5px solid #ef4444; color:#ef4444; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:transparent; cursor:default; }
+        .daw-rec-btn { width:16px; height:16px; border-radius:50%; border:1.5px solid #ef4444; color:#ef4444; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:transparent; cursor:pointer; transition:all .15s; }
+        .daw-rec-btn:hover { background:rgba(239,68,68,0.15); }
+        .daw-rec-btn.armed { background:#ef4444; color:#000; box-shadow:0 0 8px rgba(239,68,68,0.7); }
         .daw-rec-btn svg { width:7px; height:7px; }
         .daw-chip-btn { min-width:22px; height:20px; padding:0 6px; border-radius:5px; font-size:8.5px; font-weight:900; background:rgba(255,255,255,0.05); color:#9ca3af; transition:all .15s; border:none; cursor:pointer; }
         .daw-chip-btn:hover { background:rgba(47,208,255,0.15); color:#2fd0ff; }
