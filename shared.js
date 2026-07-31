@@ -3861,6 +3861,7 @@
                 window.waves[key].setVolume((t.volume ?? 80) / 100);
                 window.waves[key].on('audioprocess', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
                 window.waves[key].on('ready', () => {
+                    console.log('[DAW] wave READY for', key, '— duration:', window.waves[key].getDuration());
                     window.updateDawTimer(key); window.updateDawPlayhead();
                     if (resumeAt !== null) { window.waves[key].play(); window.waves[key].seekTo(resumeAt / window.waves[key].getDuration()); }
                 });
@@ -4010,7 +4011,13 @@
                 }
 
                 if (window.waves[key]) {
-                    window.waves[key].loadBlob(file); // decodes the File directly in memory — sidesteps blob: URL fetch issues (extensions, browser quirks) entirely
+                    console.log('[DAW] calling loadBlob() for', key, 'file:', file.name, file.type, file.size + ' bytes');
+                    window.waves[key].loadBlob(file) // decodes the File directly in memory — sidesteps blob: URL fetch issues (extensions, browser quirks) entirely
+                        .then(() => console.log('[DAW] loadBlob() resolved OK for', key))
+                        .catch(err => {
+                            console.error('[DAW] loadBlob() rejected for', key, err);
+                            alert('Could not decode that audio file (' + (err && err.message ? err.message : err) + ').');
+                        });
                 } else {
                     console.error('DAW upload: no waveform instance for track ' + trackId + ' — audio engine may not be ready yet.');
                     alert('The audio engine isn\'t ready yet — please wait a second and try uploading again.');
