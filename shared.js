@@ -4468,6 +4468,36 @@
             if (menu) menu.classList.toggle('hidden');
         };
 
+        // EPK Soul Forge — custom themed dropdowns for Generation Mode / Artist Type.
+        // Native <select> popouts are rendered by the OS and largely ignore CSS/inline
+        // option styling on many browsers, so these are hand-built to guarantee the
+        // black background + neon blue text actually shows up everywhere.
+        window.toggleEpkDropdown = function(key) {
+            document.querySelectorAll('.epk-dropdown-menu').forEach(m => {
+                if (m.id !== 'epk-' + key + '-menu') m.classList.add('hidden');
+            });
+            const menu = document.getElementById('epk-' + key + '-menu');
+            if (menu) menu.classList.toggle('hidden');
+        };
+
+        window.setEpkDropdownValue = function(key, value, label) {
+            const input = document.getElementById('epk-' + key);
+            const labelEl = document.getElementById('epk-' + key + '-label');
+            const menu = document.getElementById('epk-' + key + '-menu');
+            if (input) input.value = value;
+            if (labelEl) labelEl.innerText = label;
+            if (menu) menu.classList.add('hidden');
+        };
+
+        document.addEventListener('click', function(e) {
+            document.querySelectorAll('.epk-dropdown-wrap').forEach(wrap => {
+                if (!wrap.contains(e.target)) {
+                    const menu = wrap.querySelector('.epk-dropdown-menu');
+                    if (menu) menu.classList.add('hidden');
+                }
+            });
+        });
+
         window.setGallerySort = function(mode) {
             window.gallerySort = mode;
             const menu = document.getElementById('gallery-options-menu');
