@@ -2284,7 +2284,7 @@
             lanes.innerHTML = window.dawTracks.map((t, i) => `
                 <div class="relative border-b border-white/5 flex items-center overflow-hidden" oncontextmenu="window.openDawTrackContextMenu(event,'${t.id}')" style="height:${dawRowHeight(t)}px; overflow:hidden; z-index:1;">
                     <div id="clip-wrap-${t.id}" class="relative w-full h-full" style="transform:translateX(${window.dawClipOffsets[t.id] || 0}px); overflow:hidden; z-index:1;">
-                        <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full flex items-center" style="cursor:grab; overflow:hidden; z-index:1;"></div>
+                        <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full" style="cursor:grab; overflow:hidden; z-index:1;"></div>
                     </div>
                 </div>`).join('');
 
