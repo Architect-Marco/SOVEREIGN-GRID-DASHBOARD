@@ -2258,7 +2258,7 @@
                 <div class="daw-track-header-row" oncontextmenu="window.openDawTrackContextMenu(event,'${t.id}')" style="height:${dawRowHeight(t)}px;">
                     <div class="flex items-center gap-2">
                         <span class="daw-grip">⋮⋮</span>
-                        <span class="daw-rec-btn ${t.recordEnabled ? 'armed' : ''}" onclick="window.toggleDawTrackRecordEnable('${t.id}')" title="Record Enable"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg></span>
+                        <span id="daw-recbtn-${t.id}" class="daw-rec-btn ${t.recordEnabled ? 'armed' : ''}" onclick="window.toggleDawTrackRecordEnable('${t.id}')" title="Record Enable"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg></span>
                         <span class="text-[12px] font-bold neon-blue-text truncate flex-1">${t.name}</span>
                         <button onclick="toggleDawMute('${t.id}')" id="daw-mute-${t.id}" class="daw-chip-btn ${t.muted ? 'on-mute' : ''}">M</button>
                         <button onclick="toggleDawSolo('${t.id}')" id="daw-solo-${t.id}" class="daw-chip-btn ${t.solo ? 'on-solo' : ''}">S</button>
@@ -3855,8 +3855,16 @@
         window.dpdResetDefaults = function() {
             const ctx = window.dpdContext;
             if (!ctx) return;
-            delete window.dawFxParams[ctx.trackId][ctx.pluginName];
-            window.openDawPluginDetail(ctx.trackId, ctx.pluginName);
+            const initial = {};
+            ctx.plugin.values.forEach(([label, defaultStr]) => {
+                const parsed = ctx.paramMeta[label];
+                initial[label] = parsed ? parsed.value : defaultStr;
+            });
+            window.dawFxParams[ctx.trackId][ctx.pluginName] = initial;
+            ctx.plugin.values.forEach(([label]) => {
+                const parsed = ctx.paramMeta[label];
+                if (parsed) window.dpdUpdateKnobVisual(label, initial[label], parsed);
+            });
         };
 
         window.dpdRemoveFromChain = function() {
@@ -4410,7 +4418,8 @@
             const track = window.dawTracks.find(t => t.id === trackId);
             if (!track) return;
             track.recordEnabled = !track.recordEnabled;
-            window.renderDawTracks();
+            const btn = document.getElementById('daw-recbtn-' + trackId);
+            if (btn) btn.classList.toggle('armed', track.recordEnabled);
         };
 
         window.toggleDawMute = function(trackId) {
