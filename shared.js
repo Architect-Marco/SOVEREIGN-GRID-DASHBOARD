@@ -2331,7 +2331,7 @@
         // zooms the timeline horizontally around the cursor position.
         // ============================================================
         window.dawZoom = window.dawZoom || 0.4;
-        const DAW_ZOOM_MIN = 0.1, DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = 5200;
+        const DAW_ZOOM_MIN = 0.02, DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = 5200;
 
         window.dawApplyZoom = function() {
             const wrapper = document.querySelector('.daw-grid-wrapper');
@@ -3910,11 +3910,23 @@
         window.duplicateDawTrack = function(trackId) {
             const track = window.dawTracks.find(t => t.id === trackId);
             if (!track) return;
-            const copy = { ...track, id: String(Date.now()), name: track.name + ' Copy', fx: [...(track.fx || [])] };
+            const newId = String(Date.now());
+            const copy = { ...track, id: newId, name: track.name + ' Copy', fx: [...(track.fx || [])] };
             const idx = window.dawTracks.findIndex(t => t.id === trackId);
             window.dawTracks.splice(idx + 1, 0, copy);
+            const file = window.dawFiles[trackId];
+            if (file) {
+                window.dawFiles[newId] = file;
+                window.dawUrls[newId] = URL.createObjectURL(file);
+            }
             window.renderDawTracks();
             window.initDawWaves();
+            if (file) {
+                setTimeout(() => {
+                    const key = 'daw-' + newId;
+                    if (window.waves[key]) window.waves[key].loadBlob(file);
+                }, 50);
+            }
         };
 
         window.removeDawTrack = function(trackId) {
@@ -3927,6 +3939,104 @@
             window.renderDawTracks();
             window.initDawWaves();
         };
+
+        // ============================================================
+        // COPY / CUT / PASTE — clipboard for a whole track (settings + its
+        // loaded audio), via the right-click menu or Ctrl+C/X/V on the
+        // currently selected track.
+        // ============================================================
+        window.dawClipboardTrack = null;
+
+        function dawCaptureTrackData(id) {
+            const track = window.dawTracks.find(t => t.id === id);
+            if (!track) return null;
+            return {
+                name: track.name, color: track.color, muted: track.muted, solo: track.solo,
+                volume: track.volume, fx: [...(track.fx || [])],
+                file: window.dawFiles[id] || null, url: window.dawUrls[id] || null
+            };
+        }
+
+        window.dawCopyTrack = function(id) {
+            const data = dawCaptureTrackData(id);
+            if (!data) return;
+            window.dawClipboardTrack = data;
+            console.log('[DAW] Copied track:', data.name);
+        };
+
+        window.dawCutTrack = function(id) {
+            const data = dawCaptureTrackData(id);
+            if (!data) return;
+            window.dawClipboardTrack = data;
+            delete window.dawFiles[id];
+            delete window.dawUrls[id];
+            const key = 'daw-' + id;
+            if (window.waves[key]) { try { window.waves[key].empty(); } catch (e) {} }
+            console.log('[DAW] Cut track:', data.name);
+        };
+
+        // Pastes the clipboard's settings + audio onto an existing track (overwrites it).
+        window.dawPasteOntoTrack = function(id) {
+            const clip = window.dawClipboardTrack;
+            if (!clip) { alert('Nothing copied yet — copy or cut a track first.'); return; }
+            const track = window.dawTracks.find(t => t.id === id);
+            if (!track) return;
+            track.name = clip.name; track.muted = clip.muted; track.solo = clip.solo;
+            track.volume = clip.volume; track.fx = [...(clip.fx || [])];
+            if (clip.file) {
+                window.dawFiles[id] = clip.file;
+                window.dawUrls[id] = clip.url || URL.createObjectURL(clip.file);
+            }
+            window.renderDawTracks();
+            window.initDawWaves();
+            if (clip.file) {
+                setTimeout(() => {
+                    const key = 'daw-' + id;
+                    if (window.waves[key]) window.waves[key].loadBlob(clip.file);
+                }, 50);
+            }
+        };
+
+        // Pastes the clipboard as a brand new track appended to the end.
+        window.dawPasteAsNewTrack = function() {
+            const clip = window.dawClipboardTrack;
+            if (!clip) { alert('Nothing copied yet — copy or cut a track first.'); return; }
+            const n = window.dawTracks.length + 1;
+            const newId = String(Date.now());
+            const track = {
+                id: newId, name: clip.name + ' Copy',
+                color: clip.color || DAW_TRACK_COLORS[(n - 1) % DAW_TRACK_COLORS.length],
+                muted: clip.muted, solo: clip.solo, volume: clip.volume, fx: [...(clip.fx || [])]
+            };
+            window.dawTracks.push(track);
+            if (clip.file) {
+                window.dawFiles[newId] = clip.file;
+                window.dawUrls[newId] = clip.url || URL.createObjectURL(clip.file);
+            }
+            window.renderDawTracks();
+            window.initDawWaves();
+            if (clip.file) {
+                setTimeout(() => {
+                    const key = 'daw-' + newId;
+                    if (window.waves[key]) window.waves[key].loadBlob(clip.file);
+                }, 50);
+            }
+        };
+
+        // Keyboard shortcuts, scoped to this page (guarded by a DAW-only element) and
+        // skipped entirely while typing in any input/textarea/contenteditable field.
+        document.addEventListener('keydown', (e) => {
+            if (!document.getElementById('master-scroll-container')) return; // not the DAW page
+            const activeTag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+            const isTyping = activeTag === 'input' || activeTag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable);
+            if (isTyping) return;
+            const id = window.dawSelectedTrackId;
+            if (!id || id === 'master') return;
+            const meta = e.ctrlKey || e.metaKey;
+            if (meta && e.key.toLowerCase() === 'c') { e.preventDefault(); window.dawCopyTrack(id); }
+            else if (meta && e.key.toLowerCase() === 'x') { e.preventDefault(); window.dawCutTrack(id); }
+            else if (meta && e.key.toLowerCase() === 'v') { e.preventDefault(); window.dawPasteOntoTrack(id); }
+        });
 
         // ============================================================
         // TRACK RIGHT-CLICK CONTEXT MENU — curated subset of DAW actions
@@ -3947,6 +4057,11 @@
             menu.innerHTML = `
                 <button class="${itemCls}" onclick="window.dawCtxRenameTrack()">Rename Track…</button>
                 <button class="${itemCls}" onclick="window.dawCtxDuplicateTrack()">Duplicate Track</button>
+                ${sep}
+                <button class="${itemCls}" onclick="window.dawCtxCopyTrack()">Copy Track</button>
+                <button class="${itemCls}" onclick="window.dawCtxCutTrack()">Cut Track</button>
+                <button class="${itemCls} ${window.dawClipboardTrack ? '' : 'opacity-40 cursor-not-allowed'}" onclick="window.dawCtxPasteTrack()">Paste Onto This Track</button>
+                <button class="${itemCls} ${window.dawClipboardTrack ? '' : 'opacity-40 cursor-not-allowed'}" onclick="window.dawCtxPasteAsNew()">Paste As New Track</button>
                 ${sep}
                 <button class="${itemCls}" onclick="window.dawCtxToggleMute()">${track.muted ? 'Unmute Track' : 'Mute Track'}</button>
                 <button class="${itemCls}" onclick="window.dawCtxToggleSolo()">${track.solo ? 'Unsolo Track' : 'Solo Track'}</button>
@@ -3985,6 +4100,22 @@
         window.dawCtxDuplicateTrack = function() {
             const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
             window.duplicateDawTrack(id);
+        };
+        window.dawCtxCopyTrack = function() {
+            const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
+            window.dawCopyTrack(id);
+        };
+        window.dawCtxCutTrack = function() {
+            const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
+            window.dawCutTrack(id);
+        };
+        window.dawCtxPasteTrack = function() {
+            const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
+            window.dawPasteOntoTrack(id);
+        };
+        window.dawCtxPasteAsNew = function() {
+            window.closeDawTrackContextMenu();
+            window.dawPasteAsNewTrack();
         };
         window.dawCtxToggleMute = function() {
             const id = window.dawTrackContextMenuTrackId; window.closeDawTrackContextMenu();
@@ -4245,34 +4376,44 @@
             return new Blob([view], { type: 'audio/wav' });
         }
 
-        window.downloadDawMix = async function(evt) {
-            const uploadedIds = window.dawTracks.filter(t => window.dawUrls[t.id]).map(t => t.id);
-            if (uploadedIds.length === 0) {
-                alert('Upload at least one track first.');
-                return;
-            }
-            const btn = evt.currentTarget;
-            const originalLabel = btn.innerHTML;
-            btn.innerHTML = 'Mixing...';
-            btn.disabled = true;
+        window.dawRenderTracks = async function(evt) {
+            const eligible = window.dawTracks.filter(t => window.dawFiles[t.id] || window.dawUrls[t.id]);
+            if (eligible.length === 0) { alert('Upload at least one track first.'); return; }
+
+            const anySolo = eligible.some(t => t.solo);
+            const included = eligible.filter(t => anySolo ? t.solo : !t.muted);
+            if (included.length === 0) { alert('Every eligible track is muted (or nothing is soloed) — nothing to render.'); return; }
+
+            const btn = evt ? evt.currentTarget : null;
+            const originalLabel = btn ? btn.innerHTML : null;
+            if (btn) { btn.innerHTML = 'Rendering…'; btn.disabled = true; }
 
             try {
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 const decodeCtx = new AudioCtx();
-                const buffers = await Promise.all(uploadedIds.map(async id => {
-                    const resp = await fetch(window.dawUrls[id]);
-                    const arrayBuffer = await resp.arrayBuffer();
-                    return decodeCtx.decodeAudioData(arrayBuffer);
+
+                const buffers = await Promise.all(included.map(async t => {
+                    const key = 'daw-' + t.id;
+                    // Prefer the buffer WaveSurfer already decoded in memory — no re-fetch/re-decode needed.
+                    const already = window.waves[key] && window.waves[key].getDecodedData && window.waves[key].getDecodedData();
+                    if (already) return { track: t, buffer: already };
+                    const file = window.dawFiles[t.id];
+                    const arrayBuffer = await file.arrayBuffer();
+                    const buffer = await decodeCtx.decodeAudioData(arrayBuffer);
+                    return { track: t, buffer };
                 }));
 
-                const sampleRate = buffers[0].sampleRate;
-                const maxLength = Math.max(...buffers.map(b => b.length));
+                const sampleRate = buffers[0].buffer.sampleRate;
+                const maxLength = Math.max(...buffers.map(b => b.buffer.length));
                 const offlineCtx = new OfflineAudioContext(2, maxLength, sampleRate);
 
-                buffers.forEach(buf => {
+                buffers.forEach(({ track, buffer }) => {
                     const source = offlineCtx.createBufferSource();
-                    source.buffer = buf;
-                    source.connect(offlineCtx.destination);
+                    source.buffer = buffer;
+                    const gain = offlineCtx.createGain();
+                    gain.gain.value = (typeof track.volume === 'number' ? track.volume : 80) / 100;
+                    source.connect(gain);
+                    gain.connect(offlineCtx.destination);
                     source.start(0);
                 });
 
@@ -4286,11 +4427,108 @@
                 a.click();
                 a.remove();
             } catch (err) {
-                console.error('Mixdown failed:', err);
-                alert('Mixdown failed — check the console for details.');
+                console.error('[DAW] Render failed:', err);
+                alert('Render failed — check the console for details.');
             } finally {
-                btn.innerHTML = originalLabel;
-                btn.disabled = false;
+                if (btn) { btn.innerHTML = originalLabel; btn.disabled = false; }
+            }
+        };
+
+        // ============================================================
+        // SAVE / LOAD PROJECT — persists track settings AND their actual
+        // uploaded audio (as real Blobs, via IndexedDB) so a session survives
+        // a page reload. localStorage can't hold audio-sized data; IndexedDB can.
+        // ============================================================
+        const DAW_DB_NAME = 'sbn-daw-projects', DAW_DB_STORE = 'projects', DAW_DB_VERSION = 1;
+        function dawOpenDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DAW_DB_NAME, DAW_DB_VERSION);
+                req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains(DAW_DB_STORE)) req.result.createObjectStore(DAW_DB_STORE); };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+        async function dawDBPut(key, value) {
+            const db = await dawOpenDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(DAW_DB_STORE, 'readwrite');
+                tx.objectStore(DAW_DB_STORE).put(value, key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+        async function dawDBGet(key) {
+            const db = await dawOpenDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(DAW_DB_STORE, 'readonly');
+                const req = tx.objectStore(DAW_DB_STORE).get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        window.dawSaveProject = async function(evt) {
+            const btn = evt ? evt.currentTarget : null;
+            const originalLabel = btn ? btn.innerHTML : null;
+            if (btn) { btn.disabled = true; }
+            try {
+                const tracks = window.dawTracks.map(t => ({
+                    id: t.id, name: t.name, color: t.color, muted: t.muted, solo: t.solo,
+                    volume: t.volume, fx: t.fx || [], file: window.dawFiles[t.id] || null
+                }));
+                const project = {
+                    tracks,
+                    bpm: window.dawBpm,
+                    gridDivision: window.dawGridDivision,
+                    masterName: window.dawMasterName,
+                    masterFx: window.dawMasterFx || [],
+                    savedAt: Date.now()
+                };
+                await dawDBPut('current', project);
+                alert('Project saved to this browser — reload the page anytime and click Load Project to bring it back.');
+            } catch (err) {
+                console.error('[DAW] Save failed:', err);
+                alert('Could not save the project — check the console for details.');
+            } finally {
+                if (btn) { btn.disabled = false; }
+            }
+        };
+
+        window.dawLoadProject = async function(evt) {
+            const btn = evt ? evt.currentTarget : null;
+            if (btn) { btn.disabled = true; }
+            try {
+                const project = await dawDBGet('current');
+                if (!project) { alert('No saved project found in this browser yet.'); return; }
+                if (!confirm('Load the saved project? This replaces everything currently on the timeline.')) return;
+
+                window.dawTracks = project.tracks.map(t => ({ id: t.id, name: t.name, color: t.color, muted: t.muted, solo: t.solo, volume: t.volume, fx: t.fx || [] }));
+                window.dawFiles = {};
+                window.dawUrls = {};
+                project.tracks.forEach(t => { if (t.file) { window.dawFiles[t.id] = t.file; window.dawUrls[t.id] = URL.createObjectURL(t.file); } });
+                window.dawBpm = project.bpm || 120;
+                window.dawGridDivision = project.gridDivision || 16;
+                window.dawMasterName = project.masterName || 'Master';
+                window.dawMasterFx = project.masterFx || [];
+                window.waves = {}; // old instances point at DOM we're about to replace
+
+                window.renderDawTracks();
+                window.renderDawRuler();
+                if (window.renderDawMixer) window.renderDawMixer();
+                window.initDawWaves();
+                setTimeout(() => {
+                    project.tracks.forEach(t => {
+                        if (t.file) {
+                            const key = 'daw-' + t.id;
+                            if (window.waves[key]) window.waves[key].loadBlob(t.file);
+                        }
+                    });
+                }, 350);
+            } catch (err) {
+                console.error('[DAW] Load failed:', err);
+                alert('Could not load the saved project — check the console for details.');
+            } finally {
+                if (btn) { btn.disabled = false; }
             }
         };
 
@@ -4410,16 +4648,16 @@
             strip.innerHTML = cards.map(item => {
                 if (item.type === 'folder') {
                     return `
-                    <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-64 h-64 bg-black/30 border border-white/5 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[rgba(47,208,255,0.4)] transition-colors">
+                    <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-48 h-48 rounded-xl bg-black/30 border border-white/5 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[rgba(47,208,255,0.4)] transition-colors">
                         <span class="neon-blue-text">${GALLERY_ICON_FOLDER}</span>
                         <span class="text-[8px] text-gray-400 font-bold text-center px-2 truncate w-full">${item.name}</span>
                     </div>`;
                 }
                 const isSelected = item.name === window.gallerySelectedName;
                 const icon = item.type === 'video' ? GALLERY_ICON_VIDEO : (item.type === 'audio' ? GALLERY_ICON_AUDIO : GALLERY_ICON_IMAGE);
-                const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:cover;background-position:center;` : '';
+                const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:120%;background-position:center;` : '';
                 return `
-                <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-64 h-64 bg-black border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all relative overflow-hidden" style="${coverStyle}">
+                <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-48 h-60 rounded-xl bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all relative overflow-hidden" style="${coverStyle}">
                     ${!item.coverArt ? '<span class="neon-blue-text opacity-70">' + icon + '</span>' : ''}
                     ${item.type === 'video' || item.type === 'audio' ? '<span class="absolute bottom-2 left-2 right-2 text-[7px] text-gray-400 font-bold truncate bg-black/60 px-1.5 py-0.5 rounded">' + item.name + '</span>' : ''}
                 </div>`;
@@ -4468,36 +4706,6 @@
             if (menu) menu.classList.toggle('hidden');
         };
 
-        // EPK Soul Forge — custom themed dropdowns for Generation Mode / Artist Type.
-        // Native <select> popouts are rendered by the OS and largely ignore CSS/inline
-        // option styling on many browsers, so these are hand-built to guarantee the
-        // black background + neon blue text actually shows up everywhere.
-        window.toggleEpkDropdown = function(key) {
-            document.querySelectorAll('.epk-dropdown-menu').forEach(m => {
-                if (m.id !== 'epk-' + key + '-menu') m.classList.add('hidden');
-            });
-            const menu = document.getElementById('epk-' + key + '-menu');
-            if (menu) menu.classList.toggle('hidden');
-        };
-
-        window.setEpkDropdownValue = function(key, value, label) {
-            const input = document.getElementById('epk-' + key);
-            const labelEl = document.getElementById('epk-' + key + '-label');
-            const menu = document.getElementById('epk-' + key + '-menu');
-            if (input) input.value = value;
-            if (labelEl) labelEl.innerText = label;
-            if (menu) menu.classList.add('hidden');
-        };
-
-        document.addEventListener('click', function(e) {
-            document.querySelectorAll('.epk-dropdown-wrap').forEach(wrap => {
-                if (!wrap.contains(e.target)) {
-                    const menu = wrap.querySelector('.epk-dropdown-menu');
-                    if (menu) menu.classList.add('hidden');
-                }
-            });
-        });
-
         window.setGallerySort = function(mode) {
             window.gallerySort = mode;
             const menu = document.getElementById('gallery-options-menu');
@@ -4535,10 +4743,10 @@
                 list.innerHTML = items.filter(i => i.type !== 'folder').map(item => {
                     const isSelected = item.name === window.gallerySelectedName;
                     const icon = item.type === 'video' ? GALLERY_ICON_VIDEO : (item.type === 'audio' ? GALLERY_ICON_AUDIO : GALLERY_ICON_IMAGE);
-                    const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:cover;background-position:center;` : '';
+                    const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:112%;background-position:center;` : '';
                     const safeName = item.name.replace(/'/g, "\\'");
                     return `
-                    <div onclick="window.gallerySelect('${safeName}')" class="group relative aspect-square bg-black border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex items-center justify-center cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all overflow-hidden" style="${coverStyle}">
+                    <div onclick="window.gallerySelect('${safeName}')" class="group relative aspect-square rounded-lg bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex items-center justify-center cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all overflow-hidden" style="${coverStyle}">
                         ${!item.coverArt ? '<span class="neon-blue-text opacity-70 [&_svg]:w-6 [&_svg]:h-6">' + icon + '</span>' : ''}
                         <span class="absolute bottom-0 inset-x-0 text-[7px] text-gray-300 font-bold truncate bg-black/70 px-1.5 py-1">${item.name}</span>
                         <button onclick="window.deleteGalleryItem('${safeName}', event)" title="Delete" class="absolute top-1 right-1 w-5 h-5 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 neon-blue-text hover:bg-white/20">
