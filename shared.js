@@ -2311,6 +2311,9 @@
             // override it inline per-mark so the ruler (and the waveform lanes that align to it)
             // can actually shrink below that floor when zoomed out, not just stop shrinking at ~75%.
             const markPx = Math.max(2, Math.round(DAW_RULER_BASE_MARK_WIDTH * (window.dawZoom || 1)));
+            // Below ~40px a bar mark is narrower than its own "N.1" + timecode text, so labels
+            // start colliding into their neighbors — thin them out to every Nth bar instead.
+            const labelStride = markPx >= 40 ? 1 : markPx >= 20 ? 2 : markPx >= 10 ? 4 : markPx >= 5 ? 8 : 16;
             let html = '';
             for (let i = 1; i <= totalBars; i++) {
                 const t = (i - 1) * secPerBar;
@@ -2321,10 +2324,10 @@
                     const isBeat = s % beatEvery === 0;
                     ticks += `<span class="daw-ruler-tick${isBeat ? ' beat' : ''}" style="left:${(s / subdivisions) * 100}%;"></span>`;
                 }
+                const showLabel = (i - 1) % labelStride === 0;
                 html += `<div class="daw-ruler-mark" style="width:${markPx}px; min-width:${markPx}px;">
                     <div class="daw-ruler-ticks">${ticks}</div>
-                    <div class="daw-ruler-bar">${i}.1</div>
-                    <div class="daw-ruler-time">${mins}:${secs}</div>
+                    ${showLabel ? `<div class="daw-ruler-bar">${i}.1</div><div class="daw-ruler-time">${mins}:${secs}</div>` : ''}
                 </div>`;
             }
             ruler.innerHTML = html;
@@ -2337,7 +2340,17 @@
         const DAW_RULER_BASE_MARK_WIDTH = 76; // matches the .daw-ruler-mark CSS floor at zoom 1
         const DAW_RULER_TOTAL_BARS = 48;
         window.dawZoom = window.dawZoom || 0.4;
-        const DAW_ZOOM_MIN = 0.02, DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = DAW_RULER_BASE_MARK_WIDTH * DAW_RULER_TOTAL_BARS;
+        const DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = DAW_RULER_BASE_MARK_WIDTH * DAW_RULER_TOTAL_BARS;
+        const DAW_HEADER_SIDEBAR_WIDTH = 288; // w-72 track-header column, not part of the scrollable timeline
+        // The floor isn't a fixed percentage — it's whatever zoom makes the full 48-bar timeline
+        // exactly fill the visible viewport, so zooming out never leaves dead empty space past
+        // the ruler, and never lets you shrink content smaller than the screen needs it to be.
+        function dawZoomMinFloor() {
+            const scrollEl = document.getElementById('master-scroll-container');
+            if (!scrollEl) return 0.02;
+            const visibleLaneWidth = Math.max(100, scrollEl.clientWidth - DAW_HEADER_SIDEBAR_WIDTH);
+            return Math.min(0.3, Math.max(0.01, visibleLaneWidth / DAW_BASE_GRID_WIDTH));
+        }
 
         window.dawApplyZoom = function() {
             const wrapper = document.querySelector('.daw-grid-wrapper');
@@ -2350,7 +2363,7 @@
         // clientX (optional): viewport X of the cursor to zoom around, so the point
         // under the mouse stays put instead of the view jumping to the left edge.
         window.dawSetZoom = function(newZoom, clientX) {
-            newZoom = Math.max(DAW_ZOOM_MIN, Math.min(DAW_ZOOM_MAX, newZoom));
+            newZoom = Math.max(dawZoomMinFloor(), Math.min(DAW_ZOOM_MAX, newZoom));
             const scrollEl = document.getElementById('master-scroll-container');
             const prevZoom = window.dawZoom;
             if (scrollEl && clientX !== undefined && prevZoom) {
@@ -2372,7 +2385,6 @@
         // Scales the timeline so a clip of the given duration comfortably fills the visible
         // viewport (with a little breathing room), the way importing audio auto-fits the view
         // in Ableton/Logic/Pro Tools — instead of always opening at whatever zoom % was last set.
-        const DAW_HEADER_SIDEBAR_WIDTH = 288; // w-72 track-header column, not part of the scrollable timeline
         window.dawZoomToFitDuration = function(durationSec) {
             if (!durationSec || durationSec <= 0) return;
             const scrollEl = document.getElementById('master-scroll-container');
