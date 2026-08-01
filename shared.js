@@ -2238,7 +2238,7 @@
         window.dawSnapOn = true;
         window.dawLoopOn = false;
         window.dawRecordArmed = false;
-        console.log('%c[SBN shared.js] build: daw-row-fix-v3 (DAW_ROW_H=76, reset-to-min, compact plugin cards)', 'color:#2fd0ff;font-weight:bold;');
+        console.log('%c[SBN shared.js] build: daw-row-fix-v4 (reset-below, narrower-xl, tighter-boxes)', 'color:#2fd0ff;font-weight:bold;');
         const DAW_ROW_H = 76; // was 56 — too short for its own content (10px padding + row1 + 8px gap + row2 + 10px padding ≈ 70px), which let the next track's row silently overlap and eat clicks on anything in the bottom few px of the row above it
 
         window.renderDawTracks = function() {
