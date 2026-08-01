@@ -2731,7 +2731,6 @@
             ] },
             { id: 'editing', label: 'Editing Behavior', children: [
                 { id: 'editing-media-locking', label: 'Media Item Locking' },
-                { id: 'editing-automation-items', label: 'Automation Items' },
                 { id: 'editing-fixed-lane', label: 'Fixed Lane Comping' },
                 { id: 'editing-mouse', label: 'Mouse' },
                 { id: 'editing-mouse-modifiers', label: 'Mouse Modifiers' }
@@ -3740,13 +3739,13 @@
                         </div>
                         <div class="border border-white/10 rounded-lg overflow-hidden">
                             <div class="grid grid-cols-[180px_1fr] bg-white/5 border-b border-white/10">
-                                <div class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-500 border-r border-white/10">Modifier</div>
-                                <div class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-500">Behavior</div>
+                                <div class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest neon-blue-text border-r border-white/10">Modifier</div>
+                                <div class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest neon-blue-text">Behavior</div>
                             </div>
                             ${rows.map(([mod, behavior]) => `
-                                <div class="grid grid-cols-[180px_1fr] border-b border-white/5 ${mod === 'Shift' ? 'bg-[#2fd0ff]/10' : ''}">
-                                    <div class="px-3 py-1.5 text-[11px] font-bold ${mod === 'Shift' ? 'neon-blue-text' : 'text-gray-300'} border-r border-white/5">${mod}${mod === 'Shift' ? ' ⚡' : ''}</div>
-                                    <div class="px-3 py-1.5 text-[11px] ${behavior ? 'text-gray-300' : 'text-gray-700'}">${behavior || '—'}</div>
+                                <div class="grid grid-cols-[180px_1fr] border-b border-white/5 ${mod === 'Shift' ? 'bg-[#2fd0ff]/15' : ''}">
+                                    <div class="px-3 py-1.5 text-[11px] font-bold neon-blue-text border-r border-white/5">${mod}${mod === 'Shift' ? ' ⚡' : ''}</div>
+                                    <div class="px-3 py-1.5 text-[11px] ${behavior ? 'neon-blue-text' : 'text-gray-700'}">${behavior || '—'}</div>
                                 </div>`).join('')}
                         </div>
                         <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" checked class="daw-checkbox"> When drawn above media items, treat item label area the same as empty track space</label>
