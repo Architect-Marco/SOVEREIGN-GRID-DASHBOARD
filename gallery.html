@@ -7,6 +7,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/wavesurfer.js@7"></script>
     <link rel="stylesheet" href="shared.css">
+    <style>
+        /* Neon blue scrollbar for expandable boxes (cover art folders, file list, filmstrip) */
+        .slick-scroll::-webkit-scrollbar { height: 6px !important; width: 6px !important; }
+        .slick-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.04) !important; }
+        .slick-scroll::-webkit-scrollbar-thumb { background: #2fd0ff !important; border-radius: 0 !important; }
+        .slick-scroll::-webkit-scrollbar-thumb:hover { background: #6fe0ff !important; }
+        .slick-scroll { scrollbar-width: thin; scrollbar-color: #2fd0ff rgba(255,255,255,0.04); }
+    </style>
 </head>
 <body class="flex flex-col">
     <div class="scanline"></div>
