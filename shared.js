@@ -6646,9 +6646,285 @@
             safeInit(window.loadPressKits, 'loadPressKits');
             safeInit(window.loadArchiveFolders, 'loadArchiveFolders');
             safeInit(() => { if (typeof window.renderSyndicateRoster === 'function') window.renderSyndicateRoster(); }, 'renderSyndicateRoster');
-            safeInit(() => {
-                if (document.getElementById('view-splitter') && !window.waves.vocals) setTimeout(window.initSplitterWaves, 300);
-            }, 'initSplitterWaves');
+        // ============================================================
+        // DAW PREFERENCES — REAPER-style multi-category settings dialog.
+        // Built incrementally: General (Undo, Paths, Keyboard/Multitouch) is
+        // fully wired up now; other categories show a "not configured yet"
+        // placeholder until we build them out.
+        // ============================================================
+        window.DAW_PREFS_TREE = [
+            { id: 'general', label: 'General', children: [
+                { id: 'general-undo', label: 'Undo' },
+                { id: 'general-paths', label: 'Paths' },
+                { id: 'general-keyboard', label: 'Keyboard/Multitouch' },
+            ]},
+            { id: 'project', label: 'Project', children: [
+                { id: 'project-backups', label: 'Backups' },
+                { id: 'project-tracksend', label: 'Track/Send Defaults' },
+                { id: 'project-itemfade', label: 'Item Fade Defaults' },
+                { id: 'project-itemloop', label: 'Item Loop Defaults' },
+            ]},
+            { id: 'audio', label: 'Audio', children: [
+                { id: 'audio-device', label: 'Device' },
+                { id: 'audio-midiin', label: 'MIDI Inputs' },
+                { id: 'audio-midiout', label: 'MIDI Outputs' },
+                { id: 'audio-buffering', label: 'Buffering' },
+                { id: 'audio-mutesolo', label: 'Mute/Solo' },
+                { id: 'audio-playback', label: 'Playback' },
+                { id: 'audio-scrubjog', label: 'Scrub/Jog' },
+                { id: 'audio-seeking', label: 'Seeking' },
+                { id: 'audio-recording', label: 'Recording' },
+                { id: 'audio-loopcane', label: 'Loop/Lane Recording' },
+                { id: 'audio-rendering', label: 'Rendering' },
+            ]},
+            { id: 'appearance', label: 'Appearance', children: [
+                { id: 'appearance-rulergrid', label: 'Ruler/Grid' },
+                { id: 'appearance-mediaitems', label: 'Media Items' },
+                { id: 'appearance-mediabuttons', label: 'Media Item Buttons' },
+                { id: 'appearance-peaks', label: 'Peaks/Waveforms' },
+                { id: 'appearance-fades', label: 'Fades/Crossfades' },
+                { id: 'appearance-trackpanels', label: 'Track Control Panels' },
+                { id: 'appearance-trackmeters', label: 'Track Meters' },
+            ]},
+            { id: 'editing', label: 'Editing Behavior' },
+            { id: 'media', label: 'Media' },
+            { id: 'plugins', label: 'Plug-ins' },
+            { id: 'control', label: 'Control/OSC/web' },
+            { id: 'external', label: 'External Editors' },
+        ];
+
+        window.dawPrefsExpanded = { general: true, project: false, audio: false, appearance: false };
+        window.dawPrefsActiveId = 'general-undo';
+
+        window.dawPrefs = window.dawPrefs || {
+            undo: {
+                maxMemoryMB: 256,
+                includeItem: true, includeTrack: false, includeEnvelopePoint: false,
+                includeTime: true, includeCursorPosition: false, includeMidiEvents: true,
+                keepNewestOnFull: false,
+                storeMultipleRedoPaths: false,
+                saveUndoHistoryWithProject: false,
+                allowLoadUndoHistory: true,
+                showLastUndoPointInTitleBar: false,
+            },
+            keyboard: {
+                commitEditFieldsAfter1s: true,
+                useAltKeyboardSectionWhenRecording: false,
+                preventAltFocusMainMenu: false,
+                allowSpaceKeyNavigation: false,
+                spaceKeyInPluginFieldsToMainWindow: false,
+                momentaryTimeoutMs: 1000,
+                multitouchSwipe: true, multitouchSwipeReverse: false,
+                multitouchZoom: true, multitouchZoomReverse: false, multitouchZoomSuppressInertia: false, multitouchZoomGearing: 1,
+                multitouchRotate: true, multitouchRotateReverse: false, multitouchRotateSuppressInertia: false, multitouchRotateGearing: 1,
+                ignoreScrollAfterGestureMs: 100,
+                ignoreNewGestureAfterGestureMs: 100,
+                reverseVerticalScroll: false,
+                reverseHorizontalScroll: false,
+            },
+            paths: {
+                autoSavePath: '',
+                projectTemplatePath: '',
+                trackTemplatePath: '',
+                tempRenderPath: '',
+            },
+        };
+
+        window.openDawPreferences = function() {
+            document.getElementById('daw-prefs-backdrop').classList.remove('hidden-section');
+            document.getElementById('daw-prefs-modal').classList.remove('hidden-section');
+            window.dawPrefsRenderSidebar();
+            window.dawPrefsSelectCategory(window.dawPrefsActiveId);
+        };
+        window.closeDawPreferences = function() {
+            document.getElementById('daw-prefs-backdrop').classList.add('hidden-section');
+            document.getElementById('daw-prefs-modal').classList.add('hidden-section');
+        };
+        window.dawPrefsApply = function(stayOpen) {
+            // In a real app this is where prefs would persist to storage / affect engine behavior.
+            // For now, just acknowledge — the state object already holds the live values.
+            if (!stayOpen) window.closeDawPreferences();
+        };
+
+        window.dawPrefsToggleCategory = function(id) {
+            window.dawPrefsExpanded[id] = !window.dawPrefsExpanded[id];
+            window.dawPrefsRenderSidebar();
+        };
+
+        window.dawPrefsRenderSidebar = function(filterText) {
+            const sidebar = document.getElementById('daw-prefs-sidebar');
+            if (!sidebar) return;
+            const q = (filterText || '').trim().toLowerCase();
+            const rows = [];
+            window.DAW_PREFS_TREE.forEach(cat => {
+                const children = cat.children || [];
+                const matchSelf = cat.label.toLowerCase().includes(q);
+                const matchingChildren = children.filter(c => c.label.toLowerCase().includes(q));
+                if (q && !matchSelf && !matchingChildren.length) return;
+                const expanded = q ? true : window.dawPrefsExpanded[cat.id];
+                const hasChildren = children.length > 0;
+                rows.push(`
+                    <div onclick="${hasChildren ? `window.dawPrefsToggleCategory('${cat.id}')` : `window.dawPrefsSelectCategory('${cat.id}')`}" class="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-[10px] font-bold uppercase tracking-wide transition-colors ${window.dawPrefsActiveId === cat.id ? 'neon-blue-text' : 'text-gray-400 hover:text-gray-200'}">
+                        ${hasChildren ? `<span class="text-gray-600" style="font-size:8px; width:8px; display:inline-block;">${expanded ? '▾' : '▸'}</span>` : '<span style="width:8px; display:inline-block;"></span>'}
+                        <span>${cat.label}</span>
+                    </div>`);
+                if (hasChildren && expanded) {
+                    (q ? matchingChildren : children).forEach(child => {
+                        rows.push(`
+                            <div onclick="window.dawPrefsSelectCategory('${child.id}')" class="pl-7 pr-3 py-1.5 cursor-pointer text-[9.5px] font-semibold transition-colors ${window.dawPrefsActiveId === child.id ? 'neon-blue-text' : 'text-gray-500 hover:text-gray-300'}">
+                                ${child.label}
+                            </div>`);
+                    });
+                }
+            });
+            sidebar.innerHTML = rows.join('');
+        };
+
+        window.dawPrefsFilterSidebar = function(value) {
+            window.dawPrefsRenderSidebar(value);
+        };
+
+        window.dawPrefsSelectCategory = function(id) {
+            window.dawPrefsActiveId = id;
+            window.dawPrefsRenderSidebar(document.getElementById('daw-prefs-search') ? document.getElementById('daw-prefs-search').value : '');
+            const content = document.getElementById('daw-prefs-content');
+            if (!content) return;
+            if (id === 'general-undo') content.innerHTML = window.dawPrefsRenderUndoPanel();
+            else if (id === 'general-keyboard') content.innerHTML = window.dawPrefsRenderKeyboardPanel();
+            else if (id === 'general-paths') content.innerHTML = window.dawPrefsRenderPathsPanel();
+            else {
+                const flat = window.DAW_PREFS_TREE.flatMap(c => [c, ...(c.children || [])]);
+                const node = flat.find(n => n.id === id);
+                content.innerHTML = window.dawPrefsRenderPlaceholder(node ? node.label : id);
+            }
+        };
+
+        window.dawPrefsCheckboxRow = function(label, checked, onchange, extra) {
+            return `
+                <label class="flex items-center gap-2 py-1 cursor-pointer text-[11px] text-gray-300 select-none ${extra || ''}">
+                    <input type="checkbox" class="daw-checkbox" ${checked ? 'checked' : ''} onchange="${onchange}">
+                    <span>${label}</span>
+                </label>`;
+        };
+
+        window.dawPrefsRenderUndoPanel = function() {
+            const u = window.dawPrefs.undo;
+            return `
+                <h3 class="text-[11px] font-black uppercase tracking-widest neon-blue-text mb-4">Undo Settings</h3>
+
+                <div class="flex items-center gap-2 mb-4 text-[11px] text-gray-300">
+                    <span>Maximum undo memory use:</span>
+                    <input type="number" value="${u.maxMemoryMB}" oninput="window.dawPrefs.undo.maxMemoryMB=Number(this.value)" class="daw-mini-field" style="width:70px;">
+                    <span class="text-gray-500">megabytes (0 disables undo/prompt to save)</span>
+                </div>
+
+                <div class="mb-4">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">Include selection:</div>
+                    <div class="flex flex-wrap gap-x-5">
+                        ${window.dawPrefsCheckboxRow('item', u.includeItem, "window.dawPrefs.undo.includeItem=this.checked")}
+                        ${window.dawPrefsCheckboxRow('track', u.includeTrack, "window.dawPrefs.undo.includeTrack=this.checked")}
+                        ${window.dawPrefsCheckboxRow('envelope point', u.includeEnvelopePoint, "window.dawPrefs.undo.includeEnvelopePoint=this.checked")}
+                        ${window.dawPrefsCheckboxRow('time', u.includeTime, "window.dawPrefs.undo.includeTime=this.checked")}
+                        ${window.dawPrefsCheckboxRow('cursor position', u.includeCursorPosition, "window.dawPrefs.undo.includeCursorPosition=this.checked")}
+                        ${window.dawPrefsCheckboxRow('MIDI events', u.includeMidiEvents, "window.dawPrefs.undo.includeMidiEvents=this.checked")}
+                    </div>
+                </div>
+
+                ${window.dawPrefsCheckboxRow('When approaching full undo memory, keep newest undo states', u.keepNewestOnFull, "window.dawPrefs.undo.keepNewestOnFull=this.checked")}
+                ${window.dawPrefsCheckboxRow('Store multiple redo paths when possible (can use a lot of RAM)', u.storeMultipleRedoPaths, "window.dawPrefs.undo.storeMultipleRedoPaths=this.checked")}
+
+                <div class="flex items-center gap-5 py-1">
+                    ${window.dawPrefsCheckboxRow('Save undo history with project files (in .RPP-UNDO file)', u.saveUndoHistoryWithProject, "window.dawPrefs.undo.saveUndoHistoryWithProject=this.checked")}
+                    ${window.dawPrefsCheckboxRow('Allow load of undo history', u.allowLoadUndoHistory, "window.dawPrefs.undo.allowLoadUndoHistory=this.checked")}
+                </div>
+                ${window.dawPrefsCheckboxRow('Show last undo point in title bar', u.showLastUndoPointInTitleBar, "window.dawPrefs.undo.showLastUndoPointInTitleBar=this.checked")}
+            `;
+        };
+
+        window.dawPrefsRenderKeyboardPanel = function() {
+            const k = window.dawPrefs.keyboard;
+            return `
+                <h3 class="text-[11px] font-black uppercase tracking-widest neon-blue-text mb-4">Keyboard</h3>
+
+                ${window.dawPrefsCheckboxRow('Commit changes to some edit fields after 1 second of no typing', k.commitEditFieldsAfter1s, "window.dawPrefs.keyboard.commitEditFieldsAfter1s=this.checked")}
+                ${window.dawPrefsCheckboxRow('Use alternate keyboard section when recording', k.useAltKeyboardSectionWhenRecording, "window.dawPrefs.keyboard.useAltKeyboardSectionWhenRecording=this.checked")}
+                ${window.dawPrefsCheckboxRow('Prevent ALT key from focusing main menu', k.preventAltFocusMainMenu, "window.dawPrefs.keyboard.preventAltFocusMainMenu=this.checked")}
+                ${window.dawPrefsCheckboxRow('Allow space key to be used for navigation in various windows', k.allowSpaceKeyNavigation, "window.dawPrefs.keyboard.allowSpaceKeyNavigation=this.checked")}
+                ${window.dawPrefsCheckboxRow('When space key is pressed in plug-in text fields, send to main window', k.spaceKeyInPluginFieldsToMainWindow, "window.dawPrefs.keyboard.spaceKeyInPluginFieldsToMainWindow=this.checked")}
+
+                <div class="flex items-center gap-2 my-3 text-[11px] text-gray-300">
+                    <span>Timeout for momentary keyboard section override:</span>
+                    <input type="number" value="${k.momentaryTimeoutMs}" oninput="window.dawPrefs.keyboard.momentaryTimeoutMs=Number(this.value)" class="daw-mini-field" style="width:70px;">
+                    <span class="text-gray-500">ms</span>
+                </div>
+
+                <div class="text-[10px] neon-blue-text underline cursor-pointer mb-1">Assign keyboard shortcuts to actions or change existing shortcuts</div>
+                <div class="text-[10px] neon-blue-text underline cursor-pointer mb-4">View keyboard shortcuts as printable/searchable web page</div>
+
+                <div class="border-t border-white/10 pt-3 mt-2">
+                    <h3 class="text-[11px] font-black uppercase tracking-widest neon-blue-text mb-3">Multitouch</h3>
+                    <div class="grid gap-y-1.5" style="grid-template-columns: 1fr auto auto auto; column-gap: 20px;">
+                        <div class="flex items-center">${window.dawPrefsCheckboxRow('Enable multitouch swipe', k.multitouchSwipe, "window.dawPrefs.keyboard.multitouchSwipe=this.checked")}</div>
+                        <div>${window.dawPrefsCheckboxRow('Reverse', k.multitouchSwipeReverse, "window.dawPrefs.keyboard.multitouchSwipeReverse=this.checked")}</div>
+                        <div></div><div></div>
+
+                        <div class="flex items-center">${window.dawPrefsCheckboxRow('Enable multitouch zoom', k.multitouchZoom, "window.dawPrefs.keyboard.multitouchZoom=this.checked")}</div>
+                        <div>${window.dawPrefsCheckboxRow('Reverse', k.multitouchZoomReverse, "window.dawPrefs.keyboard.multitouchZoomReverse=this.checked")}</div>
+                        <div>${window.dawPrefsCheckboxRow('Suppress inertia', k.multitouchZoomSuppressInertia, "window.dawPrefs.keyboard.multitouchZoomSuppressInertia=this.checked")}</div>
+                        <div class="flex items-center gap-1.5 text-[10px] text-gray-400">Gearing: <input type="number" value="${k.multitouchZoomGearing}" oninput="window.dawPrefs.keyboard.multitouchZoomGearing=Number(this.value)" class="daw-mini-field" style="width:40px;"></div>
+
+                        <div class="flex items-center">${window.dawPrefsCheckboxRow('Enable multitouch rotate', k.multitouchRotate, "window.dawPrefs.keyboard.multitouchRotate=this.checked")}</div>
+                        <div>${window.dawPrefsCheckboxRow('Reverse', k.multitouchRotateReverse, "window.dawPrefs.keyboard.multitouchRotateReverse=this.checked")}</div>
+                        <div>${window.dawPrefsCheckboxRow('Suppress inertia', k.multitouchRotateSuppressInertia, "window.dawPrefs.keyboard.multitouchRotateSuppressInertia=this.checked")}</div>
+                        <div class="flex items-center gap-1.5 text-[10px] text-gray-400">Gearing: <input type="number" value="${k.multitouchRotateGearing}" oninput="window.dawPrefs.keyboard.multitouchRotateGearing=Number(this.value)" class="daw-mini-field" style="width:40px;"></div>
+                    </div>
+
+                    <div class="flex items-center gap-2 mt-3 text-[11px] text-gray-300">
+                        <span>Ignore scroll after multitouch gesture:</span>
+                        <input type="number" value="${k.ignoreScrollAfterGestureMs}" oninput="window.dawPrefs.keyboard.ignoreScrollAfterGestureMs=Number(this.value)" class="daw-mini-field" style="width:60px;">
+                        <span class="text-gray-500">ms</span>
+                        <span class="ml-6">${window.dawPrefsCheckboxRow('Reverse vertical scroll', k.reverseVerticalScroll, "window.dawPrefs.keyboard.reverseVerticalScroll=this.checked")}</span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1.5 text-[11px] text-gray-300">
+                        <span>Ignore new gesture after multitouch gesture:</span>
+                        <input type="number" value="${k.ignoreNewGestureAfterGestureMs}" oninput="window.dawPrefs.keyboard.ignoreNewGestureAfterGestureMs=Number(this.value)" class="daw-mini-field" style="width:60px;">
+                        <span class="text-gray-500">ms</span>
+                        <span class="ml-6">${window.dawPrefsCheckboxRow('Reverse horizontal scroll', k.reverseHorizontalScroll, "window.dawPrefs.keyboard.reverseHorizontalScroll=this.checked")}</span>
+                    </div>
+
+                    <div class="text-[10px] neon-blue-text underline cursor-pointer mt-3">Assign multitouch gestures to actions or change existing shortcuts</div>
+                </div>
+            `;
+        };
+
+        window.dawPrefsRenderPathsPanel = function() {
+            const p = window.dawPrefs.paths;
+            const field = (label, key) => `
+                <div class="mb-3">
+                    <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">${label}</div>
+                    <input type="text" value="${p[key]}" placeholder="(default)" oninput="window.dawPrefs.paths.${key}=this.value" class="daw-mini-field" style="width:100%;">
+                </div>`;
+            return `
+                <h3 class="text-[11px] font-black uppercase tracking-widest neon-blue-text mb-4">Paths</h3>
+                ${field('Auto-save path', 'autoSavePath')}
+                ${field('Project template path', 'projectTemplatePath')}
+                ${field('Track template path', 'trackTemplatePath')}
+                ${field('Temporary render path', 'tempRenderPath')}
+                <p class="text-gray-600 text-[9.5px] mt-4">Leave a field blank to use the default location for that file type.</p>
+            `;
+        };
+
+        window.dawPrefsRenderPlaceholder = function(label) {
+            return `
+                <div class="h-full flex flex-col items-center justify-center text-center">
+                    <h3 class="text-[11px] font-black uppercase tracking-widest text-gray-500 mb-2">${label}</h3>
+                    <p class="text-gray-600 text-[10px] max-w-xs">This section hasn't been built out yet — General → Undo, Paths, and Keyboard/Multitouch are the only fully wired panels so far.</p>
+                </div>`;
+        };
+
+        safeInit(() => {
+            if (document.getElementById('view-splitter') && !window.waves.vocals) setTimeout(window.initSplitterWaves, 300);
+        }, 'initSplitterWaves');
             safeInit(() => {
                 const dawTracksEl = document.getElementById('daw-tracks');
                 if (dawTracksEl) {
