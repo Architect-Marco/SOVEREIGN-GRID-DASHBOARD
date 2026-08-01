@@ -3619,6 +3619,179 @@
                 return;
             }
 
+            if (pageId === 'editing') {
+                titleEl.innerText = 'Editing behavior';
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <div class="neon-blue-text text-[11px] font-black mb-2">Move edit cursor on:</div>
+                            <div class="grid grid-cols-2 gap-y-1.5 pl-1">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Time selection change</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Razor edit change</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Pasting/Inserting media</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Clicking fixed lane comp area</label>
+                            </div>
+                        </div>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Move edit cursor to end of recorded items on record stop</label>
+                        <div class="flex items-center gap-6 flex-wrap">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Link loop points to time selection</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Clear loop points on click in ruler</label>
+                        </div>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Clear time selection when edit cursor moves on click in arrange view</label>
+
+                        <div class="flex items-center gap-3 flex-wrap pt-1">
+                            <label class="text-[11px] font-bold neon-blue-text w-64 flex-shrink-0">Minimum time selection/loop/razor edit length:</label>
+                            <input type="text" value="0" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
+                            <span class="text-[10px] text-gray-500">pixels</span>
+                        </div>
+
+                        <div class="bg-black/40 border border-white/5 rounded-xl p-4">
+                            <div class="neon-blue-text text-[11px] font-black mb-2">Transient detection</div>
+                            <div class="flex items-center gap-5 flex-wrap">
+                                <button class="px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.25)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Adjust sensitivity...</button>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Tab through MIDI notes</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Treat media item edges as transients</label>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5 pt-1">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Clear existing media item/envelope selection when creating razor edit area</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Allow dual trim (edit shared media item edges) only if both items are selected</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Crossfades stay together during fade edits when trim content behind media items is enabled</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Automatically delete empty tracks created by dragging items below the last track and back</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Dragging the source start offset of the active take adjusts the offset for all takes</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> If no items are selected, some split/trim/delete actions affect all items at the edit cursor</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Stretching razor edit area adds stretch markers to audio items</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Normalize actions affect all takes within a media item</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Automatically zoom to time selection when running sample edit actions</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Automatically select regions/markers when navigating via action or Jump To Time dialog</label>
+                        </div>
+
+                        <div class="flex items-center gap-3 flex-wrap pt-1">
+                            <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">Take marker ranking levels:</label>
+                            <input type="text" value="3 up, 1 down" class="w-28 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Up/down/cycle actions skip 'no ranking'</label>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'editing-envelope-display') {
+                titleEl.innerText = 'Envelope Display/Editing';
+                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
+                content.innerHTML = `
+                    <div class="space-y-3.5">
+                        <div class="flex items-center gap-3">
+                            <label class="text-[11px] font-bold neon-blue-text w-52 flex-shrink-0">Volume envelope range:</label>
+                            <select class="${selectCls}"><option>-inf..+6dB</option><option>-inf..0dB</option><option>-inf..+12dB</option></select>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-52 flex-shrink-0">Default pitch envelope range:</label>
+                            <input type="text" value="3" class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">semitones, snap:</span>
+                            <select class="${selectCls}"><option>Off</option><option>On</option></select>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-52 flex-shrink-0">Default tempo envelope range:</label>
+                            <input type="text" value="40" class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">to</span>
+                            <input type="text" value="280" class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">bpm, snap:</span>
+                            <select class="${selectCls}"><option>Off</option><option>On</option></select>
+                        </div>
+
+                        <div class="space-y-1.5 pt-1">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Show new envelopes in separate envelope lanes</label>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> When drawn over media, overlap envelopes if each is less than</label>
+                                <input type="text" value="40" class="w-12 ${selectCls}"><span class="text-[10px] text-gray-500">pixels high</span>
+                            </div>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> When adding envelopes or setting visible, set the focus to the envelope</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Envelope point selection follows time selection</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> First click on unselected envelope can insert a point (depends on mouse modifier settings)</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Prevent mouse edits of single envelope points from moving past other envelope points</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Automatically show affected envelopes when moving media items across tracks</label>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <label class="text-[11px] font-bold neon-blue-text w-52 flex-shrink-0">Changing envelope in lane:</label>
+                            <select class="${selectCls}"><option>Hides old envelope</option><option>Shows both envelopes</option></select>
+                        </div>
+
+                        <div class="bg-black/40 border border-white/5 rounded-xl p-4">
+                            <div class="neon-blue-text text-[11px] font-black mb-2">Automatically add edge points when editing:</div>
+                            <div class="flex items-center gap-6 flex-wrap">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Media items</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Multiple points</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Ripple editing or inserting time</label>
+                            </div>
+                            <div class="flex items-center gap-3 flex-wrap pt-2.5">
+                                <label class="text-[11px] font-bold neon-blue-text w-64 flex-shrink-0">Transition time for automatically created envelope edge points:</label>
+                                <input type="text" value="0.5" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">ms (minimum 0.1)</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-6 flex-wrap">
+                            <span class="text-[11px] font-bold neon-blue-text">Use relative mouse edits for:</span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> fader-scaled volume envelopes</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> other envelopes</label>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'editing-automation') {
+                titleEl.innerText = 'Automation';
+                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
+                content.innerHTML = `
+                    <div class="space-y-3.5">
+                        <div class="flex items-center gap-3">
+                            <label class="text-[11px] font-bold neon-blue-text w-60 flex-shrink-0">Automation recording return speed:</label>
+                            <input type="text" value="100" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">ms</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="text-[11px] font-bold neon-blue-text w-60 flex-shrink-0">Action transition time:</label>
+                            <input type="text" value="100" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">ms</span>
+                        </div>
+
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" checked class="daw-checkbox"> Automatically add envelopes when tweaking parameters in automation write modes</label>
+                        <div class="flex items-center gap-6 flex-wrap pl-1">
+                            <span class="text-[11px] font-bold neon-blue-text">Hidden envelopes:</span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Display read automation feedback</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Allow writing automation</label>
+                        </div>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Reduce envelope point data when recording or drawing automation</label>
+
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-56 flex-shrink-0">When recording automation and stopped:</label>
+                            <select class="${selectCls}"><option>Add additional point before edit position</option><option>Do nothing</option></select>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-56 flex-shrink-0">When recording automation in playback:</label>
+                            <select class="${selectCls}"><option>Record at processing position (what you hear)</option><option>Record at input position</option></select>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-72 flex-shrink-0">When adding volume/pan envelopes, apply trim to envelope and reset trim:</label>
+                            <select class="${selectCls}"><option>Always</option><option>Never</option><option>Ask</option></select>
+                        </div>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Automatically remove envelopes when hiding and only containing a single point</label>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-72 flex-shrink-0">If both pre-fx and post-fx volume/pan/width envelopes armed, target:</label>
+                            <select class="${selectCls}"><option>Both envelopes</option><option>Pre-fx only</option><option>Post-fx only</option></select>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-72 flex-shrink-0">After recording automation in write mode, on repeat/seek/stop:</label>
+                            <select class="${selectCls}"><option>Remain in write mode</option><option>Return to previous mode</option></select>
+                        </div>
+
+                        <div class="space-y-1.5 pt-1">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Reset latch state when looping</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Do not automatically reset latches when in latch/write modes</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Unselect all track envelope points on arrange view click</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Unselect all take envelope points on arrange view click</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Unselect all take envelope points on that item click</label>
+                        </div>
+                    </div>`;
+                return;
+            }
+
             if (pageId === 'editing-mouse-modifiers') {
                 titleEl.innerText = 'Mouse Modifiers';
                 content.innerHTML = `
