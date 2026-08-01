@@ -5233,7 +5233,7 @@
                         <span onclick="window.coverArtRename(${si})" class="neon-blue-text text-xs font-black uppercase tracking-widest truncate cursor-pointer hover:opacity-70 transition-opacity" title="Click to rename">${slot.name}</span>
                         <span class="text-[9px] text-gray-600 font-black uppercase tracking-widest flex-shrink-0">${slot.items.length} item${slot.items.length === 1 ? '' : 's'}</span>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 p-3 overflow-y-auto slick-scroll" style="max-height:420px;">
+                    <div class="grid grid-cols-3 gap-1 p-1 overflow-y-auto slick-scroll" style="max-height:420px;">
                         ${slot.items.map((item, ii) => `
                             <div class="relative aspect-square bg-black border border-white/10 hover:border-[rgba(47,208,255,0.5)] cursor-pointer group transition-colors"
                                  onclick="window.coverArtItemExpand(${si},${ii})"
