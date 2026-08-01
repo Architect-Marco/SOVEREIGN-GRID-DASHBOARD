@@ -103,6 +103,7 @@
 
                 <!-- COVER ART SLOTS -->
                 <div id="cover-art-slots" class="grid grid-cols-3 gap-5 mt-6"></div>
+                <input type="file" id="cover-art-file-input" accept=".png,.jpg,.jpeg,.mp3,.mp4" class="hidden" onchange="window.coverArtFileChosen(event)">
             </div>
 
             <!-- 6. VIEW: RADIO STATION -->
@@ -305,6 +306,28 @@
             </div>
             <textarea id="lyrics-panel-textarea" class="w-full h-96 bg-black border border-white/10 rounded-2xl p-5 text-white font-mono text-sm outline-none focus:border-pink-500 leading-relaxed" placeholder="No lyrics yet — write some and save..."></textarea>
             <button onclick="saveLyricsPanel()" class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-black font-black uppercase italic tracking-widest rounded-xl">Save Lyrics</button>
+        </div>
+    </div>
+
+    <!-- COVER ART — right-click context menu -->
+    <div id="cover-art-ctx-menu" class="hidden fixed z-50 w-40 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg shadow-2xl overflow-hidden" onclick="event.stopPropagation()">
+        <button id="cover-art-ctx-upload-btn" onclick="window.coverArtCtxUpload()" class="w-full text-left px-3 py-2 text-[11px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Upload</button>
+        <button id="cover-art-ctx-details-btn" onclick="window.coverArtCtxDetails()" class="w-full text-left px-3 py-2 text-[11px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Edit Details</button>
+        <button id="cover-art-ctx-delete-btn" onclick="window.coverArtCtxDelete()" class="w-full text-left px-3 py-2 text-[11px] font-bold text-red-400 hover:bg-red-500/10 transition-colors">Delete</button>
+    </div>
+
+    <!-- COVER ART — details modal (title + notes) -->
+    <div id="cover-art-details-modal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6" onclick="if(event.target===this) window.closeCoverArtDetails()">
+        <div class="w-full max-w-sm bg-[#0a0a0a] border-[1.8px] border-[rgba(47,208,255,0.25)] rounded-2xl p-6">
+            <h3 class="neon-blue-text text-sm font-black uppercase italic tracking-tight mb-4">Cover Art Details</h3>
+            <label class="text-gray-500 text-[9px] font-black uppercase tracking-widest block mb-1">Title</label>
+            <input id="cover-art-details-title" type="text" placeholder="e.g. Neon Skyline v2" class="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#2fd0ff] mb-4">
+            <label class="text-gray-500 text-[9px] font-black uppercase tracking-widest block mb-1">Notes</label>
+            <textarea id="cover-art-details-notes" placeholder="Any details worth remembering..." class="w-full h-24 bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#2fd0ff] resize-none mb-5"></textarea>
+            <div class="flex gap-2">
+                <button onclick="window.closeCoverArtDetails()" class="flex-1 py-2 rounded-lg border border-white/10 text-gray-400 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">Cancel</button>
+                <button onclick="window.saveCoverArtDetails()" class="flex-1 py-2 rounded-lg neon-blue-border neon-blue-text text-[10px] font-black uppercase tracking-widest hover:bg-[#2fd0ff]/10 transition-colors">Save</button>
+            </div>
         </div>
     </div>
 
