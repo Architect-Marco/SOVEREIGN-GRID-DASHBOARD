@@ -306,3 +306,28 @@
         .daw-arrangement-scroll::-webkit-scrollbar-track { background:#0a0a0a; }
         .daw-arrangement-scroll::-webkit-scrollbar-thumb { background:#2fd0ff !important; border-radius:10px; border:2px solid #0a0a0a; }
         .daw-grid-wrapper { padding-bottom:14px; }
+
+        /* ===== DAW: square edges — everything inside the DAW view rendered sharp/flush ===== */
+        #view-daw [class*="rounded"]:not([class*="rounded-full"]) {
+            border-radius: 0 !important;
+        }
+        #view-daw [style*="border-radius"] {
+            border-radius: 0 !important;
+        }
+        .daw-mixer-strip, .daw-mixer-io-pill, .daw-fader-track, .daw-mixer-footer, .daw-name-box, .daw-mixer-value-field, .daw-led-meter-single,
+        .daw-tool-btn, .daw-mini-select, .daw-toggle-btn, .daw-transport-btn, .daw-position-display, .daw-mini-field, .daw-download-btn, .daw-chip-btn, .daw-checkbox {
+            border-radius: 0 !important;
+        }
+
+        /* ===== DAW: mixer scroll strip — force neon blue, overriding the old global white scrollbar-thumb rule above ===== */
+        #daw-mixer::-webkit-scrollbar-thumb {
+            background: rgba(47,208,255,0.5) !important;
+            border-radius: 10px !important;
+        }
+        #daw-mixer::-webkit-scrollbar-thumb:hover {
+            background: rgba(47,208,255,0.8) !important;
+        }
+        #daw-mixer::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.04) !important;
+        }
+        #daw-mixer { scrollbar-color: rgba(47,208,255,0.5) rgba(255,255,255,0.04) !important; }
