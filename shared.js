@@ -2655,16 +2655,16 @@
                 const chips = plugin ? plugin.values.slice(0, 3).map(v => `<span class="bg-black/50 border border-white/10 rounded px-1 py-0.5 text-[7px] font-black text-gray-400">${v[1]}</span>`).join('') : '';
                 return `
                 <div class="flex-shrink-0 w-36 bg-black/50 border border-[rgba(47,208,255,0.25)] rounded-lg overflow-hidden group">
-                    <div class="flex items-center justify-between gap-1 px-2 py-1.5 bg-white/5 border-b border-white/5">
+                    <div class="flex items-center justify-between gap-1 px-2 py-1 bg-white/5 border-b border-white/5">
                         <span class="w-1.5 h-1.5 rounded-full bg-[#2fd0ff] neon-blue-glow flex-shrink-0"></span>
                         <span class="neon-blue-text text-[9px] font-black italic truncate flex-1">${name}</span>
                         <button onclick="window.dawRemovePluginFromRack('${trackId}','${name.replace(/'/g, "\\'")}')" title="Remove" class="text-gray-600 hover:text-[#ef4444] transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0">
                             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                         </button>
                     </div>
-                    <div onclick="window.openDawPluginDetail('${trackId}','${name.replace(/'/g, "\\'")}')" class="p-2 cursor-pointer">
+                    <div onclick="window.openDawPluginDetail('${trackId}','${name.replace(/'/g, "\\'")}')" class="px-2 py-1.5 cursor-pointer">
                         <div class="flex flex-wrap gap-1">${chips}</div>
-                        <div class="text-[7px] text-gray-600 uppercase font-black tracking-widest mt-1.5">Tap to edit</div>
+                        <div class="text-[7px] text-gray-600 uppercase font-black tracking-widest mt-1">Tap to edit</div>
                     </div>
                 </div>`;
             }).join('') + `
