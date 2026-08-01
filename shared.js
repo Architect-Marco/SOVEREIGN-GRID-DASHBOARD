@@ -5184,6 +5184,122 @@
             document.getElementById('gallery-preview-modal').classList.add('hidden');
         };
 
+        // ===== GALLERY — COVER ART SLOTS (3 persistent upload/rename/delete/expand boxes) =====
+        window.coverArtSlots = (() => {
+            try {
+                const saved = JSON.parse(localStorage.getItem('sbn-cover-art-slots') || 'null');
+                if (Array.isArray(saved) && saved.length === 3) return saved;
+            } catch (e) {}
+            return [
+                { name: 'Cover Art 1', image: null },
+                { name: 'Cover Art 2', image: null },
+                { name: 'Cover Art 3', image: null }
+            ];
+        })();
+
+        function coverArtSave() {
+            try { localStorage.setItem('sbn-cover-art-slots', JSON.stringify(window.coverArtSlots)); } catch (e) {}
+        }
+
+        window.renderCoverArtSlots = function() {
+            const wrap = document.getElementById('cover-art-slots');
+            if (!wrap) return;
+            wrap.innerHTML = window.coverArtSlots.map((slot, i) => `
+                <div class="bg-[#141414] noir-bezel overflow-hidden flex flex-col">
+                    <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/5">
+                        <span id="cover-art-name-${i}" onclick="window.coverArtRename(${i})" class="neon-blue-text text-xs font-black uppercase tracking-widest truncate cursor-pointer hover:opacity-70 transition-opacity" title="Click to rename">${slot.name}</span>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            <input type="file" id="cover-art-input-${i}" accept=".png,.jpg,.jpeg,.mp3,.mp4" class="hidden" onchange="window.coverArtUpload(${i}, event)">
+                            <button onclick="document.getElementById('cover-art-input-${i}').click()" title="Upload cover art (PNG, JPEG, MP3, MP4)" class="w-7 h-7 rounded-md flex items-center justify-center neon-blue-text hover:bg-white/10 transition-colors">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>
+                            </button>
+                            <button onclick="window.coverArtDelete(${i})" title="Delete cover art" class="w-7 h-7 rounded-md flex items-center justify-center text-red-400 hover:bg-red-500/10 transition-colors">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div onclick="${slot.image ? `window.coverArtExpand(${i})` : `document.getElementById('cover-art-input-${i}').click()`}" class="relative aspect-square cursor-pointer group" style="${slot.type === 'image' && slot.image ? `background-image:url('${slot.image}');background-size:cover;background-position:center;` : ''}">
+                        ${slot.image && slot.type === 'image' ? `
+                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2fd0ff" stroke-width="1.8"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+                        </div>` : slot.image && slot.type === 'video' ? `
+                        <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 text-[#2fd0ff]">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="m22 8-5 4 5 4V8Z"/></svg>
+                            <span class="text-[9px] font-black uppercase tracking-widest truncate px-3 text-center">${slot.fileName || 'Video'}</span>
+                        </div>` : slot.image && slot.type === 'audio' ? `
+                        <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 text-[#2fd0ff]">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                            <span class="text-[9px] font-black uppercase tracking-widest truncate px-3 text-center">${slot.fileName || 'Audio'}</span>
+                        </div>` : `
+                        <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-600 group-hover:text-[#2fd0ff] transition-colors">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                            <span class="text-[9px] font-black uppercase tracking-widest">Upload Cover Art</span>
+                        </div>`}
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        window.coverArtUpload = function(i, event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            const type = file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'image';
+            const reader = new FileReader();
+            reader.onload = () => {
+                window.coverArtSlots[i].image = reader.result;
+                window.coverArtSlots[i].type = type;
+                window.coverArtSlots[i].fileName = file.name;
+                coverArtSave();
+                window.renderCoverArtSlots();
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.coverArtDelete = function(i) {
+            if (!window.coverArtSlots[i].image) return;
+            if (!confirm('Delete this cover art?')) return;
+            window.coverArtSlots[i].image = null;
+            window.coverArtSlots[i].type = null;
+            window.coverArtSlots[i].fileName = null;
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        window.coverArtRename = function(i) {
+            const current = window.coverArtSlots[i].name;
+            const next = prompt('Rename cover art slot:', current);
+            if (next === null) return;
+            const trimmed = next.trim();
+            if (!trimmed) return;
+            window.coverArtSlots[i].name = trimmed;
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        window.coverArtExpand = function(i) {
+            const slot = window.coverArtSlots[i];
+            if (!slot.image) return;
+            const modal = document.getElementById('gallery-preview-modal');
+            const vid = document.getElementById('gallery-preview-video');
+            const aud = document.getElementById('gallery-preview-audio');
+            const img = document.getElementById('gallery-preview-image');
+            const label = document.getElementById('gallery-preview-label');
+            vid.pause(); aud.pause();
+            vid.classList.add('hidden'); aud.classList.add('hidden'); img.classList.add('hidden');
+            label.innerText = slot.name;
+            if (slot.type === 'video') {
+                vid.src = slot.image; vid.classList.remove('hidden');
+                vid.play().catch(() => {});
+            } else if (slot.type === 'audio') {
+                aud.src = slot.image; aud.classList.remove('hidden');
+                aud.play().catch(() => {});
+            } else {
+                img.src = slot.image; img.classList.remove('hidden');
+            }
+            modal.classList.remove('hidden');
+        };
+
         // 6.5 UPLOADABLE PHOTOS (Profile Avatar / Player Icon / Magazine Cover)
         window.handleAvatarUpload = async function(event) {
             const file = event.target.files && event.target.files[0];
@@ -6796,6 +6912,7 @@
             safeInit(window.loadDossier, 'loadDossier');
             safeInit(window.renderLibrary, 'renderLibrary');
             safeInit(window.renderGallery, 'renderGallery');
+            safeInit(window.renderCoverArtSlots, 'renderCoverArtSlots');
             safeInit(window.loadSocialLinks, 'loadSocialLinks');
             safeInit(window.loadRelayPreferences, 'loadRelayPreferences');
             safeInit(window.loadRelayHistory, 'loadRelayHistory');
