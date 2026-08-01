@@ -87,8 +87,6 @@
                             <button onclick="window.dawSaveProject(event)" class="daw-tool-btn" title="Save Project (stores audio in this browser)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg></button>
                             <button onclick="window.dawLoadProject(event)" class="daw-tool-btn" title="Load Saved Project"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2Z"/></svg></button>
                             <button onclick="window.dawRenderTracks(event)" class="daw-tool-btn" title="Render / Export Mix (WAV)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></button>
-                            <span class="w-px h-4 bg-white/10 mx-1"></span>
-                            <button onclick="window.openDawPreferences()" class="daw-tool-btn" title="Preferences"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></button>
                         </div>
                     </div>
                     <div class="flex items-center gap-5 flex-wrap">
@@ -220,39 +218,6 @@
                         <div id="plugin-picker-list" class="grid grid-cols-2 gap-2 p-4 overflow-y-auto slick-scroll" style="flex:1;"></div>
                         <div class="px-5 py-2.5 border-t border-white/5 flex-shrink-0">
                             <button id="plugin-picker-clear-btn" onclick="window.clearPluginSlotChoice()" class="text-[9px] font-black uppercase tracking-widest text-red-400 hover:text-red-300 transition-colors">Clear</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- DAW PREFERENCES MODAL — REAPER-style multi-category settings dialog -->
-                <div id="daw-prefs-backdrop" onclick="window.closeDawPreferences()" class="hidden-section fixed inset-0 z-50" style="background:rgba(0,0,0,0.6);"></div>
-                <div id="daw-prefs-modal" class="hidden-section fixed inset-0 z-50 flex items-center justify-center p-6" style="pointer-events:none;">
-                    <div class="w-full flex flex-col overflow-hidden" style="pointer-events:auto; max-width:900px; height:640px; max-height:88vh; background:#111214; border:1px solid rgba(47,208,255,0.35); box-shadow:0 20px 60px rgba(0,0,0,0.7), inset 0 0 3px rgba(47,208,255,0.25); border-radius:10px;" onclick="event.stopPropagation()">
-
-                        <!-- title bar -->
-                        <div class="relative flex items-center justify-center px-4 py-2.5 border-b border-white/5 flex-shrink-0" style="background:#0a0a0a;">
-                            <div class="absolute left-4 flex items-center gap-1.5">
-                                <span onclick="window.closeDawPreferences()" class="w-2.5 h-2.5 rounded-full cursor-pointer" style="background:#ff5f57;"></span>
-                                <span class="w-2.5 h-2.5 rounded-full" style="background:#febc2e;"></span>
-                                <span class="w-2.5 h-2.5 rounded-full" style="background:#28c840;"></span>
-                            </div>
-                            <span class="text-[10px] font-black uppercase tracking-[0.25em] neon-blue-text">DAW Preferences</span>
-                        </div>
-
-                        <!-- sidebar + content -->
-                        <div class="flex flex-1 min-h-0">
-                            <div id="daw-prefs-sidebar" class="w-52 flex-shrink-0 overflow-y-auto slick-scroll border-r border-white/5 py-2" style="background:#0d0e10;"></div>
-                            <div id="daw-prefs-content" class="flex-1 min-w-0 overflow-y-auto slick-scroll p-5"></div>
-                        </div>
-
-                        <!-- bottom bar -->
-                        <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-white/5 flex-shrink-0" style="background:#0a0a0a;">
-                            <input id="daw-prefs-search" oninput="window.dawPrefsFilterSidebar(this.value)" type="text" placeholder="Search settings..." class="daw-mini-field" style="width:200px;">
-                            <div class="flex items-center gap-2">
-                                <button onclick="window.closeDawPreferences()" style="background:#2b2b2b;" class="px-4 py-1.5 rounded text-[9px] font-black uppercase text-gray-300">Cancel</button>
-                                <button onclick="window.dawPrefsApply(true)" class="px-4 py-1.5 rounded text-[9px] font-black uppercase" style="background:rgba(47,208,255,0.15); border:1px solid rgba(47,208,255,0.5); color:#2fd0ff;">Apply</button>
-                                <button onclick="window.dawPrefsApply(false)" class="px-4 py-1.5 rounded text-[9px] font-black uppercase" style="background:#2fd0ff; color:#000;">OK</button>
-                            </div>
                         </div>
                     </div>
                 </div>
