@@ -319,6 +319,18 @@
             border-radius: 0 !important;
         }
 
+        /* ===== DAW: exception to the square-edges rule above — the two floating plugin
+           popups (detail knobs + picker grid) should stay rounded since they're overlays
+           sitting on top of everything else, not part of the flush in-grid UI ===== */
+        #daw-plugin-detail-modal [style*="border-radius"],
+        #plugin-picker-modal [style*="border-radius"] {
+            border-radius: 18px !important;
+        }
+        #daw-plugin-detail-modal [class*="rounded"]:not([class*="rounded-full"]),
+        #plugin-picker-modal [class*="rounded"]:not([class*="rounded-full"]) {
+            border-radius: 8px !important;
+        }
+
         /* ===== DAW: mixer scroll strip — force neon blue, overriding the old global white scrollbar-thumb rule above ===== */
         #daw-mixer::-webkit-scrollbar-thumb {
             background: rgba(47,208,255,0.5) !important;
