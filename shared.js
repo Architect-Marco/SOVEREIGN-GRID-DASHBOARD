@@ -5245,7 +5245,7 @@
                         `).join('')}
                         <div onclick="window.coverArtTriggerUpload(${si},null)"
                              oncontextmenu="window.coverArtOpenContextMenu(event,${si},null)"
-                             class="${slot.items.length === 0 ? 'col-span-3 h-28' : 'aspect-square'} border border-dashed border-white/15 flex flex-col items-center justify-center gap-1 cursor-pointer text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.5)] transition-colors">
+                             class="aspect-square border border-dashed border-white/15 flex flex-col items-center justify-center gap-1 cursor-pointer text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.5)] transition-colors">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
                             <span class="text-[7.5px] font-black uppercase tracking-widest">Add</span>
                         </div>
