@@ -6414,7 +6414,7 @@
                 <div class="mb-3 animate-fade-in ${rowClass}">
                     <span class="text-[8px] text-gray-600 font-mono">[${entry.time}]</span>
                     <span class="${colorClass} font-black italic ml-1">${entry.persona}:</span>
-                    <span class="relay-msg-text ml-1 font-medium" style="color:#ffffff; text-shadow:none; font-style:normal;">${safeMsg}</span>
+                    <span class="relay-msg-text ml-1 font-medium" style="color:#2fd0ff; text-shadow:0 0 5px rgba(47,208,255,0.45); font-style:normal;">${safeMsg}</span>
                     ${media}
                 </div>`;
             }).join('');
