@@ -2200,6 +2200,13 @@
         window.dawFiles = {}; // retains the actual File/Blob objects so audio can be (re)loaded via loadBlob() without depending on a fetchable blob: URL
         window.dawClipOffsets = window.dawClipOffsets || {};
 
+        window.dawGetEditSetting = function(pageId, index, defaultVal) {
+            if (!window.dawSettingsLoaded) window.dawLoadSettingsValues();
+            const key = pageId + ':' + index;
+            const v = window.dawSettingsValues[key];
+            return v === undefined ? defaultVal : !!v;
+        };
+
         window.dawClipDragStart = function(e, trackId) {
             const startX = e.touches ? e.touches[0].clientX : e.clientX;
             const startOffset = window.dawClipOffsets[trackId] || 0;
@@ -2214,15 +2221,29 @@
                 if (dragging) {
                     ev.preventDefault();
                     let newOffset = Math.max(0, startOffset + delta); // never drag left of the track's own start
-                    if (window.dawSnapOn) {
+
+                    // Mouse Modifiers (Preferences → Editing Behavior → Mouse Modifiers): live while dragging
+                    const ctrlHeld = !!(ev.ctrlKey || ev.metaKey);
+                    const shiftHeld = !!ev.shiftKey;
+                    const ctrlDisablesSnap = window.dawGetEditSetting('editing-mouse-modifiers', 0, true);
+                    const shiftForcesSnap = window.dawGetEditSetting('editing-mouse-modifiers', 1, true);
+                    let effectiveSnap = window.dawSnapOn;
+                    if (ctrlHeld && ctrlDisablesSnap) effectiveSnap = false;
+                    else if (shiftHeld && shiftForcesSnap) effectiveSnap = true;
+
+                    if (effectiveSnap) {
                         const snapPx = PIXELS_PER_BAR / (window.dawGridDivision || 16);
                         newOffset = Math.round(newOffset / snapPx) * snapPx;
                     }
                     window.dawClipOffsets[trackId] = newOffset;
                     wrap.style.transform = `translateX(${newOffset}px)`;
+                    wrap.style.outline = (ctrlHeld && ctrlDisablesSnap)
+                        ? '1px dashed rgba(239,68,68,0.7)'
+                        : (shiftHeld && shiftForcesSnap ? '1px dashed rgba(47,208,255,0.8)' : 'none');
                 }
             };
             const up = () => {
+                wrap.style.outline = 'none';
                 document.removeEventListener('mousemove', move);
                 document.removeEventListener('mouseup', up);
                 document.removeEventListener('touchmove', move);
@@ -3593,6 +3614,22 @@
 
                         <div class="pt-2">
                             <button class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Advanced UI/system tweaks...</button>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'editing-mouse-modifiers') {
+                titleEl.innerText = 'Mouse Modifiers';
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <p class="text-gray-500 text-[10.5px] leading-relaxed">These are live — try holding them while dragging a clip in the Tracks view.</p>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Ctrl/Cmd + drag item: temporarily disable snapping</label>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Shift + drag item: temporarily force snapping to grid</label>
+                        <div class="bg-black/40 border border-white/5 rounded-xl p-4 mt-2">
+                            <div class="neon-blue-text text-[10px] font-black uppercase tracking-widest mb-2">While dragging a clip</div>
+                            <div class="flex items-center gap-2 text-[10.5px] text-gray-400 mb-1.5"><span class="inline-block w-3 h-3 rounded-sm flex-shrink-0" style="background:rgba(239,68,68,0.15); border:1px dashed rgba(239,68,68,0.8);"></span> Red outline — snapping is disabled for this drag</div>
+                            <div class="flex items-center gap-2 text-[10.5px] text-gray-400"><span class="inline-block w-3 h-3 rounded-sm flex-shrink-0" style="background:rgba(47,208,255,0.15); border:1px dashed rgba(47,208,255,0.8);"></span> Blue outline — snapping is forced on for this drag</div>
                         </div>
                     </div>`;
                 return;
