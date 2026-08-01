@@ -222,7 +222,7 @@
 
         /* ===== PARLEY RELAY — chat message body should be plain and easy to read, not neon-glowing like the UI chrome ===== */
         .relay-msg-text, .relay-msg-text * {
-            color: #e5e7eb !important;
+            color: #ffffff !important;
             text-shadow: none !important;
             font-style: normal !important;
         }
