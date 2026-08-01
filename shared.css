@@ -220,10 +220,10 @@
         .neon-blue-badge { background: rgba(47,208,255,0.18) !important; color: #2fd0ff !important; }
         #tab-intel.tab-active, #tab-overview.tab-active, #tab-releases.tab-active, #tab-syndicate.tab-active { border-bottom-color: #2fd0ff !important; color: #2fd0ff !important; text-shadow: 0 0 8px rgba(47,208,255,0.6); }
 
-        /* ===== PARLEY RELAY — chat message body should be plain and easy to read, not neon-glowing like the UI chrome ===== */
+        /* ===== PARLEY RELAY — chat message body in neon blue ===== */
         .relay-msg-text, .relay-msg-text * {
-            color: #ffffff !important;
-            text-shadow: none !important;
+            color: #2fd0ff !important;
+            text-shadow: 0 0 5px rgba(47,208,255,0.45) !important;
             font-style: normal !important;
         }
         .materialize { opacity: 1 !important; transform: scale(1) !important; filter: blur(0px) !important; }
