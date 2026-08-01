@@ -2238,7 +2238,8 @@
         window.dawSnapOn = true;
         window.dawLoopOn = false;
         window.dawRecordArmed = false;
-        const DAW_ROW_H = 56; // thin, REAPER-style compact row height
+        console.log('%c[SBN shared.js] build: daw-row-fix-v3 (DAW_ROW_H=76, reset-to-min, compact plugin cards)', 'color:#2fd0ff;font-weight:bold;');
+        const DAW_ROW_H = 76; // was 56 — too short for its own content (10px padding + row1 + 8px gap + row2 + 10px padding ≈ 70px), which let the next track's row silently overlap and eat clicks on anything in the bottom few px of the row above it
 
         window.renderDawTracks = function() {
             const headers = document.getElementById('daw-track-headers');
@@ -2561,11 +2562,10 @@
             if (!list) return;
             list.innerHTML = window.SOVEREIGN_12_PLUGINS.map(p => `
                 <div draggable="true" ondragstart="window.dawDragStartPlugin(event,'${p.id}')"
-                     class="bg-white/5 hover:bg-[#2fd0ff]/15 border border-white/10 hover:border-[rgba(47,208,255,0.4)] rounded-lg px-2.5 py-2 cursor-grab active:cursor-grabbing transition-colors select-none flex items-center gap-2">
+                     class="bg-white/5 hover:bg-[#2fd0ff]/15 border border-white/10 hover:border-[rgba(47,208,255,0.4)] rounded-lg px-2.5 py-1.5 cursor-grab active:cursor-grabbing transition-colors select-none flex items-center gap-2">
                     <div class="flex-1 min-w-0">
                         <div class="neon-blue-text text-[10px] font-black italic truncate">${p.name}</div>
-                        <div class="text-[7.5px] text-gray-500 uppercase tracking-widest truncate mt-0.5">${p.tagline}</div>
-                        <div class="text-[7px] neon-blue-text uppercase font-black tracking-widest mt-1 opacity-70">${p.category}</div>
+                        <div class="text-[7px] text-gray-500 uppercase tracking-widest truncate mt-0.5">${p.tagline} · <span class="neon-blue-text opacity-70">${p.category}</span></div>
                     </div>
                     <button draggable="false" onclick="event.stopPropagation(); window.dawAddPluginToTrack(window.dawSelectedTrackId,'${p.id}')" title="Add to ${window.dawSelectedTrackId === 'master' ? 'Master' : 'selected track'}" class="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center bg-black/40 border border-[rgba(47,208,255,0.3)] text-[#2fd0ff] hover:bg-[#2fd0ff]/20 transition-colors">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
@@ -3858,7 +3858,7 @@
             const initial = {};
             ctx.plugin.values.forEach(([label, defaultStr]) => {
                 const parsed = ctx.paramMeta[label];
-                initial[label] = parsed ? parsed.value : defaultStr;
+                initial[label] = parsed ? parsed.min : defaultStr; // reset = fully counter-clockwise (7 o'clock / zero position)
             });
             window.dawFxParams[ctx.trackId][ctx.pluginName] = initial;
             ctx.plugin.values.forEach(([label]) => {
