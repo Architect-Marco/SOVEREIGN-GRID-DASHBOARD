@@ -3782,7 +3782,7 @@
                         ${dawKnobSvg(label, pct)}
                     </div>
                     <div class="text-[7.5px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
-                    <div id="dpd-val-${label}" class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:2px 6px; color:#2fd0ff; text-shadow:0 0 6px rgba(47,208,255,0.7); border-color:rgba(47,208,255,0.35);">${parsed.format(currentVal)}</div>
+                    <div id="dpd-val-${label}" class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:1px 6px; color:#2fd0ff; text-shadow:0 0 6px rgba(47,208,255,0.7); border-color:rgba(47,208,255,0.35);">${parsed.format(currentVal)}</div>
                 </div>`;
             }).join('');
 
