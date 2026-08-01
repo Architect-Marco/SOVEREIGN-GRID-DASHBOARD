@@ -3771,18 +3771,18 @@
                     <div class="flex flex-col items-center gap-1.5 opacity-60 flex-shrink-0">
                         <div class="w-11 h-11 rounded-full border border-white/10 flex items-center justify-center text-gray-600 text-[6.5px] font-black uppercase text-center px-1">Fixed</div>
                         <div class="text-[7.5px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
-                        <div class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:2px 6px; color:#9ca3af;">${defaultStr}</div>
+                        <div class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:0 6px; line-height:14px; color:#9ca3af;">${defaultStr}</div>
                     </div>`;
                 }
                 const currentVal = state[label];
                 const pct = (currentVal - parsed.min) / (parsed.max - parsed.min);
                 return `
-                <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
+                <div class="flex flex-col items-center gap-1 flex-shrink-0">
                     <div class="dpd-knob relative w-11 h-11 flex items-center justify-center cursor-ns-resize select-none" onmousedown="window.dpdKnobDrag(event,'${label}')" ontouchstart="window.dpdKnobDrag(event,'${label}')">
                         ${dawKnobSvg(label, pct)}
                     </div>
                     <div class="text-[7.5px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
-                    <div id="dpd-val-${label}" class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:1px 6px; color:#2fd0ff; text-shadow:0 0 6px rgba(47,208,255,0.7); border-color:rgba(47,208,255,0.35);">${parsed.format(currentVal)}</div>
+                    <div id="dpd-val-${label}" class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:0 6px; line-height:14px; color:#2fd0ff; text-shadow:0 0 6px rgba(47,208,255,0.7); border-color:rgba(47,208,255,0.35);">${parsed.format(currentVal)}</div>
                 </div>`;
             }).join('');
 
