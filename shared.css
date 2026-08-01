@@ -218,7 +218,14 @@
         .lexi-message-priority { border-left: 2px solid rgba(0,255,255,0.5); padding-left: 8px; background: rgba(0,255,255,0.04); border-radius: 4px; }
         .neon-blue-row-bg { background: rgba(47,208,255,0.08) !important; }
         .neon-blue-badge { background: rgba(47,208,255,0.18) !important; color: #2fd0ff !important; }
-        #tab-intel.tab-active, #tab-overview.tab-active, #tab-releases.tab-active { border-bottom-color: #2fd0ff !important; color: #2fd0ff !important; text-shadow: 0 0 8px rgba(47,208,255,0.6); }
+        #tab-intel.tab-active, #tab-overview.tab-active, #tab-releases.tab-active, #tab-syndicate.tab-active { border-bottom-color: #2fd0ff !important; color: #2fd0ff !important; text-shadow: 0 0 8px rgba(47,208,255,0.6); }
+
+        /* ===== PARLEY RELAY — chat message body should be plain and easy to read, not neon-glowing like the UI chrome ===== */
+        .relay-msg-text, .relay-msg-text * {
+            color: #e5e7eb !important;
+            text-shadow: none !important;
+            font-style: normal !important;
+        }
         .materialize { opacity: 1 !important; transform: scale(1) !important; filter: blur(0px) !important; }
 
         /* ===== UPLOADABLE AVATAR / ICON PROTOCOL ===== */
