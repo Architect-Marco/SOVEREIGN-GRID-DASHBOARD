@@ -5212,6 +5212,12 @@
 
         function coverArtItemIcon(item) {
             if (item.type === 'video') {
+                if (item.thumbnail) {
+                    // Thumbnail already fills the tile as a background-image — just a small play badge on top.
+                    return `<div class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-[#2fd0ff]">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    </div>`;
+                }
                 return `<div class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60 text-[#2fd0ff]">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="m22 8-5 4 5 4V8Z"/></svg>
                 </div>`;
@@ -5221,6 +5227,12 @@
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                 </div>`;
             }
+            return '';
+        }
+
+        function coverArtTileBg(item) {
+            if (item.type === 'image') return `background-image:url('${item.image}');background-size:cover;background-position:center;`;
+            if (item.type === 'video' && item.thumbnail) return `background-image:url('${item.thumbnail}');background-size:cover;background-position:center;`;
             return '';
         }
 
@@ -5238,14 +5250,14 @@
                             <div class="relative aspect-square bg-black border border-white/10 hover:border-[rgba(47,208,255,0.5)] cursor-pointer group transition-colors"
                                  onclick="window.coverArtItemExpand(${si},${ii})"
                                  oncontextmenu="window.coverArtOpenContextMenu(event,${si},${ii})"
-                                 style="${item.type === 'image' ? `background-image:url('${item.image}');background-size:cover;background-position:center;` : ''}">
+                                 style="${coverArtTileBg(item)}">
                                 ${coverArtItemIcon(item)}
                                 ${item.title ? `<div class="absolute bottom-0 left-0 right-0 bg-black/70 px-1.5 py-1 text-[7.5px] font-black uppercase tracking-widest neon-blue-text truncate">${item.title}</div>` : ''}
                             </div>
                         `).join('')}
                         <div onclick="window.coverArtTriggerUpload(${si},null)"
                              oncontextmenu="window.coverArtOpenContextMenu(event,${si},null)"
-                             class="aspect-square border border-dashed border-white/15 flex flex-col items-center justify-center gap-1 cursor-pointer text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.5)] transition-colors">
+                             class="${slot.items.length === 0 ? 'col-span-3 h-28' : 'aspect-square'} border border-dashed border-white/15 flex flex-col items-center justify-center gap-1 cursor-pointer text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.5)] transition-colors">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
                             <span class="text-[7.5px] font-black uppercase tracking-widest">Add</span>
                         </div>
@@ -5271,26 +5283,71 @@
             document.getElementById('cover-art-file-input').click();
         };
 
-        window.coverArtFileChosen = function(event) {
-            const file = event.target.files && event.target.files[0];
+        function coverArtReadFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Grabs a real frame from an uploaded video to use as its tile thumbnail
+        // (a video src can't be used directly as a CSS background-image).
+        function coverArtVideoThumbnail(videoSrc) {
+            return new Promise((resolve) => {
+                const video = document.createElement('video');
+                video.src = videoSrc;
+                video.muted = true;
+                video.playsInline = true;
+                video.preload = 'auto';
+                video.addEventListener('loadeddata', () => {
+                    try { video.currentTime = Math.min(0.5, (video.duration || 1) / 2); }
+                    catch (e) { resolve(null); }
+                });
+                video.addEventListener('seeked', () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth || 320;
+                        canvas.height = video.videoHeight || 320;
+                        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.8));
+                    } catch (e) { resolve(null); }
+                }, { once: true });
+                video.addEventListener('error', () => resolve(null));
+            });
+        }
+
+        async function coverArtBuildItem(file) {
+            const type = file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'image';
+            const dataUrl = await coverArtReadFile(file);
+            const item = { image: dataUrl, type, fileName: file.name, title: '', notes: '', thumbnail: null };
+            if (type === 'video') item.thumbnail = await coverArtVideoThumbnail(dataUrl);
+            return item;
+        }
+
+        window.coverArtFileChosen = async function(event) {
+            const files = Array.from(event.target.files || []);
             event.target.value = '';
             const target = window.coverArtPendingTarget;
-            if (!file || !target) return;
-            const type = file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'image';
-            const reader = new FileReader();
-            reader.onload = () => {
-                const slot = window.coverArtSlots[target.slotIdx];
-                const newItem = { image: reader.result, type, fileName: file.name, title: '', notes: '' };
-                if (target.itemIdx === null || target.itemIdx === undefined) {
-                    slot.items.push(newItem);
-                } else {
-                    const old = slot.items[target.itemIdx] || {};
-                    slot.items[target.itemIdx] = { ...newItem, title: old.title || '', notes: old.notes || '' };
+            if (!files.length || !target) return;
+            const slot = window.coverArtSlots[target.slotIdx];
+
+            if (target.itemIdx === null || target.itemIdx === undefined) {
+                // Add mode — every file picked becomes its own new tile.
+                for (const file of files) {
+                    slot.items.push(await coverArtBuildItem(file));
                 }
-                coverArtSave();
-                window.renderCoverArtSlots();
-            };
-            reader.readAsDataURL(file);
+            } else {
+                // Replace mode only ever applies to the one tile that was right-clicked.
+                const old = slot.items[target.itemIdx] || {};
+                const item = await coverArtBuildItem(files[0]);
+                item.title = old.title || '';
+                item.notes = old.notes || '';
+                slot.items[target.itemIdx] = item;
+            }
+            coverArtSave();
+            window.renderCoverArtSlots();
         };
 
         // --- Right-click context menu: Upload/Replace, Edit Details, Delete ---
