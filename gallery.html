@@ -320,9 +320,12 @@
     <!-- COVER ART — right-click context menu -->
     <div id="cover-art-ctx-menu" class="hidden fixed z-50 w-40 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg shadow-2xl overflow-hidden" onclick="event.stopPropagation()">
         <button id="cover-art-ctx-upload-btn" onclick="window.coverArtCtxUpload()" class="w-full text-left px-3 py-2 text-[11px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Upload</button>
+        <button id="cover-art-ctx-coverart-btn" onclick="window.coverArtCtxSetCoverArt()" class="hidden w-full text-left px-3 py-2 text-[11px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Cover Art</button>
         <button id="cover-art-ctx-details-btn" onclick="window.coverArtCtxDetails()" class="w-full text-left px-3 py-2 text-[11px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Edit Details</button>
+        <button id="cover-art-ctx-save-btn" onclick="window.coverArtCtxSave()" class="w-full text-left px-3 py-2 text-[11px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Save</button>
         <button id="cover-art-ctx-delete-btn" onclick="window.coverArtCtxDelete()" class="w-full text-left px-3 py-2 text-[11px] font-bold text-red-400 hover:bg-red-500/10 transition-colors">Delete</button>
     </div>
+    <input type="file" id="cover-art-coverart-input" accept=".png,.jpg,.jpeg" class="hidden" onchange="window.coverArtCoverArtFileChosen(event)">
 
     <!-- COVER ART — details modal (title + notes) -->
     <div id="cover-art-details-modal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6" onclick="if(event.target===this) window.closeCoverArtDetails()">
