@@ -17,6 +17,9 @@
 
         /* Neon blue playback bar for the cover art lightbox's custom video & audio controls */
         #gallery-preview-seek { accent-color: #2fd0ff; }
+
+        /* Cover art folder — highlight while a file is being dragged over it */
+        .cover-art-dropzone.cover-art-drop-active { outline: 2px solid #2fd0ff; outline-offset: -2px; background: rgba(47,208,255,0.06); }
     </style>
 </head>
 <body class="flex flex-col">
@@ -115,6 +118,19 @@
                 <!-- COVER ART SLOTS -->
                 <div id="cover-art-slots" class="grid grid-cols-3 gap-5 mt-6 items-start"></div>
                 <input type="file" id="cover-art-file-input" accept=".png,.jpg,.jpeg,.mp3,.mp4" multiple class="hidden" onchange="window.coverArtFileChosen(event)">
+
+                <!-- COVER ART — floating bulk-action bar (shown once 1+ tiles are selected) -->
+                <div id="cover-art-bulk-bar" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-black border border-[rgba(47,208,255,0.4)] rounded-full shadow-2xl px-5 py-2.5 flex items-center gap-4">
+                    <span id="cover-art-bulk-count" class="neon-blue-text text-[11px] font-black uppercase tracking-widest">0 selected</span>
+                    <select id="cover-art-bulk-move-select" onchange="if(this.value){window.coverArtBulkMove(this.value); this.value='';}" class="bg-black border border-white/15 rounded-lg px-2 py-1 text-[10px] neon-blue-text outline-none">
+                        <option value="">Move to…</option>
+                    </select>
+                    <button onclick="window.coverArtBulkSave()" class="text-[10px] font-black uppercase tracking-widest neon-blue-text hover:opacity-70 transition-opacity">Save</button>
+                    <button onclick="window.coverArtBulkDelete()" class="text-[10px] font-black uppercase tracking-widest text-red-400 hover:opacity-70 transition-opacity">Delete</button>
+                    <button onclick="window.coverArtClearSelection()" class="text-gray-500 hover:text-white transition-colors">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    </button>
+                </div>
             </div>
 
             <!-- 6. VIEW: RADIO STATION -->
