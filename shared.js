@@ -2913,7 +2913,10 @@
                                 const combo = window.dawShortcuts[a.id];
                                 return `
                                 <div class="grid grid-cols-[1fr_160px_150px] border-b border-white/5 items-center ${capturing ? 'bg-[#2fd0ff]/10' : ''}">
-                                    <div class="px-3 py-2 text-[11px] font-bold neon-blue-text">${a.label}</div>
+                                    <div class="px-3 py-2">
+                                        <div class="text-[11px] font-bold neon-blue-text">${a.label}</div>
+                                        <div class="text-[9.5px] text-gray-500 mt-0.5 leading-snug">${a.desc || ''}</div>
+                                    </div>
                                     <div class="px-3 py-2 text-[11px] ${combo ? 'text-gray-300' : 'text-gray-700 italic'}">${capturing ? 'Press any key…' : window.dawComboLabel(combo)}</div>
                                     <div class="px-3 py-2 flex items-center gap-2">
                                         <button onclick="${capturing ? 'window.dawShortcutCancelCapture()' : `window.dawShortcutStartCapture('${a.id}')`}" class="px-2.5 py-1 rounded bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[9px] font-black uppercase hover:bg-white/10 transition-colors">${capturing ? 'Cancel' : 'Change'}</button>
@@ -3591,18 +3594,18 @@
         // persistence, instead of being a hardcoded if/else chain.
         // ============================================================
         window.DAW_SHORTCUT_ACTIONS = [
-            { id: 'copy-track', label: 'Copy selected track', defaultCombo: 'ctrl+c', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.dawCopyTrack(id); } },
-            { id: 'cut-track', label: 'Cut selected track', defaultCombo: 'ctrl+x', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.dawCutTrack(id); } },
-            { id: 'paste-track', label: 'Paste onto selected track', defaultCombo: 'ctrl+v', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.dawPasteOntoTrack(id); } },
-            { id: 'duplicate-track', label: 'Duplicate selected track', defaultCombo: 'ctrl+d', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.duplicateDawTrack(id); } },
-            { id: 'delete-track', label: 'Remove selected track', defaultCombo: 'ctrl+backspace', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.removeDawTrack(id); } },
-            { id: 'add-track', label: 'Add new track', defaultCombo: 'ctrl+t', run: () => window.addDawTrack() },
-            { id: 'toggle-mute', label: 'Toggle mute on selected track', defaultCombo: 'm', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.toggleDawMute(id); } },
-            { id: 'toggle-solo', label: 'Toggle solo on selected track', defaultCombo: 's', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.toggleDawSolo(id); } },
-            { id: 'play-pause', label: 'Play/Pause', defaultCombo: 'space', run: () => window.playAllDaw() },
-            { id: 'toggle-snap', label: 'Toggle snap', defaultCombo: 'ctrl+shift+s', run: () => window.toggleDawSnap() },
-            { id: 'toggle-plugin-browser', label: 'Open/close Plugin Browser', defaultCombo: 'ctrl+shift+p', run: () => window.toggleDawPluginBrowser() },
-            { id: 'open-preferences', label: 'Open Preferences', defaultCombo: 'ctrl+,', run: () => window.openDawSettings() },
+            { id: 'copy-track', label: 'Copy selected track', desc: 'Copies the selected track\'s name, volume, mute/solo state, FX chain, and audio to the clipboard.', defaultCombo: 'ctrl+c', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.dawCopyTrack(id); } },
+            { id: 'cut-track', label: 'Cut selected track', desc: 'Copies the selected track like above, then clears its audio from the track (the track itself stays).', defaultCombo: 'ctrl+x', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.dawCutTrack(id); } },
+            { id: 'paste-track', label: 'Paste onto selected track', desc: 'Overwrites the selected track with whatever was last copied or cut.', defaultCombo: 'ctrl+v', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.dawPasteOntoTrack(id); } },
+            { id: 'duplicate-track', label: 'Duplicate selected track', desc: 'Creates an exact copy of the selected track right below it, including its FX chain.', defaultCombo: 'ctrl+d', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.duplicateDawTrack(id); } },
+            { id: 'delete-track', label: 'Remove selected track', desc: 'Permanently deletes the selected track. Asks for confirmation first.', defaultCombo: 'ctrl+backspace', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.removeDawTrack(id); } },
+            { id: 'add-track', label: 'Add new track', desc: 'Inserts a fresh, empty track at the bottom of the track list.', defaultCombo: 'ctrl+t', run: () => window.addDawTrack() },
+            { id: 'toggle-mute', label: 'Toggle mute on selected track', desc: 'Silences (or unsilences) the selected track\'s audio.', defaultCombo: 'm', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.toggleDawMute(id); } },
+            { id: 'toggle-solo', label: 'Toggle solo on selected track', desc: 'Isolates (or un-isolates) the selected track so only it plays.', defaultCombo: 's', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.toggleDawSolo(id); } },
+            { id: 'play-pause', label: 'Play/Pause', desc: 'Starts or stops playback of all tracks together.', defaultCombo: 'space', run: () => window.playAllDaw() },
+            { id: 'toggle-snap', label: 'Toggle snap', desc: 'Turns grid-snapping on or off for dragging clips along the timeline.', defaultCombo: 'ctrl+shift+s', run: () => window.toggleDawSnap() },
+            { id: 'toggle-plugin-browser', label: 'Open/close Plugin Browser', desc: 'Slides the plugin list drawer open or closed.', defaultCombo: 'ctrl+shift+p', run: () => window.toggleDawPluginBrowser() },
+            { id: 'open-preferences', label: 'Open Preferences', desc: 'Opens this Preferences window.', defaultCombo: 'ctrl+,', run: () => window.openDawSettings() },
         ];
 
         window.dawShortcuts = {};
