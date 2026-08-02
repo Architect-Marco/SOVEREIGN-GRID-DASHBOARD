@@ -178,13 +178,23 @@
                         </div>
                     </div>
 
-                    <!-- PRESS KITS (EPKs) -->
+                    <!-- ARTIST SOUL FORGE (formerly Press Kits / EPKs) -->
                     <div class="bg-[#0a0a0a] noir-bezel p-8 rounded-2xl">
                         <div class="flex items-center gap-2 mb-6">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="neon-blue-text flex-shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-                            <h4 class="neon-blue-text text-sm font-black uppercase italic tracking-tight">Press Kits (EPKs)</h4>
+                            <h4 class="neon-blue-text text-sm font-black uppercase italic tracking-tight">Artist Soul Forge</h4>
                         </div>
                         <div id="press-kits-list" class="space-y-3"></div>
+                        <input type="file" id="pk-replace-input" accept=".png,.jpg,.jpeg" class="hidden" onchange="window.pkReplaceFileChosen(event)">
+
+                        <!-- ARTIST SOUL FORGE — floating bulk-action bar (shown once 1+ cards are selected) -->
+                        <div id="pk-bulk-bar" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-black border border-[rgba(47,208,255,0.4)] rounded-full shadow-2xl px-5 py-2.5 flex items-center gap-4">
+                            <span id="pk-bulk-count" class="neon-blue-text text-[11px] font-black uppercase tracking-widest">0 selected</span>
+                            <button onclick="window.pkBulkRemove()" class="text-[10px] font-black uppercase tracking-widest text-red-400 hover:opacity-70 transition-opacity">Remove</button>
+                            <button onclick="window.pkClearSelection()" class="text-gray-500 hover:text-white transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -557,7 +567,7 @@
             </div>
 
             <!-- 1. CHAT HISTORY: DATA STREAM -->
-            <div id="relay-feed" class="flex-grow overflow-y-auto slick-scroll p-4 space-y-4 text-xs leading-relaxed"></div>
+            <div id="relay-feed" class="flex-grow overflow-y-auto p-4 space-y-4 text-xs leading-relaxed"></div>
 
             <!-- 2. TACTICAL PREVIEW SHELF (STAGING AREA) -->
             <div id="relay-media-shelf" class="hidden border-t border-teal-500/20 bg-teal-900/5 p-3 relative animate-fade-in">
@@ -574,12 +584,12 @@
             <!-- 3. INPUT MODULE: INJECTION LAYER -->
             <div class="p-3 bg-black border-t border-teal-900/40">
                 <div class="flex items-center gap-3">
-                    <button onclick="document.getElementById('relay-file-upload').click()" class="neon-blue-text hover:opacity-70 transition-colors flex-shrink-0" title="Attach media">
+                    <button onclick="document.getElementById('relay-file-upload').click()" class="text-teal-600 hover:text-teal-400 transition-colors flex-shrink-0" title="Attach media">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
                     </button>
                     <input type="file" id="relay-file-upload" class="hidden" accept="image/*,video/*" onchange="window.stageRelayMedia(this)">
 
-                    <input type="text" id="relay-input" placeholder="Transmit to the Family..." class="flex-1 bg-[#080808] border border-[rgba(47,208,255,0.4)] rounded px-3 py-2 text-[11px] neon-blue-text placeholder:text-teal-900 focus:outline-none focus:border-[#2fd0ff] transition-all" onkeydown="if(event.key==='Enter') sendRelayMessage()">
+                    <input type="text" id="relay-input" placeholder="Transmit to the Family..." class="flex-1 bg-[#080808] border border-teal-900/60 rounded px-3 py-2 text-[11px] text-white placeholder:text-teal-900 focus:outline-none focus:border-teal-400 transition-all" onkeydown="if(event.key==='Enter') sendRelayMessage()">
 
                     <button onclick="sendRelayMessage()" class="neon-blue-text hover:text-[#2fd0ff] transform hover:scale-110 transition-all flex-shrink-0" title="Transmit">
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
@@ -603,21 +613,21 @@
     <div id="lyrics-panel-backdrop" onclick="closeLyricsPanel()" class="hidden-section fixed inset-0 bg-black/50 z-40"></div>
     <div id="lyrics-panel" class="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-[#0a0a0a] border-l border-white/10 z-50 transform translate-x-full transition-transform duration-300 ease-out shadow-2xl">
         <div class="flex items-center justify-between p-6 border-b border-white/10">
-            <h3 class="text-pink-500 text-[11px] font-black uppercase italic tracking-widest">Lyrics</h3>
+            <h3 class="neon-blue-text text-[11px] font-black uppercase italic tracking-widest">Lyrics</h3>
             <button onclick="closeLyricsPanel()" class="text-gray-500 hover:text-white transition-colors">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
         </div>
         <div class="p-6 space-y-5 overflow-y-auto" style="height: calc(100% - 73px);">
             <div class="flex items-center gap-3">
-                <div id="lyrics-panel-cover" class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-purple-600 to-pink-500 flex items-center justify-center"></div>
+                <div id="lyrics-panel-cover" class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-purple-600 to-pink-500 flex items-center justify-center border-2 border-[#2fd0ff]"></div>
                 <div class="min-w-0">
-                    <div id="lyrics-panel-title" class="text-sm font-bold text-white italic truncate"></div>
+                    <div id="lyrics-panel-title" class="text-sm font-bold neon-blue-text italic truncate"></div>
                     <div id="lyrics-panel-meta" class="text-[9px] text-gray-600 uppercase font-black tracking-widest mt-0.5"></div>
                 </div>
             </div>
-            <textarea id="lyrics-panel-textarea" class="w-full h-96 bg-black border border-white/10 rounded-2xl p-5 text-white font-mono text-sm outline-none focus:border-pink-500 leading-relaxed" placeholder="No lyrics yet — write some and save..."></textarea>
-            <button onclick="saveLyricsPanel()" class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-black font-black uppercase italic tracking-widest rounded-xl">Save Lyrics</button>
+            <textarea id="lyrics-panel-textarea" class="w-full h-96 bg-black border border-[#2fd0ff] rounded-2xl p-5 neon-blue-text placeholder:text-[#2fd0ff]/50 font-mono text-sm outline-none focus:border-[#6fe0ff] leading-relaxed" placeholder="No lyrics yet — write some and save..."></textarea>
+            <button onclick="saveLyricsPanel()" class="w-full py-3 bg-transparent border border-[#2fd0ff] neon-blue-text font-black uppercase italic tracking-widest rounded-xl hover:bg-[#2fd0ff]/10 transition-colors">Save Lyrics</button>
         </div>
     </div>
 
