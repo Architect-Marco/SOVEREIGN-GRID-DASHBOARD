@@ -6102,6 +6102,33 @@
             });
         };
 
+        // Captures #forged-card-frame to a PNG data URL. The card reveals itself with a
+        // 700ms CSS opacity/scale transition (see #result-card in soul-forge.html) — if
+        // html2canvas snapshots mid-transition, or before the browser has even painted
+        // the newly-revealed card, it silently produces a blank image with no error.
+        // So: wait a couple of paint frames, and if the result still comes back blank,
+        // retry once after the transition would definitely be done.
+        function pkCaptureForgedCard(cardEl, attempt) {
+            return new Promise((resolve) => {
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    html2canvas(cardEl, { backgroundColor: null, scale: 2 }).then(canvas => {
+                        const dataUrl = canvas.toDataURL('image/png');
+                        // A blank/transparent PNG at this size encodes to a suspiciously
+                        // short data URL — good enough a signal to retry without needing
+                        // to inspect actual pixel data.
+                        if (dataUrl.length < 2000 && attempt < 2) {
+                            setTimeout(() => resolve(pkCaptureForgedCard(cardEl, attempt + 1)), 400);
+                        } else {
+                            resolve(dataUrl);
+                        }
+                    }).catch(err => {
+                        console.warn('Press kit card capture failed (entry still created):', err);
+                        resolve(null);
+                    });
+                }));
+            });
+        }
+
         window.deployForgedArtist = function(btn) {
             // Read from the form input directly, not the card's own text elements —
             // simpler and avoids ever depending on element visibility/state.
@@ -6125,13 +6152,14 @@
             const cardEl = document.getElementById('forged-card-frame');
 
             if (cardEl && typeof html2canvas !== 'undefined') {
-                html2canvas(cardEl, { backgroundColor: null, scale: 2 }).then(canvas => {
+                pkCaptureForgedCard(cardEl, 0).then(dataUrl => {
+                    if (!dataUrl) return;
                     const target = window.pressKits.find(p => p.id === pk.id);
                     if (target) {
-                        target.cardImage = canvas.toDataURL('image/png');
+                        target.cardImage = dataUrl;
                         window.renderPressKits();
                     }
-                }).catch(err => console.warn('Press kit card capture failed (entry still created):', err));
+                });
             }
         };
 
