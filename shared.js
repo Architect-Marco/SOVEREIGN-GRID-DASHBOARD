@@ -6182,7 +6182,6 @@
                                 const selected = window.pkSelection.has(key);
                                 return `
                             <div onclick="window.pkTileClick(event,'${pk.id}',${slotIdx},'${safeName}')" class="bg-black/40 border ${selected ? 'border-[#2fd0ff]' : 'border-white/10'} rounded-lg p-3 aspect-square flex flex-col ${img ? 'cursor-pointer hover:border-[rgba(47,208,255,0.4)]' : ''} overflow-hidden relative group">
-                                <span class="text-[8px] text-gray-500 font-black uppercase tracking-widest relative z-10">${PRESS_KIT_SLOT_LABELS[slotIdx]}</span>
                                 ${img ? `
                                 <img src="${img}" class="absolute inset-0 w-full h-full object-cover opacity-80">
                                 <button onclick="event.stopPropagation(); window.pkToggleSelect(event,'${pk.id}',${slotIdx})" title="Select" class="absolute top-1.5 left-1.5 z-10 w-4 h-4 rounded-sm border flex items-center justify-center transition-opacity ${selected ? 'opacity-100 bg-[#2fd0ff] border-[#2fd0ff]' : 'opacity-0 group-hover:opacity-100 bg-black/60 border-white/40'}">
