@@ -2729,7 +2729,6 @@
                 { id: 'appearance-envelope-colors', label: 'Envelope Colors' }
             ] },
             { id: 'editing', label: 'Editing Behavior', children: [
-                { id: 'editing-media-locking', label: 'Media Item Locking' },
                 { id: 'editing-fixed-lane', label: 'Fixed Lane Comping' },
                 { id: 'editing-mouse', label: 'Mouse' },
                 { id: 'editing-mouse-modifiers', label: 'Mouse Modifiers' }
@@ -3682,6 +3681,31 @@
                             <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">Take marker ranking levels:</label>
                             <input type="text" value="3 up, 1 down" class="w-28 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
                             <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Up/down/cycle actions skip 'no ranking'</label>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'editing-fixed-lane') {
+                titleEl.innerText = 'Fixed Lane Comping';
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Media item edge edits in comping lane can expand media items in source lane</label>
+
+                        <div>
+                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">Allow comping empty track space when:</div>
+                            <div class="flex items-center gap-6 flex-wrap pl-1">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Clicking source lane</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Editing comp area edge</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Changing source lane via action</label>
+                            </div>
+                        </div>
+
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Comping MIDI items creates pooled copies</label>
+
+                        <div class="bg-black/40 border border-white/5 rounded-xl p-4 mt-2">
+                            <p class="text-[10.5px] text-gray-400 leading-relaxed mb-2.5">In a fixed lane track that contains multiple lanes, initiate comping by right-clicking the lane header button and choosing of the "Comping / Comp into..." actions, or by using the "Create fixed lane comp area" mouse modifier (shift + command + right-drag by default).</p>
+                            <p class="text-[10.5px] text-gray-400 leading-relaxed">While comping, left-drag over source media to create comp areas that copy the source media to the comping lane. Double-click the comping lane header button to exit comping.</p>
                         </div>
                     </div>`;
                 return;
