@@ -2253,13 +2253,22 @@
         window.dawLoopOn = false;
         window.dawRecordArmed = false;
         console.log('%c[SBN shared.js] build: daw-row-fix-v3 (DAW_ROW_H=76, reset-to-min, compact plugin cards)', 'color:#2fd0ff;font-weight:bold;');
-        const DAW_ROW_H = 76; // was 56 — too short for its own content (10px padding + row1 + 8px gap + row2 + 10px padding ≈ 70px), which let the next track's row silently overlap and eat clicks on anything in the bottom few px of the row above it
+        window.DAW_TRACK_HEIGHTS = { small: 72, medium: 76, large: 110 }; // was a fixed const(76) — now settable via Preferences → Project → Track/Send Defaults. Small stays ≥72px so the two-row header content (name/chips row + upload/FX row) never overlaps the next track's row.
+        window.dawTrackHeightMode = (function() {
+            try { return localStorage.getItem('sbn-daw-track-height-mode') || 'medium'; } catch (e) { return 'medium'; }
+        })();
+        window.dawSetTrackHeightMode = function(mode) {
+            window.dawTrackHeightMode = mode;
+            try { localStorage.setItem('sbn-daw-track-height-mode', mode); } catch (e) {}
+            if (document.getElementById('daw-tracks')) window.renderDawTracks();
+        };
 
         window.renderDawTracks = function() {
             const headers = document.getElementById('daw-track-headers');
             const lanes = document.getElementById('daw-tracks');
             if (!headers || !lanes) return;
 
+            const DAW_ROW_H = window.DAW_TRACK_HEIGHTS[window.dawTrackHeightMode] || 76;
             const dawRowHeight = (t) => {
                 const fxList = t.fx || [];
                 const isExpanded = window.dawHeaderFxExpanded[t.id] && fxList.length;
@@ -2895,6 +2904,241 @@
             const content = document.getElementById('daw-settings-content');
             if (!content) return;
 
+
+            if (pageId === 'project-backups') {
+                titleEl.innerText = 'Backups when saving project';
+                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
+                content.innerHTML = `
+                    <div class="space-y-2.5">
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-backup-mode" class="daw-checkbox" style="border-radius:50%;"> Preserve previously-saved version of project as &lt;project&gt;.rpp-bak</label>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-backup-mode" class="daw-checkbox" style="border-radius:50%;"> Preserve all previously-saved versions of project in one (large) &lt;project&gt;.rpp-bak</label>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-backup-mode" checked class="daw-checkbox" style="border-radius:50%;"> Preserve previously-saved versions of project as &lt;project&gt;-[timestamp].rpp-bak</label>
+                        <div class="pl-6 space-y-2">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Save timestamped backups to Backups project subdirectory</label>
+                            <div class="flex items-center gap-2">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Limit backups to most recent</label>
+                                <input type="text" value="50" class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">copies</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-white/5 mt-2">
+                            <div class="neon-blue-text text-[11px] font-black mb-2">Auto-save</div>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Auto-save to timestamped file in project directory</label>
+                            <div class="pl-6 space-y-2 py-1.5">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text opacity-60"><input type="checkbox" checked disabled class="daw-checkbox"> Save auto-saved project backups to AutoSaves project subdirectory</label>
+                                <div class="flex items-center gap-2 opacity-60">
+                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked disabled class="daw-checkbox"> Limit auto-saved backups to most recent</label>
+                                    <input type="text" value="50" disabled class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">copies</span>
+                                </div>
+                            </div>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Auto-save to timestamped file in additional directory:</label>
+                            <div class="flex items-center gap-2 py-1.5">
+                                <input type="text" class="flex-1 ${selectCls}">
+                                <button class="px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.25)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors flex-shrink-0">Browse...</button>
+                            </div>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Auto-save to project file (not recommended)</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1.5"><input type="checkbox" class="daw-checkbox"> Auto-save unsaved projects to temporary file</label>
+                            <div class="flex items-center gap-2 pt-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Auto-save interval:</span>
+                                <input type="text" value="15" class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">minutes</span>
+                                <select class="${selectCls}"><option>when not recording</option><option>always</option></select>
+                            </div>
+                            <div class="pt-2">
+                                <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Auto-save path for unsaved projects:</div>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" class="flex-1 ${selectCls}">
+                                    <button class="px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.25)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors flex-shrink-0">Browse...</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'project-track-defaults') {
+                titleEl.innerText = 'Defaults for new tracks/sends/track hardware outputs';
+                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
+                content.innerHTML = `
+                    <div class="space-y-3.5">
+                        <div class="flex items-center gap-6 flex-wrap">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Track volume fader gain:</span>
+                                <input type="text" value="+0.0" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">dB</span>
+                            </div>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Enable main (parent) send</label>
+                        </div>
+
+                        <div>
+                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">Visible envelopes:</div>
+                            <div class="flex items-center gap-5 flex-wrap">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Volume</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Pan</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Volume (pre-FX)</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Pan (pre-FX)</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Mute</label>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <label class="text-[11px] font-bold neon-blue-text w-36 flex-shrink-0">Envelope point shape:</label>
+                            <select class="${selectCls}"><option>Linear</option><option>Square</option><option>Slow start/end</option></select>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-36 flex-shrink-0">Automation mode:</label>
+                            <select class="${selectCls}"><option>Trim/Read</option><option>Read</option><option>Touch</option><option>Write</option><option>Latch</option></select>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Arm new envelopes</label>
+                        </div>
+
+                        <div class="flex items-center gap-3 flex-wrap pt-1">
+                            <label class="text-[11px] font-bold neon-blue-text w-36 flex-shrink-0">Track height in new projects:</label>
+                            <select onchange="window.dawSetTrackHeightMode(this.value)" class="${selectCls}">
+                                <option value="small" ${window.dawTrackHeightMode === 'small' ? 'selected' : ''}>Small</option>
+                                <option value="medium" ${window.dawTrackHeightMode === 'medium' ? 'selected' : ''}>Medium</option>
+                                <option value="large" ${window.dawTrackHeightMode === 'large' ? 'selected' : ''}>Large</option>
+                            </select>
+                            <span class="text-[9px] text-gray-500 italic">⚡ live — changes your track rows right now</span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text ml-auto"><input type="checkbox" checked class="daw-checkbox"> Show in Mixer</label>
+                        </div>
+
+                        <div class="flex items-center gap-4 flex-wrap">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Free item positioning</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Fixed item lanes</label>
+                            <button class="px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.25)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Fixed lane defaults</button>
+                        </div>
+
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Record arm</label>
+                            <span class="text-[11px] font-bold neon-blue-text">Record config:</span>
+                            <select class="${selectCls}"><option>Input 1</option><option>Input 2</option><option>Stereo In 1/2</option></select>
+                        </div>
+
+                        <div class="pt-1">
+                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">Scaling for new volume envelopes:</div>
+                            <div class="flex items-center gap-5">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-env-scaling" class="daw-checkbox" style="border-radius:50%;"> Amplitude scaling</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-env-scaling" checked class="daw-checkbox" style="border-radius:50%;"> Volume fader scaling</label>
+                            </div>
+                        </div>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Warn when changing volume envelope scaling will change envelope sound</label>
+
+                        <div class="flex items-center gap-3">
+                            <label class="text-[11px] font-bold neon-blue-text w-36 flex-shrink-0">Track meter display:</label>
+                            <select class="flex-1 ${selectCls}"><option>Stereo peaks, display gain reduction</option><option>Stereo peaks</option><option>Mono (downmix)</option></select>
+                        </div>
+
+                        <div class="bg-black/40 border border-white/5 rounded-xl p-4 mt-1">
+                            <div class="neon-blue-text text-[11px] font-black mb-3">Sends / Track Hardware Outputs</div>
+                            <div class="flex items-center gap-6 flex-wrap mb-2.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[11px] font-bold neon-blue-text">Send gain:</span>
+                                    <input type="text" value="+0.0" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">dB</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[11px] font-bold neon-blue-text">Hardware output gain:</span>
+                                    <input type="text" value="+0.0" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">dB</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 mb-2.5">
+                                <span class="text-[11px] font-bold neon-blue-text">Send/hardware output mode:</span>
+                                <select class="${selectCls}"><option>Post-Fader (Post-Pan)</option><option>Pre-Fader (Post-FX)</option><option>Pre-FX</option></select>
+                            </div>
+                            <div class="flex items-center gap-6">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Sends send MIDI by default</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Sends send audio by default</label>
+                            </div>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'project-fade-defaults') {
+                titleEl.innerText = 'Defaults for media item fades/crossfades';
+                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
+                content.innerHTML = `
+                    <div class="space-y-3.5">
+                        <div class="flex items-center gap-8 flex-wrap">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Default fade-in/fade-out:</span>
+                                <input type="text" value="0:00.010" class="w-24 ${selectCls}">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Default crossfade:</span>
+                                <input type="text" value="0:00.010" class="w-24 ${selectCls}">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-8 flex-wrap">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Default fade-in/fade-out shape:</span>
+                                <select class="${selectCls}"><option>Linear</option><option>Fast start</option><option>Fast end</option><option>S-curve</option></select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Default crossfade shape:</span>
+                                <select class="${selectCls}"><option>Equal power</option><option>Linear</option><option>S-curve</option></select>
+                            </div>
+                        </div>
+
+                        <div class="grid gap-y-2.5 pt-2" style="grid-template-columns: 170px auto 1fr;">
+                            <span class="text-[11px] font-bold neon-blue-text self-center">Imported media items:</span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text self-center"><input type="checkbox" class="daw-checkbox"> Fade-in/fade-out</label>
+                            <span></span>
+
+                            <span class="text-[11px] font-bold neon-blue-text self-center">Recorded media items:</span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text self-center"><input type="checkbox" checked class="daw-checkbox"> Fade-in/fade-out</label>
+                            <select class="${selectCls}"><option>No crossfade</option><option>Auto crossfade</option></select>
+
+                            <span class="text-[11px] font-bold neon-blue-text self-center">Split media items:</span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text self-center"><input type="checkbox" checked class="daw-checkbox"> Fade-in/fade-out</label>
+                            <select class="${selectCls}"><option>No crossfade</option><option>Crossfade right</option></select>
+                        </div>
+
+                        <div class="flex items-center gap-2 pt-1">
+                            <span class="text-[11px] font-bold neon-blue-text w-40 flex-shrink-0">Fixed lane comp areas:</span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Fade-in/fade-out/crossfade</label>
+                        </div>
+
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-64 flex-shrink-0">'Trim content behind media edits' enabled:</label>
+                            <select class="flex-1 ${selectCls}"><option>Respect toolbar auto-crossfade button</option><option>Always</option><option>Never</option></select>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-64 flex-shrink-0">'Trim content behind razor edits' enabled:</label>
+                            <select class="flex-1 ${selectCls}"><option>No crossfade</option><option>Auto crossfade</option></select>
+                        </div>
+
+                        <div class="space-y-1.5 pt-1">
+                            <div class="flex items-center gap-2">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Limit split-created fade/crossfade to</label>
+                                <input type="text" value="50" class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">pixels</span>
+                            </div>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Right-click on crossfade sets fade shape for only one side of the crossfade (shift toggles)</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Apply fade-in/fade-out/crossfade preferences to MIDI items</label>
+                        </div>
+
+                        <div class="flex items-center gap-2 pt-1">
+                            <span class="text-[11px] font-bold neon-blue-text">Default stretch marker fade size for new items:</span>
+                            <input type="text" value="2.5" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">ms (default 2.5)</span>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'project-loop-defaults') {
+                titleEl.innerText = 'Defaults for media item looping';
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">Loop source for:</div>
+                            <div class="flex items-center gap-6 flex-wrap">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Imported items</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> MIDI items</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Recorded items</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Glued items</label>
+                            </div>
+                        </div>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Time selection auto-punch audio recording creates loopable section</label>
+                    </div>`;
+                return;
+            }
 
             if (pageId === 'keyboard-shortcuts') {
                 if (!window.dawShortcutsLoaded) window.dawLoadShortcuts();
