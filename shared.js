@@ -6115,13 +6115,12 @@
             }
             if (typeof window.addCreation === 'function') window.addCreation(name, '');
 
-            // Create/claim the slot right away — it must never depend on the card-image
+            // Create the card entry right away — it must never depend on the card-image
             // capture below succeeding. The image is a nice-to-have that fills in a
-            // moment later if it works; the slot claim itself is not optional.
+            // moment later if it works; the entry itself is not optional.
             if (typeof window.addPressKit !== 'function') return;
-            const result = window.addPressKit({ artistName: name });
-            if (!result) return;
-            const { pk, slotIndex } = result;
+            const pk = window.addPressKit({ artistName: name });
+            if (!pk) return;
 
             const cardEl = document.getElementById('forged-card-frame');
 
@@ -6129,104 +6128,75 @@
                 html2canvas(cardEl, { backgroundColor: null, scale: 2 }).then(canvas => {
                     const target = window.pressKits.find(p => p.id === pk.id);
                     if (target) {
-                        target.cardImages[slotIndex] = canvas.toDataURL('image/png');
+                        target.cardImage = canvas.toDataURL('image/png');
                         window.renderPressKits();
                     }
                 }).catch(err => console.warn('Press kit card capture failed (entry still created):', err));
             }
         };
 
-        // ===== ARTIST SOUL FORGE (home page) — generated whenever an artist is deployed from Soul Forge =====
-        // Each version holds up to 4 card-image slots (Slides / Podcast / Spotlight / Full EPK).
-        // A deploy fills the next empty slot in the latest version; once all 4 are full,
-        // the next deploy starts a new version.
+        // ===== ARTIST SOUL FORGE (home page) — one card per deploy from Soul Forge =====
         window.pressKits = [];
-        const PRESS_KIT_SLOT_LABELS = ['Slides', 'Podcast', 'Spotlight', 'Full EPK'];
-
-        window.pkSelection = new Set(); // "pkId:slotIdx" keys of currently selected artist cards
-        function pkSelKey(pkId, slotIdx) { return pkId + ':' + slotIdx; }
+        window.pkSelection = new Set(); // ids of currently selected cards
 
         window.renderPressKits = function() {
-            // Persist FIRST, unconditionally — this must happen regardless of which
-            // page called it. Soul Forge (where deploys actually happen) doesn't have
-            // the press-kits-list element at all, so the old code — which only saved
-            // as a side-effect further down, after the DOM check below — was silently
-            // skipping the save every single time a deploy happened from that page.
             try { localStorage.setItem('sbn-press-kits', JSON.stringify(window.pressKits)); } catch (err) { console.error('Could not save press kits:', err); }
 
             const list = document.getElementById('press-kits-list');
             if (!list) return;
             if (window.pressKits.length === 0) {
                 list.innerHTML = `<p class="text-gray-600 text-[10px] uppercase tracking-widest text-center py-10 opacity-40">No artist cards yet — forge and deploy an artist in EPK Soul Forge to generate one</p>`;
-            } else {
-                list.innerHTML = window.pressKits.map((pk, idx) => {
-                    const version = 'V' + (window.pressKits.length - idx);
-                    const filledCount = pk.cardImages.filter(Boolean).length;
-                    const safeName = (pk.artistName || '').replace(/'/g, "\\'");
-                    return `
-                    <div class="border border-white/10 rounded-xl overflow-hidden">
-                        <div class="flex items-center gap-3 px-4 py-3 bg-white/5 cursor-pointer flex-wrap" onclick="window.togglePressKit('${pk.id}')">
-                            <svg id="pk-caret-${pk.id}" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-500 transition-transform flex-shrink-0"><path d="M9 18l6-6-6-6"/></svg>
-                            <span class="neon-blue-text text-xs font-black flex-shrink-0">${version}</span>
-                            <span class="text-gray-500 text-[10px] flex-shrink-0">${pk.date}</span>
-                            <span class="text-gray-400 text-[10px] uppercase font-black tracking-widest">· ${pk.artistName}</span>
-                            <span class="text-gray-600 text-[9px] ml-auto flex-shrink-0">${filledCount}/4 rendered</span>
-                            <span class="bg-white/10 text-white text-[9px] font-black pl-2 pr-1.5 py-1 rounded flex items-center gap-1.5 flex-shrink-0">🔗 ${pk.artistName}<button onclick="event.stopPropagation(); window.unlinkPressKitArtist('${pk.id}')" class="hover:text-red-400 transition-colors" title="Unlink artist">✕</button></span>
-                            <button onclick="event.stopPropagation(); window.deletePressKit('${pk.id}')" class="text-gray-600 hover:text-red-500 transition-colors flex-shrink-0" title="Delete press kit">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                            </button>
-                        </div>
-                        <div id="pk-body-${pk.id}" class="hidden grid grid-cols-4 gap-3 p-4">
-                            ${pk.cardImages.map((img, slotIdx) => {
-                                const key = pkSelKey(pk.id, slotIdx);
-                                const selected = window.pkSelection.has(key);
-                                return `
-                            <div onclick="window.pkTileClick(event,'${pk.id}',${slotIdx},'${safeName}')" class="bg-black/40 border ${selected ? 'border-[#2fd0ff]' : 'border-white/10'} rounded-lg p-3 aspect-square flex flex-col ${img ? 'cursor-pointer hover:border-[rgba(47,208,255,0.4)]' : ''} overflow-hidden relative group">
-                                ${img ? `
-                                <img src="${img}" class="absolute inset-0 w-full h-full object-cover opacity-80">
-                                <button onclick="event.stopPropagation(); window.pkToggleSelect(event,'${pk.id}',${slotIdx})" title="Select" class="absolute top-1.5 left-1.5 z-10 w-4 h-4 rounded-sm border flex items-center justify-center transition-opacity ${selected ? 'opacity-100 bg-[#2fd0ff] border-[#2fd0ff]' : 'opacity-0 group-hover:opacity-100 bg-black/60 border-white/40'}">
-                                    ${selected ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>' : ''}
-                                </button>
-                                <div class="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onclick="event.stopPropagation(); window.pkTriggerReplace('${pk.id}',${slotIdx})" title="Replace" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-[#2fd0ff]">
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-                                    </button>
-                                    <button onclick="event.stopPropagation(); window.downloadPressKitImage('${pk.id}',${slotIdx})" title="Download" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-[#2fd0ff]">
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M7 10l5 5 5-5M5 21h14"/></svg>
-                                    </button>
-                                    <button onclick="event.stopPropagation(); window.pkRemoveSlot('${pk.id}',${slotIdx})" title="Remove" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-red-400">
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                                    </button>
-                                </div>` : `<div class="flex-1 flex items-center justify-center text-gray-700 text-lg">〰️</div>`}
-                            </div>
-                            `; }).join('')}
-                        </div>
-                    </div>`;
-                }).join('');
+                window.renderPkBulkBar();
+                return;
             }
-            try { localStorage.setItem('sbn-press-kits', JSON.stringify(window.pressKits)); } catch (err) { console.error('Could not save press kits:', err); }
+            list.innerHTML = `<div class="grid grid-cols-4 gap-3">` + window.pressKits.map(pk => {
+                const selected = window.pkSelection.has(pk.id);
+                const safeName = (pk.artistName || '').replace(/'/g, "\\'");
+                return `
+                <div class="flex flex-col gap-1.5">
+                    <div onclick="window.pkTileClick(event,'${pk.id}','${safeName}')" class="bg-black/40 border ${selected ? 'border-[#2fd0ff]' : 'border-white/10'} rounded-lg p-3 aspect-square flex flex-col ${pk.cardImage ? 'cursor-pointer hover:border-[rgba(47,208,255,0.4)]' : ''} overflow-hidden relative group">
+                        ${pk.cardImage ? `
+                        <img src="${pk.cardImage}" class="absolute inset-0 w-full h-full object-cover opacity-80">
+                        <button onclick="event.stopPropagation(); window.pkToggleSelect(event,'${pk.id}')" title="Select" class="absolute top-1.5 left-1.5 z-10 w-4 h-4 rounded-sm border flex items-center justify-center transition-opacity ${selected ? 'opacity-100 bg-[#2fd0ff] border-[#2fd0ff]' : 'opacity-0 group-hover:opacity-100 bg-black/60 border-white/40'}">
+                            ${selected ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>' : ''}
+                        </button>
+                        <div class="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="event.stopPropagation(); window.pkTriggerReplace('${pk.id}')" title="Replace" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-[#2fd0ff]">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+                            </button>
+                            <button onclick="event.stopPropagation(); window.downloadPressKitImage('${pk.id}')" title="Download" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-[#2fd0ff]">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M7 10l5 5 5-5M5 21h14"/></svg>
+                            </button>
+                            <button onclick="event.stopPropagation(); window.deletePressKit('${pk.id}')" title="Remove" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-red-400">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                            </button>
+                        </div>` : `<div class="flex-1 flex items-center justify-center text-gray-700 text-lg">〰️</div>`}
+                    </div>
+                    <div class="px-0.5">
+                        <div class="neon-blue-text text-[10px] font-black uppercase tracking-tight truncate">${pk.artistName}</div>
+                        <div class="text-gray-600 text-[8px] uppercase tracking-widest">${pk.date}</div>
+                    </div>
+                </div>`;
+            }).join('') + `</div>`;
             window.renderPkBulkBar();
         };
 
         // Clicking a filled card normally opens the lightbox; if anything is already
-        // selected, clicking another card just toggles its selection instead — same
-        // convenience behavior as the Gallery's cover art tiles.
-        window.pkTileClick = function(event, pkId, slotIdx, safeName) {
-            const pk = window.pressKits.find(p => p.id === pkId);
-            const img = pk && pk.cardImages[slotIdx];
-            if (!img) return;
+        // selected, clicking another card just toggles its selection too.
+        window.pkTileClick = function(event, id, safeName) {
+            const pk = window.pressKits.find(p => p.id === id);
+            if (!pk || !pk.cardImage) return;
             if (window.pkSelection.size > 0) {
-                window.pkToggleSelect(event, pkId, slotIdx);
+                window.pkToggleSelect(event, id);
                 return;
             }
-            window.openGalleryPreviewFromSrc(safeName, img);
+            window.openGalleryPreviewFromSrc(safeName, pk.cardImage);
         };
 
-        window.pkToggleSelect = function(event, pkId, slotIdx) {
+        window.pkToggleSelect = function(event, id) {
             event.stopPropagation();
-            const key = pkSelKey(pkId, slotIdx);
-            if (window.pkSelection.has(key)) window.pkSelection.delete(key);
-            else window.pkSelection.add(key);
+            if (window.pkSelection.has(id)) window.pkSelection.delete(id);
+            else window.pkSelection.add(id);
             window.renderPressKits();
         };
 
@@ -6235,24 +6205,11 @@
             window.renderPressKits();
         };
 
-        window.pkRemoveSlot = function(pkId, slotIdx) {
-            if (!confirm('Remove this card?')) return;
-            const pk = window.pressKits.find(p => p.id === pkId);
-            if (!pk) return;
-            pk.cardImages[slotIdx] = null;
-            window.pkSelection.delete(pkSelKey(pkId, slotIdx));
-            window.renderPressKits();
-        };
-
         window.pkBulkRemove = function() {
             const count = window.pkSelection.size;
             if (!count) return;
             if (!confirm(`Remove ${count} selected card${count === 1 ? '' : 's'}?`)) return;
-            Array.from(window.pkSelection).forEach(key => {
-                const [pkId, slotIdx] = key.split(':');
-                const pk = window.pressKits.find(p => p.id === pkId);
-                if (pk) pk.cardImages[parseInt(slotIdx, 10)] = null;
-            });
+            window.pressKits = window.pressKits.filter(p => !window.pkSelection.has(p.id));
             window.pkSelection.clear();
             window.renderPressKits();
         };
@@ -6266,11 +6223,26 @@
             document.getElementById('pk-bulk-count').innerText = `${count} selected`;
         };
 
-        // --- Replace: swap in a new image for an existing slot without a full re-deploy ---
+        window.deletePressKit = function(id) {
+            window.pressKits = window.pressKits.filter(p => p.id !== id);
+            window.pkSelection.delete(id);
+            window.renderPressKits();
+        };
+
+        window.downloadPressKitImage = function(id) {
+            const pk = window.pressKits.find(p => p.id === id);
+            if (!pk || !pk.cardImage) return;
+            const link = document.createElement('a');
+            link.download = (pk.artistName || 'artist-card').trim().replace(/[^a-z0-9]+/gi, '-') + '.png';
+            link.href = pk.cardImage;
+            link.click();
+        };
+
+        // --- Replace: swap in a new image for an existing card without a full re-deploy ---
         window.pkReplaceTarget = null;
 
-        window.pkTriggerReplace = function(pkId, slotIdx) {
-            window.pkReplaceTarget = { pkId, slotIdx };
+        window.pkTriggerReplace = function(id) {
+            window.pkReplaceTarget = id;
             const input = document.getElementById('pk-replace-input');
             if (input) input.click();
         };
@@ -6278,17 +6250,50 @@
         window.pkReplaceFileChosen = function(event) {
             const file = event.target.files && event.target.files[0];
             event.target.value = '';
-            const target = window.pkReplaceTarget;
+            const targetId = window.pkReplaceTarget;
             window.pkReplaceTarget = null;
-            if (!file || !target) return;
-            const pk = window.pressKits.find(p => p.id === target.pkId);
+            if (!file || !targetId) return;
+            const pk = window.pressKits.find(p => p.id === targetId);
             if (!pk) return;
             const reader = new FileReader();
             reader.onload = () => {
-                pk.cardImages[target.slotIdx] = reader.result;
+                pk.cardImage = reader.result;
                 window.renderPressKits();
             };
             reader.readAsDataURL(file);
+        };
+
+        window.addPressKit = function({ artistName, cardImage } = {}) {
+            const pk = {
+                id: 'pk-' + Date.now(),
+                date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+                artistName: artistName || 'New Artist Unit',
+                cardImage: cardImage || null
+            };
+            window.pressKits.unshift(pk);
+            window.renderPressKits();
+            return pk;
+        };
+
+        window.loadPressKits = function() {
+            try {
+                const saved = JSON.parse(localStorage.getItem('sbn-press-kits') || 'null');
+                if (saved) {
+                    // Migrate from the old 4-slots-per-version shape if needed — each
+                    // filled slot becomes its own flat card.
+                    window.pressKits = [];
+                    saved.forEach(entry => {
+                        if (Array.isArray(entry.cardImages)) {
+                            entry.cardImages.filter(Boolean).forEach(img => {
+                                window.pressKits.push({ id: 'pk-' + Math.random().toString(36).slice(2), date: entry.date, artistName: entry.artistName, cardImage: img });
+                            });
+                        } else {
+                            window.pressKits.push(entry);
+                        }
+                    });
+                }
+            } catch (err) { console.error('Could not load press kits:', err); }
+            window.renderPressKits();
         };
 
         // Opens the captured card image full-size in the Gallery preview modal
@@ -6308,77 +6313,6 @@
             img.src = src;
             img.classList.remove('hidden');
             modal.classList.remove('hidden');
-        };
-
-        window.downloadPressKitImage = function(id, slotIdx) {
-            const pk = window.pressKits.find(p => p.id === id);
-            const img = pk && pk.cardImages ? pk.cardImages[slotIdx] : null;
-            if (!img) return;
-            const slotName = PRESS_KIT_SLOT_LABELS[slotIdx] || 'card';
-            const link = document.createElement('a');
-            link.download = (pk.artistName || 'artist-card').trim().replace(/[^a-z0-9]+/gi, '-') + '-' + slotName.toLowerCase() + '.png';
-            link.href = img;
-            link.click();
-        };
-
-        window.togglePressKit = function(id) {
-            const body = document.getElementById('pk-body-' + id);
-            const caret = document.getElementById('pk-caret-' + id);
-            if (!body) return;
-            body.classList.toggle('hidden');
-            if (caret) caret.style.transform = body.classList.contains('hidden') ? '' : 'rotate(90deg)';
-        };
-
-        window.deletePressKit = function(id) {
-            window.pressKits = window.pressKits.filter(p => p.id !== id);
-            Array.from(window.pkSelection).forEach(key => { if (key.startsWith(id + ':')) window.pkSelection.delete(key); });
-            window.renderPressKits();
-        };
-
-        window.unlinkPressKitArtist = function(id) {
-            const pk = window.pressKits.find(p => p.id === id);
-            if (pk) { pk.artistName = 'Unlinked'; window.renderPressKits(); }
-        };
-
-        // Fills the next empty slot (Slides → Podcast → Spotlight → Full EPK) in the most
-        // recent version; once all 4 are full, starts a new version instead. Returns
-        // { pk, slotIndex } so the caller can drop the captured card image into the
-        // right slot once it's ready.
-        window.addPressKit = function({ artistName, cardImage } = {}) {
-            const latest = window.pressKits[0];
-            if (latest && Array.isArray(latest.cardImages)) {
-                const slotIndex = latest.cardImages.findIndex(c => !c);
-                if (slotIndex !== -1) {
-                    latest.cardImages[slotIndex] = cardImage || null;
-                    latest.artistName = artistName || latest.artistName;
-                    latest.date = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-                    window.renderPressKits();
-                    return { pk: latest, slotIndex };
-                }
-            }
-            const pk = {
-                id: 'pk-' + Date.now(),
-                date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
-                artistName: artistName || 'New Artist Unit',
-                cardImages: [cardImage || null, null, null, null]
-            };
-            window.pressKits.unshift(pk);
-            window.renderPressKits();
-            return { pk, slotIndex: 0 };
-        };
-
-        window.loadPressKits = function() {
-            try {
-                const saved = JSON.parse(localStorage.getItem('sbn-press-kits') || 'null');
-                if (saved) {
-                    // Migrate from the old single-cardImage-per-version shape if needed.
-                    window.pressKits = saved.map(pk => Array.isArray(pk.cardImages) ? pk : {
-                        id: pk.id, date: pk.date, artistName: pk.artistName,
-                        cardImages: [pk.cardImage || null, null, null, null]
-                    });
-                }
-            } catch (err) { console.error('Could not load press kits:', err); }
-            window.renderPressKits();
         };
 
         // 6.65 TOKEN COUNTER / PULSE BEACON (Home > V6 Engine Intel) — simulated live stats
