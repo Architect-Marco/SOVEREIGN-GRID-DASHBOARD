@@ -4623,9 +4623,11 @@
             if (item.type === 'video' && src) {
                 vid.src = src; vid.classList.remove('hidden'); modal.classList.remove('hidden');
                 vid.play().catch(() => {});
+                window.galleryPreviewBindControls(vid, true);
             } else if (item.type === 'audio' && src) {
                 aud.src = src; aud.classList.remove('hidden'); modal.classList.remove('hidden');
                 aud.play().catch(() => {});
+                window.galleryPreviewBindControls(aud, false);
             } else if (item.type === 'image' && src) {
                 img.src = src; img.classList.remove('hidden'); modal.classList.remove('hidden');
             } else {
@@ -4634,15 +4636,91 @@
             }
         };
 
+        // ===== Custom neon-blue playback controls for the lightbox (video + audio share one bar) =====
+        const GALLERY_PLAY_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+        const GALLERY_PAUSE_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
+        const GALLERY_MUTE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m23 9-6 6"/><path d="m17 9 6 6"/></svg>';
+        const GALLERY_VOLUME_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+
+        window.galleryPreviewActiveEl = null;
+
+        function galleryPreviewFormatTime(t) {
+            if (!isFinite(t) || t < 0) return '0:00';
+            const m = Math.floor(t / 60);
+            const s = Math.floor(t % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function galleryPreviewUpdateUI(el) {
+            if (window.galleryPreviewActiveEl !== el) return;
+            const seek = document.getElementById('gallery-preview-seek');
+            const time = document.getElementById('gallery-preview-time');
+            const playBtn = document.getElementById('gallery-preview-playpause');
+            const muteBtn = document.getElementById('gallery-preview-mute');
+            if (seek && el.duration && isFinite(el.duration)) {
+                seek.max = el.duration;
+                seek.value = el.currentTime;
+            }
+            if (time) time.innerText = `${galleryPreviewFormatTime(el.currentTime)} / ${galleryPreviewFormatTime(el.duration)}`;
+            if (playBtn) playBtn.innerHTML = el.paused ? GALLERY_PLAY_ICON : GALLERY_PAUSE_ICON;
+            if (muteBtn) muteBtn.innerHTML = el.muted ? GALLERY_MUTE_ICON : GALLERY_VOLUME_ICON;
+        }
+
+        // Called right after a video/audio element's src is set and playback starts.
+        window.galleryPreviewBindControls = function(el, isVideo) {
+            window.galleryPreviewActiveEl = el;
+            const bar = document.getElementById('gallery-preview-controls');
+            if (bar) bar.classList.remove('hidden');
+            const fsBtn = document.getElementById('gallery-preview-fullscreen');
+            if (fsBtn) fsBtn.classList.toggle('hidden', !isVideo);
+            galleryPreviewUpdateUI(el);
+        };
+
+        window.galleryPreviewTogglePlay = function() {
+            const el = window.galleryPreviewActiveEl;
+            if (!el) return;
+            if (el.paused) el.play().catch(() => {}); else el.pause();
+        };
+
+        window.galleryPreviewSeek = function(val) {
+            const el = window.galleryPreviewActiveEl;
+            if (!el) return;
+            el.currentTime = parseFloat(val);
+        };
+
+        window.galleryPreviewToggleMute = function() {
+            const el = window.galleryPreviewActiveEl;
+            if (!el) return;
+            el.muted = !el.muted;
+            galleryPreviewUpdateUI(el);
+        };
+
+        window.galleryPreviewFullscreen = function() {
+            const el = window.galleryPreviewActiveEl;
+            if (el && el.requestFullscreen) el.requestFullscreen();
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            ['gallery-preview-video', 'gallery-preview-audio'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                ['timeupdate', 'loadedmetadata', 'play', 'pause', 'volumechange'].forEach(evt => {
+                    el.addEventListener(evt, () => galleryPreviewUpdateUI(el));
+                });
+            });
+        });
+
         window.closeGalleryPreview = function() {
             const vid = document.getElementById('gallery-preview-video');
             const aud = document.getElementById('gallery-preview-audio');
             if (vid) vid.pause();
             if (aud) aud.pause();
             document.getElementById('gallery-preview-modal').classList.add('hidden');
+            document.getElementById('gallery-preview-controls').classList.add('hidden');
             document.getElementById('cover-art-preview-prev').classList.add('hidden');
             document.getElementById('cover-art-preview-next').classList.add('hidden');
             window.coverArtExpandTarget = null;
+            window.galleryPreviewActiveEl = null;
         };
 
         // ===== GALLERY — COVER ART FOLDERS (named folders, each holding multiple cover art tiles) =====
@@ -4983,10 +5061,12 @@
             if (item.type === 'video') {
                 vid.src = item.image; vid.classList.remove('hidden');
                 vid.play().catch(() => {});
+                window.galleryPreviewBindControls(vid, true);
             } else if (item.type === 'audio') {
                 if (item.thumbnail) { img.src = item.thumbnail; img.classList.remove('hidden'); }
                 aud.src = item.image; aud.classList.remove('hidden');
                 aud.play().catch(() => {});
+                window.galleryPreviewBindControls(aud, false);
             } else {
                 img.src = item.image; img.classList.remove('hidden');
             }
@@ -5451,6 +5531,9 @@
             if (!modal || !img) return;
             if (vid) { vid.pause(); vid.classList.add('hidden'); }
             if (aud) { aud.pause(); aud.classList.add('hidden'); }
+            const controls = document.getElementById('gallery-preview-controls');
+            if (controls) controls.classList.add('hidden');
+            window.galleryPreviewActiveEl = null;
             if (label) label.innerText = name;
             img.src = src;
             img.classList.remove('hidden');
