@@ -2106,6 +2106,13 @@
         // real console — silent tracks show nothing regardless of fader position).
         window.dawMeterPeaks = {};
         window.dawMeterTargets = {};
+        window.dawMeterDecayRate = (function() {
+            try { return Number(localStorage.getItem('sbn-daw-meter-decay')) || 120; } catch (e) { return 120; }
+        })();
+        window.dawSetMeterDecayRate = function(val) {
+            window.dawMeterDecayRate = Number(val) || 120;
+            try { localStorage.setItem('sbn-daw-meter-decay', window.dawMeterDecayRate); } catch (e) {}
+        };
         window.dawMeterLoopRunning = false;
         window.dawStartMeterLoop = function() {
             if (window.dawMeterLoopRunning) return;
@@ -2130,7 +2137,7 @@
                     }
                     const prev = window.dawMeterPeaks[key] || 0;
                     const target = window.dawMeterTargets[key];
-                    const lerp = target > prev ? 0.32 : 0.1; // snappy attack, smooth release
+                    const lerp = target > prev ? 0.32 : Math.max(0.02, Math.min(0.6, (window.dawMeterDecayRate || 120) / 1200)); // snappy attack, decay rate set in Preferences → Appearance → Track Meters
                     const next = prev + (target - prev) * lerp;
                     window.dawMeterPeaks[key] = next;
                     window.dawUpdateLed('daw-led-' + t.id, Math.min(100, next));
@@ -2149,7 +2156,7 @@
                 }
                 const masterPrev = window.dawMeterPeaks.master || 0;
                 const masterTarget = window.dawMeterTargets.master;
-                const masterLerp = masterTarget > masterPrev ? 0.32 : 0.1;
+                const masterLerp = masterTarget > masterPrev ? 0.32 : Math.max(0.02, Math.min(0.6, (window.dawMeterDecayRate || 120) / 1200));
                 const masterNext = masterPrev + (masterTarget - masterPrev) * masterLerp;
                 window.dawMeterPeaks.master = masterNext;
                 window.dawUpdateLed('daw-led-master', Math.min(100, masterNext));
@@ -3376,6 +3383,96 @@
 
                         <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" class="daw-checkbox"> When editing crossfades with the mouse, use crossfade editor theme colors</label>
                         <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> In arrange view, apply crossfade editor theme colors to crossfaded area only</label>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'appearance-track-meters') {
+                titleEl.innerText = 'Track meter settings';
+                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-y-3 gap-x-6">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Meter update frequency (Hz):</span>
+                                <input type="text" value="12" class="w-16 ${selectCls}">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Meter minimum value (dB):</span>
+                                <input type="text" value="-62" class="w-16 ${selectCls}">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Meter decay (dB/sec):</span>
+                                <input type="text" value="${window.dawMeterDecayRate}" oninput="window.dawSetMeterDecayRate(this.value)" class="w-16 ${selectCls}">
+                                <span class="text-[9px] text-gray-500 italic">⚡ live</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Meter maximum value (dB):</span>
+                                <input type="text" value="6" class="w-16 ${selectCls}">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[11px] font-bold neon-blue-text w-64 flex-shrink-0">Scale gain reduction from plug-ins by:</span>
+                            <input type="text" value="2" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">(1 dB of GR = 2 dB on the meter)</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-y-2.5 gap-x-6 pt-1">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Show track input when rec-armed</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Make obvious that track input is clickable</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Show MIDI velocity on track meter</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Show MIDI output activity on track meter</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Sticky clip indicators</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Reset meter peak indicators on play/seek</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Track meters display pre-fader levels</label>
+                        </div>
+
+                        <p class="text-gray-600 text-[9.5px] pt-2">Right-click the track meter to enable displaying total gain reduction for any plugins that support reporting this value to the host.</p>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'appearance-track-panels') {
+                titleEl.innerText = 'Track control panel settings';
+                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
+                content.innerHTML = `
+                    <div class="space-y-3.5">
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text opacity-60"><input type="checkbox" checked disabled class="daw-checkbox"> Set track label background to custom track colors</label>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text opacity-60"><input type="checkbox" disabled class="daw-checkbox"> Tint track panel backgrounds</label>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Align TCP controls when track icons or fixed item lanes are used</label>
+
+                        <div class="pt-1">
+                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">Track grouping indicators:</div>
+                            <div class="flex items-center gap-5">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-track-grouping" checked class="daw-checkbox" style="border-radius:50%;"> Ribbons</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-track-grouping" class="daw-checkbox" style="border-radius:50%;"> Lines on edge</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-track-grouping" class="daw-checkbox" style="border-radius:50%;"> None</label>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-56 flex-shrink-0">Folder collapse button cycles track heights:</label>
+                            <select class="flex-1 ${selectCls}"><option>Normal, small, collapsed</option><option>Normal, collapsed</option></select>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-56 flex-shrink-0">Fixed lane collapse button changes display:</label>
+                            <select class="flex-1 ${selectCls}"><option>Big/small lanes</option><option>Show/hide lanes</option></select>
+                            <span class="text-[9px] text-gray-500">(shift toggles)</span>
+                        </div>
+
+                        <div class="bg-black/40 border border-white/5 rounded-xl p-4 mt-1">
+                            <div class="neon-blue-text text-[11px] font-black mb-2.5">Volume/pan faders</div>
+                            <div class="flex items-center gap-2 flex-wrap mb-2.5">
+                                <span class="text-[11px] font-bold neon-blue-text">Volume fader range:</span>
+                                <input type="text" value="-72" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">to</span>
+                                <input type="text" value="+12" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">dB, shape:</span>
+                                <select class="${selectCls}"><option>Default</option><option>Linear</option><option>Log</option></select>
+                            </div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-[11px] font-bold neon-blue-text">Pan fader unit display:</span>
+                                <select class="${selectCls}"><option>100%L .. 100%R</option><option>-100 .. +100</option><option>L100 .. R100</option></select>
+                            </div>
+                        </div>
                     </div>`;
                 return;
             }
