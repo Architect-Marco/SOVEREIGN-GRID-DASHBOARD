@@ -5197,6 +5197,7 @@
                 vid.play().catch(() => {});
                 window.galleryPreviewBindControls(vid, true);
             } else if (item.type === 'audio' && src) {
+                if (item.coverArt) { img.src = item.coverArt; img.classList.remove('hidden'); }
                 aud.src = src; aud.classList.remove('hidden'); modal.classList.remove('hidden');
                 aud.play().catch(() => {});
                 window.galleryPreviewBindControls(aud, false);
