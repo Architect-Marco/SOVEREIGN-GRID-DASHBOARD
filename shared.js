@@ -2696,27 +2696,12 @@
         // DAW SETTINGS — Reaper-style preferences window
         // ============================================================
         window.dawSettingsTree = [
-            { id: 'general', label: 'General', children: [
-                { id: 'general-undo', label: 'Undo' },
-                { id: 'general-paths', label: 'Paths' },
-                { id: 'general-keyboard', label: 'Keyboard/Multitouch' }
-            ] },
-            { id: 'project', label: 'Project', children: [
+            { id: 'keyboard-shortcuts', label: 'Keyboard Shortcuts' },
+            { id: 'project', label: 'Project', expanded: true, children: [
                 { id: 'project-backups', label: 'Backups' },
                 { id: 'project-track-defaults', label: 'Track/Send Defaults' },
                 { id: 'project-fade-defaults', label: 'Item Fade Defaults' },
                 { id: 'project-loop-defaults', label: 'Item Loop Defaults' }
-            ] },
-            { id: 'audio', label: 'Audio', expanded: true, children: [
-                { id: 'device', label: 'Device' },
-                { id: 'buffering', label: 'Buffering' },
-                { id: 'mute-solo', label: 'Mute/Solo' },
-                { id: 'playback', label: 'Playback' },
-                { id: 'scrub-jog', label: 'Scrub/Jog' },
-                { id: 'seeking', label: 'Seeking' },
-                { id: 'recording', label: 'Recording' },
-                { id: 'loop-lane', label: 'Loop/Lane Recording' },
-                { id: 'rendering', label: 'Rendering' }
             ] },
             { id: 'appearance', label: 'Appearance', children: [
                 { id: 'appearance-ruler', label: 'Ruler/Grid' },
@@ -2736,17 +2721,10 @@
                 { id: 'editing-mouse-modifiers', label: 'Mouse Modifiers' }
             ] },
             { id: 'media', label: 'Media', children: [
-                { id: 'media-audio', label: 'Audio Files' },
-                { id: 'media-midi', label: 'MIDI Files' }
-            ] },
-            { id: 'plugins', label: 'Plug-ins', children: [
-                { id: 'plugins-vst', label: 'VST' },
-                { id: 'plugins-organizer', label: 'Plug-in Organizer' }
-            ] },
-            { id: 'control-osc', label: 'Control/OSC/web' },
-            { id: 'external-editors', label: 'External Editors' }
+                { id: 'media-audio', label: 'Audio Files' }
+            ] }
         ];
-        window.dawSettingsActive = 'device';
+        window.dawSettingsActive = 'project-backups';
 
         window.dawEnvColors = [];
         window.dawEnvColorSelected = -1;
@@ -2917,466 +2895,34 @@
             const content = document.getElementById('daw-settings-content');
             if (!content) return;
 
-            if (pageId === 'device') {
-                titleEl.innerText = 'Audio device settings';
+
+            if (pageId === 'keyboard-shortcuts') {
+                if (!window.dawShortcutsLoaded) window.dawLoadShortcuts();
+                titleEl.innerText = 'Keyboard Shortcuts';
                 content.innerHTML = `
-                    <div class="space-y-5">
-                        <div class="flex items-center gap-3">
-                            <label class="text-[11px] font-bold neon-blue-text w-40 flex-shrink-0">Audio Device:</label>
-                            <select class="flex-1 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                <option>Internal Speakers (eqMac)</option>
-                                <option>Built-in Output</option>
-                                <option>Aggregate Device</option>
-                            </select>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text w-40 flex-shrink-0"><input type="checkbox" class="daw-checkbox"> Request sample rate:</label>
-                            <input type="text" value="48000" class="w-28 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <button class="ml-auto px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors flex-shrink-0">Audio MIDI Setup...</button>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text w-40 flex-shrink-0"><input type="checkbox" class="daw-checkbox"> Request block size:</label>
-                            <input type="text" value="512" class="w-28 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Ignore running change notifications (may be required for some devices)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Allow projects to override device sample rate</label>
-                        <p class="text-[10px] text-gray-500 pl-6 -mt-3">If you need to use multiple devices, open Audio MIDI Setup and create an aggregate device.</p>
-                        <div class="pt-8">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Allow use of different input and output devices (legacy option, not recommended)</label>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'buffering') {
-                titleEl.innerText = 'Audio buffering settings';
-                content.innerHTML = `
-                    <div class="space-y-4">
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked onchange="document.getElementById('daw-threads-input').disabled = this.checked;" class="daw-checkbox"> Auto-detect the number of needed audio processing threads</label>
-
-                        <div class="flex items-center gap-3">
-                            <label class="text-[11px] font-bold neon-blue-text w-52 flex-shrink-0">Audio reading/processing threads:</label>
-                            <input type="text" id="daw-threads-input" value="4" disabled class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none disabled:opacity-40">
-                            <span class="text-[10px] text-gray-500">(recommended: 1 per CPU core, can also be 0)</span>
-                        </div>
-
-                        <div class="flex items-center gap-6 flex-wrap">
-                            <div class="flex items-center gap-2">
-                                <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">Thread priority:</label>
-                                <select class="bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                    <option>Idle</option><option>Below Normal</option><option>Normal</option><option>Above Normal</option>
-                                    <option selected>Highest (recommended)</option><option>Time Critical</option>
-                                </select>
+                    <div class="space-y-3">
+                        <p class="text-gray-500 text-[10.5px] leading-relaxed">These are real — press "Change", then hit any key combo. Track-specific actions (copy/cut/paste/duplicate/remove/mute/solo) apply to whichever track is currently selected.</p>
+                        <div class="border border-white/10 rounded-lg overflow-hidden">
+                            <div class="grid grid-cols-[1fr_160px_150px] bg-white/5 border-b border-white/10">
+                                <div class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest neon-blue-text">Action</div>
+                                <div class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest neon-blue-text">Shortcut</div>
+                                <div class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest neon-blue-text"></div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">Behavior:</label>
-                                <select class="bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                    <option selected>Automatic (default)</option>
-                                    <option>0 - Relaxed</option><option>1</option><option>2</option><option>3 - Medium</option><option>4</option><option>5</option><option>6</option><option>7</option>
-                                    <option>8 - Aggressive</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15 - Very Aggressive</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">Media buffer size:</label>
-                            <input type="text" value="1200" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">ms (default is 1200ms), prebuffer:</span>
-                            <input type="text" value="100" class="w-14 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">% (default is 100%)</span>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Disable media buffering for tracks with open MIDI editors (recommended)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Disable media buffering for tracks that are selected</label>
-
-                        <div class="flex items-center gap-3">
-                            <label class="text-[11px] font-bold neon-blue-text w-64 flex-shrink-0">Media buffer size when per-take FX UI open:</label>
-                            <input type="text" value="200" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">ms (default is 200ms)</span>
-                        </div>
-
-                        <div class="pt-2">
-                            <div class="neon-blue-text text-[11px] font-black uppercase tracking-widest mb-3">FX processing/multiprocessing settings</div>
-                            <div class="bg-black/40 border border-white/5 rounded-xl p-4 space-y-3">
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Anticipative FX processing - superior multiprocessing and lower interface latencies</label>
-                                <div class="pl-6 space-y-2.5">
-                                    <div class="flex items-center gap-3">
-                                        <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">Render-ahead:</label>
-                                        <input type="text" value="200" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                        <span class="text-[10px] text-gray-500">ms (default: 200)</span>
+                            ${window.DAW_SHORTCUT_ACTIONS.map(a => {
+                                const capturing = window.dawShortcutCapturing === a.id;
+                                const combo = window.dawShortcuts[a.id];
+                                return `
+                                <div class="grid grid-cols-[1fr_160px_150px] border-b border-white/5 items-center ${capturing ? 'bg-[#2fd0ff]/10' : ''}">
+                                    <div class="px-3 py-2 text-[11px] font-bold neon-blue-text">${a.label}</div>
+                                    <div class="px-3 py-2 text-[11px] ${combo ? 'text-gray-300' : 'text-gray-700 italic'}">${capturing ? 'Press any key…' : window.dawComboLabel(combo)}</div>
+                                    <div class="px-3 py-2 flex items-center gap-2">
+                                        <button onclick="${capturing ? 'window.dawShortcutCancelCapture()' : `window.dawShortcutStartCapture('${a.id}')`}" class="px-2.5 py-1 rounded bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[9px] font-black uppercase hover:bg-white/10 transition-colors">${capturing ? 'Cancel' : 'Change'}</button>
+                                        <button onclick="window.dawShortcutClear('${a.id}')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-gray-500 hover:text-red-400 hover:border-red-400/40 text-[9px] font-black uppercase transition-colors">Clear</button>
                                     </div>
-                                    <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Allow on tracks without FX (may give higher multiprocessor utilization)</label>
-                                    <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Allow on tracks with open MIDI editors (will increase MIDI preview latency)</label>
-                                    <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Allow on tracks in touch/latch/write automation mode</label>
-                                </div>
-                                <div class="flex items-center gap-3 pt-1">
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text flex-shrink-0"><input type="checkbox" checked class="daw-checkbox"> Allow live FX multiprocessing on:</label>
-                                    <input type="text" value="4" class="w-14 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                    <span class="text-[10px] text-gray-500">CPUs</span>
-                                </div>
-                                <p class="text-[10px] text-gray-500 pl-6">[enables multiprocessing of live input, but may reduce performance at low latencies]</p>
-                            </div>
+                                </div>`;
+                            }).join('')}
                         </div>
-
-                        <div class="pt-2">
-                            <button onclick="window.openDawDiskIO()" class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Advanced Disk I/O options...</button>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'mute-solo') {
-                titleEl.innerText = 'Mute settings';
-                content.innerHTML = `
-                    <div class="space-y-4">
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <select class="bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                <option>No automatic muting</option>
-                                <option>Automatically mute master track</option>
-                                <option selected>Automatically mute any track</option>
-                            </select>
-                            <span class="text-[11px] font-bold neon-blue-text">when volume exceeds</span>
-                            <input type="text" value="+18" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">dB</span>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Reset on playback start</label>
-
-                        <div class="flex items-center gap-3">
-                            <label class="text-[11px] font-bold neon-blue-text w-32 flex-shrink-0">Track mute fade:</label>
-                            <input type="text" value="5.0" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">ms (100 ms max)</span>
-                        </div>
-
-                        <div class="flex items-center gap-6 flex-wrap">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Do not process muted tracks (muted tracks take no CPU time, etc)</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Even if FX UI is open</label>
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Pre-fader sends survive their track being muted</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Pre-fader hardware outputs survive their track being muted/unsoloed</label>
-
-                        <div class="pt-2">
-                            <div class="neon-blue-text text-[11px] font-black uppercase tracking-widest mb-3">Solo settings</div>
-                            <div class="bg-black/40 border border-white/5 rounded-xl p-4 space-y-3">
-                                <div class="flex items-center gap-3">
-                                    <label class="text-[11px] font-bold neon-blue-text w-36 flex-shrink-0">Solo in front dimming:</label>
-                                    <input type="text" value="-18.0" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                    <span class="text-[10px] text-gray-500">dB</span>
-                                </div>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Solos default to in-place solo (alt+click for ignore-routing solo)</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Unsolo parent/hardware sends when a soloed-in-place track sends to another soloed track</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Solo via dedicated solo bus (master outputs can be configured with respect to bus)</label>
-                                <div class="pl-6 space-y-2.5">
-                                    <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Apply master fader/mute to solo bus</label>
-                                    <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Ignore solo on child tracks when parent is soloed</label>
-                                </div>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Show metering on unsoloed tracks</label>
-                            </div>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'playback') {
-                titleEl.innerText = 'Playback settings';
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Stop/repeat playback at end of project</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Stop playback at end of loop if repeat is disabled</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Scroll view to edit cursor on stop</label>
-
-                        <div class="flex items-center gap-3 pt-1">
-                            <label class="text-[11px] font-bold neon-blue-text">Max MIDI playback speed when applying negative media playback offset:</label>
-                            <input type="text" value="2.0" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none flex-shrink-0">
-                            <span class="text-[10px] text-gray-500">(0=immediate)</span>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" class="daw-checkbox"> Flush FX when looping (good for autotune, bad for instruments, etc)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Run FX when stopped (good for certain VSTi)</label>
-                        <div class="pl-6 space-y-2.5">
-                            <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Flush FX on stop</label>
-                            <div class="flex items-center gap-3">
-                                <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">Run FX for</label>
-                                <input type="text" value="4000" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                <span class="text-[10px] text-gray-500">ms after stopping (for reverb tails, etc)</span>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-8 pt-1 flex-wrap">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Tiny fade out on playback stop</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Tiny fade in on playback start</label>
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Reduce mixing CPU use of silent tracks during playback</label>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-3"><input type="checkbox" checked class="daw-checkbox"> Send MIDI note-offs when un-record-arming a track</label>
-
-                        <div class="flex items-center gap-4 flex-wrap">
-                            <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">Reset MIDI CC/Pitch on:</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> playback start</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> playback stop</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> playback loop/skip</label>
-                        </div>
-
-                        <div class="flex items-center gap-3">
-                            <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">CC reset overrides:</label>
-                            <input type="text" class="flex-1 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                        </div>
-
-                        <p class="text-[10px] text-gray-500 pt-4 border-t border-white/5">Apply a buffer block length fade-out to the monitor signal only, when stopping playback. N/A if FX configured to play back unflushed when stopped.</p>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'scrub-jog') {
-                titleEl.innerText = 'Scrub/jog settings';
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Only play selected tracks when scrubbing/jogging</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Scrub/jog when moving edit cursor via action or control surface</label>
-                        <div class="pl-6">
-                            <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Use one-shot segment playback scrub when moving edit cursor (action toggle)</label>
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Play one-shot segment when adjusting the edges of items/time selection</label>
-
-                        <p class="text-[10px] text-gray-500 pt-1">(Note: set mouse scrub/jog behavior in Editing Behavior/Mouse Modifiers)</p>
-
-                        <div class="flex items-center gap-6 pt-2 flex-wrap">
-                            <div class="flex items-center gap-2">
-                                <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">Max jog rate:</label>
-                                <select class="bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                    <option>1x</option><option selected>2x</option><option>4x</option><option>8x</option>
-                                </select>
-                            </div>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Limit jog rate when near cursor</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Faster responding jog</label>
-                        </div>
-
-                        <div class="flex items-center gap-6 flex-wrap">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Limit scrub rate to 1.0x</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Engage scrub when playing (stopping playback)</label>
-                        </div>
-
-                        <div class="flex items-center gap-3 flex-wrap pt-2">
-                            <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">Looped-segment mode:</label>
-                            <input type="text" value="-88" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">ms to</span>
-                            <input type="text" value="0" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">ms</span>
-                            <label class="text-[11px] font-bold neon-blue-text flex-shrink-0 ml-4">Scrub-mode controller sensitivity:</label>
-                            <input type="text" value="1.00" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                        </div>
-
-                        <div class="flex items-center gap-3">
-                            <label class="text-[11px] font-bold neon-blue-text flex-shrink-0">Scrub/jog volume gain:</label>
-                            <input type="text" value="+0" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">dB</span>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'seeking') {
-                titleEl.innerText = 'Seek settings';
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <div class="neon-blue-text text-[11px] font-black">Seek playback when clicked:</div>
-                        <div class="flex items-center gap-6 flex-wrap pl-1">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Top ruler</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Empty areas of tracks</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Empty area below tracks</label>
-                        </div>
-                        <div class="pl-6">
-                            <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Media items (when moving edit cursor)</label>
-                        </div>
-
-                        <div class="flex items-center gap-3 flex-wrap pt-2">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Seek on loop point change</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Only when repeat is enabled</label>
-                            <span class="text-[11px] font-bold neon-blue-text ml-2">Pre-roll:</span>
-                            <input type="text" value="1000" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">ms</span>
-                        </div>
-
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Seek playback on item move/size/fade adjustment, pre-roll:</label>
-                            <input type="text" value="1000" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">ms</span>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Playback position follows project timebase (time or beats) when changing tempo</label>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" id="daw-smooth-seek" onchange="document.querySelectorAll('.daw-smooth-seek-opt').forEach(el => el.disabled = !this.checked)" class="daw-checkbox"> Do not change playback position immediately when seeking (smooth seek)</label>
-                        <div class="pl-6 space-y-2">
-                            <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="radio" name="daw-seek-mode" checked disabled class="daw-radio daw-smooth-seek-opt"> Play to end of <input type="text" value="1" disabled class="daw-smooth-seek-opt w-10 bg-black border border-[rgba(47,208,255,0.3)] rounded px-2 py-1 text-[11px] neon-blue-text outline-none mx-1 disabled:opacity-40"> more measures before seeking</label>
-                            <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="radio" name="daw-seek-mode" disabled class="daw-radio daw-smooth-seek-opt"> Play to next project marker, end of current region, or start of next region, before seeking</label>
-                        </div>
-
-                        <p class="text-[10px] text-gray-500 pt-4 border-t border-white/5">Smooth seek enables a more natural-sounding transition. This setting can also be toggled via the Actions list.</p>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'recording') {
-                titleEl.innerText = 'Recording settings';
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Scroll arrange view while recording (if enabled for playback in options menu)</label>
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Show preview of recording items while recording, update frequency:</label>
-                            <input type="text" value="3" class="w-14 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">Hz (default 3)</span>
-                        </div>
-
-                        <div class="flex items-center gap-6 flex-wrap pt-1">
-                            <span class="text-[11px] font-bold neon-blue-text">Build peaks for recorded files:</span>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-peaks-mode" checked class="daw-radio"> On the fly (recommended)</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-peaks-mode" class="daw-radio"> After recording</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-peaks-mode" class="daw-radio"> Manually</label>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" checked class="daw-checkbox"> Always show full track control panel on armed tracks</label>
-
-                        <div class="flex items-center gap-4 flex-wrap">
-                            <span class="text-[11px] font-bold neon-blue-text">Prompt to save/delete/rename new files:</span>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> on stop</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> on punch-out/play</label>
-                        </div>
-
-                        <div class="flex items-center gap-3 flex-wrap pt-1">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Start new files every</label>
-                            <input type="text" value="1024" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">megabytes (approximate)</span>
-                        </div>
-                        <div class="pl-6">
-                            <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> When recording multiple tracks, offset file switches for better performance</label>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" checked class="daw-checkbox"> Prevent recording from starting when no tracks armed</label>
-
-                        <div class="flex items-center gap-2 pt-3">
-                            <label class="text-[11px] font-bold neon-blue-text w-36 flex-shrink-0">Recorded filenames:</label>
-                            <input type="text" value="$tracknumber-$track-$year2-$month$day_$hour$minute" class="flex-1 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <button class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors flex-shrink-0">Wildcards</button>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <label class="text-[11px] font-bold neon-blue-text w-36 flex-shrink-0">In-project MIDI items:</label>
-                            <input type="text" value="$rectag-$tracknumber-$track-MIDI" class="flex-1 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <button class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors flex-shrink-0">Wildcards</button>
-                        </div>
-
-                        <div class="flex items-center gap-3 flex-wrap pt-2">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Check free disk space on record start, warn if less than:</label>
-                            <input type="text" value="1024" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">megabytes</span>
-                        </div>
-                        <div class="flex items-center gap-6 flex-wrap">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Show free disk space in menu bar</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Show primary recording path in menu bar</label>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" checked class="daw-checkbox"> Record audio during pre-roll</label>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" checked class="daw-checkbox"> Use audio driver reported latency</label>
-                        <div class="pl-6 space-y-2">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-[11px] font-bold neon-blue-text w-32 flex-shrink-0">Output manual offset:</span>
-                                <input type="text" value="0.00" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                <span class="text-[10px] text-gray-500">ms +</span>
-                                <input type="text" value="0" class="w-14 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                <span class="text-[10px] text-gray-500">samples</span>
-                            </div>
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-[11px] font-bold neon-blue-text w-32 flex-shrink-0">Input manual offset:</span>
-                                <input type="text" value="0.00" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                <span class="text-[10px] text-gray-500">ms +</span>
-                                <input type="text" value="0" class="w-14 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                <span class="text-[10px] text-gray-500">samples</span>
-                            </div>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'loop-lane') {
-                titleEl.innerText = 'Loop/Lane recording settings';
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> In loop recording, discard incomplete first or last takes if at least one full loop was recorded</label>
-                        <div class="pl-6 flex items-center gap-2">
-                            <span class="text-[11px] font-bold neon-blue-text">Threshold for complete take:</span>
-                            <input type="text" value="90" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">%</span>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" class="daw-checkbox"> MIDI overdub/replace recording always creates selection-length media item</label>
-
-                        <div class="pt-3">
-                            <div class="neon-blue-text text-[11px] font-black mb-2">When recording and looped, add recorded media to project:</div>
-                            <div class="space-y-2 pl-1">
-                                <div class="flex items-center gap-6 flex-wrap">
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-loop-add" checked class="daw-radio"> On stop (default, recommended)</label>
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Create new files on loop</label>
-                                </div>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-loop-add" class="daw-radio"> At each loop (creates new files, good for recording multiple audio layers on the fly etc)</label>
-                            </div>
-                        </div>
-
-                        <div class="pt-3">
-                            <div class="neon-blue-text text-[11px] font-black mb-2">Recording into fixed lane tracks</div>
-                            <div class="bg-black/40 border border-white/5 rounded-xl p-4 space-y-2.5">
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> When new recording can add lanes, record into an existing lane if there is space</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> When auto-punch recording into a fixed lane track, add the whole recording</label>
-                            </div>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'rendering') {
-                titleEl.innerText = 'Rendering settings';
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <span class="text-[11px] font-bold neon-blue-text">Block size to use when rendering:</span>
-                            <input type="text" class="w-20 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">samples (blank = use audio device buffer size)</span>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" checked class="daw-checkbox"> Allow anticipative FX processing when rendering (better multiprocessing)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Limit apply FX/render stems to realtime (good for some plug-ins)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Process all tracks during stem render (some hardware-based plugins may need this)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Disable FX auto-bypass when using offline render/apply FX/render stems</label>
-
-                        <div class="flex items-center gap-3 flex-wrap pt-2">
-                            <span class="text-[11px] font-bold neon-blue-text">Default tail length:</span>
-                            <input type="text" value="1000" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">ms, render tails when:</span>
-                        </div>
-                        <div class="pl-6 space-y-2">
-                            <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Rendering stems for full project via action</label>
-                            <label class="flex items-center gap-2 text-[10px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Rendering stems for time selection via action</label>
-                        </div>
-                        <p class="text-[10px] text-gray-500 pl-6">These settings also affect the default tail options in the render window (projects can override the render tail options).</p>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-2"><input type="checkbox" class="daw-checkbox"> When freezing, render the entire track length if there are track or per-take FX</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Include tail when freezing entire tracks</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Freeze muted items into muted silent items</label>
-
-                        <div class="flex items-center gap-4 flex-wrap pt-4 border-t border-white/5">
-                            <span class="text-[11px] font-bold neon-blue-text">Incomplete files after canceling render:</span>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-render-cancel" class="daw-radio"> Save</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-render-cancel" class="daw-radio"> Delete</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-render-cancel" checked class="daw-radio"> Prompt</label>
-                        </div>
-
-                        <div class="flex items-center gap-4 flex-wrap">
-                            <span class="text-[11px] font-bold neon-blue-text">After rendering:</span>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Close render windows</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Return to render setup</label>
-                            <button class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Stats/Charts</button>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Reopen render results window modelessly to allow focus to return to project</label>
+                        <button onclick="window.dawShortcutResetAll()" class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Reset All to Defaults</button>
                     </div>`;
                 return;
             }
@@ -3533,78 +3079,6 @@
                 return;
             }
 
-            if (pageId === 'general') {
-                titleEl.innerText = 'General settings';
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <label class="text-[11px] font-bold neon-blue-text w-20 flex-shrink-0">Language:</label>
-                            <select class="bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                <option>English [US] - default</option>
-                                <option selected>&lt;prompt on load&gt;</option>
-                            </select>
-                            <button class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Language pack options</button>
-                        </div>
-
-                        <div class="flex items-center gap-3">
-                            <button class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Import configuration...</button>
-                            <button class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Export configuration...</button>
-                        </div>
-
-                        <div class="pt-3">
-                            <div class="neon-blue-text text-[11px] font-black mb-3">Startup settings</div>
-                            <div class="bg-black/40 border border-white/5 rounded-xl p-4 space-y-3">
-                                <div class="flex items-center gap-3">
-                                    <label class="text-[11px] font-bold neon-blue-text w-44 flex-shrink-0">Open project(s) on startup:</label>
-                                    <select class="bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                        <option>Last active project</option>
-                                        <option selected>Last project tabs</option>
-                                        <option>New project</option>
-                                        <option>New project, ignore default template</option>
-                                        <option>Prompt</option>
-                                    </select>
-                                </div>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Automatically check for new versions of REAPER on startup</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Create new project tab when opening media from explorer/finder</label>
-                                <div class="flex items-center gap-6 flex-wrap">
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Show splash screen on startup</label>
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Skip animation</label>
-                                </div>
-                                <div class="flex items-center gap-6 flex-wrap">
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Check for multiple instances when launching</label>
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> When launching with project/media</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-3 flex-wrap pt-2">
-                            <label class="text-[11px] font-bold neon-blue-text w-56 flex-shrink-0">Maximum projects in recent project list:</label>
-                            <input type="text" value="50" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <button class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Recent project list display</button>
-                        </div>
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <label class="text-[11px] font-bold neon-blue-text w-56 flex-shrink-0">Warn when REAPER's memory use reaches</label>
-                            <input type="text" value="0" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">megabytes (0 to never warn)</span>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" class="daw-checkbox"> Prevent OS screensaver/screen blanking when audio is active or when rendering</label>
-
-                        <div class="flex items-center gap-3 flex-wrap pt-1">
-                            <label class="text-[11px] font-bold neon-blue-text w-44 flex-shrink-0">Auto-increment filename suffix:</label>
-                            <input type="text" value="-001" class="w-24 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <button class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Wildcards</button>
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Ensure auto-incremented filenames have a higher number than all similarly named files</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Treat _ and - as interchangeable when auto-incrementing</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Unload projects in background when quitting</label>
-
-                        <div class="pt-2">
-                            <button class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Advanced UI/system tweaks...</button>
-                        </div>
-                    </div>`;
-                return;
-            }
 
             if (pageId === 'editing') {
                 titleEl.innerText = 'Editing behavior';
@@ -3753,124 +3227,6 @@
                 return;
             }
 
-            if (pageId === 'general-paths') {
-                titleEl.innerText = 'Path settings';
-                content.innerHTML = `
-                    <div class="space-y-4">
-                        <div>
-                            <label class="text-[11px] font-bold neon-blue-text block mb-1.5">Auto-save path:</label>
-                            <input type="text" placeholder="(default)" class="w-full bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text placeholder-gray-600 outline-none">
-                        </div>
-                        <div>
-                            <label class="text-[11px] font-bold neon-blue-text block mb-1.5">Project template path:</label>
-                            <input type="text" placeholder="(default)" class="w-full bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text placeholder-gray-600 outline-none">
-                        </div>
-                        <div>
-                            <label class="text-[11px] font-bold neon-blue-text block mb-1.5">Track template path:</label>
-                            <input type="text" placeholder="(default)" class="w-full bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text placeholder-gray-600 outline-none">
-                        </div>
-                        <div>
-                            <label class="text-[11px] font-bold neon-blue-text block mb-1.5">Temporary render path:</label>
-                            <input type="text" placeholder="(default)" class="w-full bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text placeholder-gray-600 outline-none">
-                        </div>
-                        <p class="text-gray-600 text-[10px] pt-1">Leave a field blank to use the default location for that file type.</p>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'general-undo') {
-                titleEl.innerText = 'Undo settings';
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <label class="text-[11px] font-bold neon-blue-text w-44 flex-shrink-0">Maximum undo memory use:</label>
-                            <input type="text" value="256" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">megabytes (0 disables undo/prompt to save)</span>
-                        </div>
-
-                        <div>
-                            <div class="neon-blue-text text-[11px] font-black mb-2">Include selection:</div>
-                            <div class="flex items-center gap-5 flex-wrap pl-1">
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> item</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> track</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> envelope point</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> time</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> cursor position</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> MIDI events</label>
-                            </div>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" class="daw-checkbox"> When approaching full undo memory, keep newest undo states</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Store multiple redo paths when possible (can use a lot of RAM)</label>
-                        <div class="flex items-center gap-6 flex-wrap">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Save undo history with project files (in .RPP-UNDO file)</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Allow load of undo history</label>
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Show last undo point in title bar</label>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'general-keyboard') {
-                titleEl.innerText = 'Keyboard';
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Commit changes to some edit fields after 1 second of no typing</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Use alternate keyboard section when recording</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Prevent ALT key from focusing main menu</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Allow space key to be used for navigation in various windows</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> When space key is pressed in plug-in text fields, send to main window</label>
-
-                        <div class="flex items-center gap-3 flex-wrap pt-1">
-                            <label class="text-[11px] font-bold neon-blue-text w-56 flex-shrink-0">Timeout for momentary keyboard section override:</label>
-                            <input type="text" value="1000" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            <span class="text-[10px] text-gray-500">ms</span>
-                        </div>
-
-                        <button class="block text-[11px] font-bold text-[#2fd0ff] hover:underline pt-2">Assign keyboard shortcuts to actions or change existing shortcuts</button>
-                        <button class="block text-[11px] font-bold text-[#2fd0ff] hover:underline">View keyboard shortcuts as printable/searchable web page</button>
-
-                        <div class="pt-3">
-                            <div class="neon-blue-text text-[11px] font-black mb-2">Multitouch</div>
-                            <div class="bg-black/40 border border-white/5 rounded-xl p-4 space-y-3">
-                                <div class="flex items-center gap-6 flex-wrap">
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text w-44"><input type="checkbox" checked class="daw-checkbox"> Enable multitouch swipe</label>
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Reverse</label>
-                                </div>
-                                <div class="flex items-center gap-6 flex-wrap">
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text w-44"><input type="checkbox" checked class="daw-checkbox"> Enable multitouch zoom</label>
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Reverse</label>
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Suppress inertia</label>
-                                    <span class="text-[11px] font-bold neon-blue-text">Gearing:</span>
-                                    <input type="text" value="1" class="w-12 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-2 py-1 text-[11px] neon-blue-text outline-none">
-                                </div>
-                                <div class="flex items-center gap-6 flex-wrap">
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text w-44"><input type="checkbox" checked class="daw-checkbox"> Enable multitouch rotate</label>
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Reverse</label>
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Suppress inertia</label>
-                                    <span class="text-[11px] font-bold neon-blue-text">Gearing:</span>
-                                    <input type="text" value="1" class="w-12 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-2 py-1 text-[11px] neon-blue-text outline-none">
-                                </div>
-
-                                <div class="flex items-center gap-3 flex-wrap pt-1">
-                                    <span class="text-[11px] font-bold neon-blue-text w-64">Ignore scroll after multitouch gesture:</span>
-                                    <input type="text" value="100" class="w-14 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                    <span class="text-[10px] text-gray-500">ms</span>
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text ml-4"><input type="checkbox" class="daw-checkbox"> Reverse vertical scroll</label>
-                                </div>
-                                <div class="flex items-center gap-3 flex-wrap">
-                                    <span class="text-[11px] font-bold neon-blue-text w-64">Ignore new gesture after multitouch gesture:</span>
-                                    <input type="text" value="100" class="w-14 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                    <span class="text-[10px] text-gray-500">ms</span>
-                                    <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text ml-4"><input type="checkbox" class="daw-checkbox"> Reverse horizontal scroll</label>
-                                </div>
-
-                                <button class="block text-[11px] font-bold text-[#2fd0ff] hover:underline pt-1">Assign multitouch gestures to actions or change existing shortcuts</button>
-                            </div>
-                        </div>
-                    </div>`;
-                return;
-            }
 
             // Generic placeholder page for everything else
             let label = pageId;
@@ -4228,20 +3584,119 @@
             }
         };
 
-        // Keyboard shortcuts, scoped to this page (guarded by a DAW-only element) and
-        // skipped entirely while typing in any input/textarea/contenteditable field.
+        // ============================================================
+        // KEYBOARD SHORTCUTS — real, reassignable action bindings.
+        // Register an action here and it's immediately assignable from
+        // Preferences → Keyboard Shortcuts, with conflict detection and
+        // persistence, instead of being a hardcoded if/else chain.
+        // ============================================================
+        window.DAW_SHORTCUT_ACTIONS = [
+            { id: 'copy-track', label: 'Copy selected track', defaultCombo: 'ctrl+c', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.dawCopyTrack(id); } },
+            { id: 'cut-track', label: 'Cut selected track', defaultCombo: 'ctrl+x', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.dawCutTrack(id); } },
+            { id: 'paste-track', label: 'Paste onto selected track', defaultCombo: 'ctrl+v', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.dawPasteOntoTrack(id); } },
+            { id: 'duplicate-track', label: 'Duplicate selected track', defaultCombo: 'ctrl+d', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.duplicateDawTrack(id); } },
+            { id: 'delete-track', label: 'Remove selected track', defaultCombo: 'ctrl+backspace', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.removeDawTrack(id); } },
+            { id: 'add-track', label: 'Add new track', defaultCombo: 'ctrl+t', run: () => window.addDawTrack() },
+            { id: 'toggle-mute', label: 'Toggle mute on selected track', defaultCombo: 'm', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.toggleDawMute(id); } },
+            { id: 'toggle-solo', label: 'Toggle solo on selected track', defaultCombo: 's', run: () => { const id = window.dawSelectedTrackId; if (id && id !== 'master') window.toggleDawSolo(id); } },
+            { id: 'play-pause', label: 'Play/Pause', defaultCombo: 'space', run: () => window.playAllDaw() },
+            { id: 'toggle-snap', label: 'Toggle snap', defaultCombo: 'ctrl+shift+s', run: () => window.toggleDawSnap() },
+            { id: 'toggle-plugin-browser', label: 'Open/close Plugin Browser', defaultCombo: 'ctrl+shift+p', run: () => window.toggleDawPluginBrowser() },
+            { id: 'open-preferences', label: 'Open Preferences', defaultCombo: 'ctrl+,', run: () => window.openDawSettings() },
+        ];
+
+        window.dawShortcuts = {};
+        window.dawShortcutsLoaded = false;
+        window.dawLoadShortcuts = function() {
+            let saved = {};
+            try { saved = JSON.parse(localStorage.getItem('sbn-daw-shortcuts') || '{}'); } catch (e) { saved = {}; }
+            window.dawShortcuts = {};
+            window.DAW_SHORTCUT_ACTIONS.forEach(a => { window.dawShortcuts[a.id] = saved[a.id] || a.defaultCombo; });
+            window.dawShortcutsLoaded = true;
+        };
+        window.dawSaveShortcuts = function() {
+            try { localStorage.setItem('sbn-daw-shortcuts', JSON.stringify(window.dawShortcuts)); } catch (e) {}
+        };
+
+        window.dawComboFromEvent = function(e) {
+            const parts = [];
+            if (e.ctrlKey || e.metaKey) parts.push('ctrl');
+            if (e.shiftKey) parts.push('shift');
+            if (e.altKey) parts.push('alt');
+            let key = e.key.toLowerCase();
+            if (key === ' ') key = 'space';
+            if (['control', 'shift', 'alt', 'meta'].includes(key)) return null; // modifier-only press, not a full combo yet
+            parts.push(key);
+            return parts.join('+');
+        };
+        window.dawComboLabel = function(combo) {
+            if (!combo) return '(unassigned)';
+            return combo.split('+').map(p => p === 'ctrl' ? 'Ctrl' : p === 'shift' ? 'Shift' : p === 'alt' ? 'Alt' : p === 'space' ? 'Space' : p.length === 1 ? p.toUpperCase() : p.charAt(0).toUpperCase() + p.slice(1)).join(' + ');
+        };
+
+        // Global dispatcher — fires whichever action currently owns the pressed combo.
         document.addEventListener('keydown', (e) => {
             if (!document.getElementById('master-scroll-container')) return; // not the DAW page
+            if (window.dawShortcutCapturing) return; // handled separately while (re)assigning a shortcut
             const activeTag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
             const isTyping = activeTag === 'input' || activeTag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable);
             if (isTyping) return;
-            const id = window.dawSelectedTrackId;
-            if (!id || id === 'master') return;
-            const meta = e.ctrlKey || e.metaKey;
-            if (meta && e.key.toLowerCase() === 'c') { e.preventDefault(); window.dawCopyTrack(id); }
-            else if (meta && e.key.toLowerCase() === 'x') { e.preventDefault(); window.dawCutTrack(id); }
-            else if (meta && e.key.toLowerCase() === 'v') { e.preventDefault(); window.dawPasteOntoTrack(id); }
+            if (!window.dawShortcutsLoaded) window.dawLoadShortcuts();
+            const combo = window.dawComboFromEvent(e);
+            if (!combo) return;
+            const action = window.DAW_SHORTCUT_ACTIONS.find(a => window.dawShortcuts[a.id] === combo);
+            if (action) { e.preventDefault(); action.run(); }
         });
+
+        window.dawShortcutCapturing = null;
+        window.dawShortcutCaptureHandler = null;
+        window.dawShortcutStartCapture = function(actionId) {
+            if (window.dawShortcutCaptureHandler) {
+                document.removeEventListener('keydown', window.dawShortcutCaptureHandler, true);
+                window.dawShortcutCaptureHandler = null;
+            }
+            window.dawShortcutCapturing = actionId;
+            window.selectDawSettingsPage('keyboard-shortcuts');
+            const handler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const combo = window.dawComboFromEvent(e);
+                document.removeEventListener('keydown', handler, true);
+                window.dawShortcutCaptureHandler = null;
+                window.dawShortcutCapturing = null;
+                if (!combo || combo === 'escape') { window.selectDawSettingsPage('keyboard-shortcuts'); return; }
+                const conflict = window.DAW_SHORTCUT_ACTIONS.find(a => a.id !== actionId && window.dawShortcuts[a.id] === combo);
+                if (conflict && !confirm(`"${window.dawComboLabel(combo)}" is already assigned to "${conflict.label}". Reassign it to this action instead?`)) {
+                    window.selectDawSettingsPage('keyboard-shortcuts');
+                    return;
+                }
+                if (conflict) window.dawShortcuts[conflict.id] = '';
+                window.dawShortcuts[actionId] = combo;
+                window.dawSaveShortcuts();
+                window.selectDawSettingsPage('keyboard-shortcuts');
+            };
+            window.dawShortcutCaptureHandler = handler;
+            document.addEventListener('keydown', handler, true);
+        };
+        window.dawShortcutCancelCapture = function() {
+            if (window.dawShortcutCaptureHandler) {
+                document.removeEventListener('keydown', window.dawShortcutCaptureHandler, true);
+                window.dawShortcutCaptureHandler = null;
+            }
+            window.dawShortcutCapturing = null;
+            window.selectDawSettingsPage('keyboard-shortcuts');
+        };
+        window.dawShortcutClear = function(actionId) {
+            window.dawShortcuts[actionId] = '';
+            window.dawSaveShortcuts();
+            window.selectDawSettingsPage('keyboard-shortcuts');
+        };
+        window.dawShortcutResetAll = function() {
+            if (!confirm('Reset all keyboard shortcuts to their defaults?')) return;
+            window.DAW_SHORTCUT_ACTIONS.forEach(a => { window.dawShortcuts[a.id] = a.defaultCombo; });
+            window.dawSaveShortcuts();
+            window.selectDawSettingsPage('keyboard-shortcuts');
+        };
 
         // ============================================================
         // TRACK RIGHT-CLICK CONTEXT MENU — curated subset of DAW actions
@@ -5182,373 +4637,6 @@
             if (vid) vid.pause();
             if (aud) aud.pause();
             document.getElementById('gallery-preview-modal').classList.add('hidden');
-            document.getElementById('cover-art-preview-prev').classList.add('hidden');
-            document.getElementById('cover-art-preview-next').classList.add('hidden');
-            window.coverArtExpandTarget = null;
-        };
-
-        // ===== GALLERY — COVER ART FOLDERS (named folders, each holding multiple cover art tiles) =====
-        window.coverArtSlots = (() => {
-            try {
-                const saved = JSON.parse(localStorage.getItem('sbn-cover-art-slots') || 'null');
-                if (Array.isArray(saved) && saved.length) {
-                    // Migrate from the old single-image-per-slot shape if needed.
-                    return saved.map(s => Array.isArray(s.items) ? s : {
-                        name: s.name,
-                        items: s.image ? [{ image: s.image, type: s.type || 'image', fileName: s.fileName || '', title: '', notes: '' }] : []
-                    });
-                }
-            } catch (e) {}
-            return [
-                { name: 'Cover Art 1', items: [] },
-                { name: 'Cover Art 2', items: [] },
-                { name: 'Cover Art 3', items: [] }
-            ];
-        })();
-
-        function coverArtSave() {
-            try { localStorage.setItem('sbn-cover-art-slots', JSON.stringify(window.coverArtSlots)); } catch (e) {}
-        }
-
-        window.coverArtPendingTarget = null; // { slotIdx, itemIdx } — itemIdx null means "add new"
-        window.coverArtCtxTarget = null;     // { slotIdx, itemIdx } — which tile the open context menu refers to
-
-        function coverArtItemIcon(item) {
-            if (item.type === 'video') {
-                if (item.thumbnail) {
-                    // Thumbnail already fills the tile as a background-image — just a small play badge on top.
-                    return `<div class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-[#2fd0ff]">
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                    </div>`;
-                }
-                return `<div class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60 text-[#2fd0ff]">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="m22 8-5 4 5 4V8Z"/></svg>
-                </div>`;
-            }
-            if (item.type === 'audio') {
-                if (item.thumbnail) {
-                    // Custom cover art (set via right-click → Cover Art) fills the tile — small note badge on top.
-                    return `<div class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-[#2fd0ff]">
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                    </div>`;
-                }
-                return `<div class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60 text-[#2fd0ff]">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                </div>`;
-            }
-            return '';
-        }
-
-        function coverArtTileBg(item) {
-            if (item.type === 'image') return `background-image:url('${item.image}');background-size:cover;background-position:center;`;
-            if ((item.type === 'video' || item.type === 'audio') && item.thumbnail) return `background-image:url('${item.thumbnail}');background-size:cover;background-position:center;`;
-            return '';
-        }
-
-        window.renderCoverArtSlots = function() {
-            const wrap = document.getElementById('cover-art-slots');
-            if (!wrap) return;
-            wrap.innerHTML = window.coverArtSlots.map((slot, si) => `
-                <div class="bg-[#141414] noir-bezel overflow-hidden flex flex-col">
-                    <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/5">
-                        <span onclick="window.coverArtRename(${si})" class="neon-blue-text text-xs font-black uppercase tracking-widest truncate cursor-pointer hover:opacity-70 transition-opacity" title="Click to rename">${slot.name}</span>
-                        <div class="flex items-center gap-2 flex-shrink-0">
-                            <span class="text-[9px] text-gray-600 font-black uppercase tracking-widest">${slot.items.length} item${slot.items.length === 1 ? '' : 's'}</span>
-                            <button onclick="window.coverArtDeleteFolder(${si})" title="Delete folder" class="text-gray-600 hover:text-red-400 transition-colors">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-1 p-1 overflow-y-auto slick-scroll" style="max-height:420px;">
-                        ${slot.items.map((item, ii) => `
-                            <div class="relative aspect-square bg-black border border-white/10 hover:border-[rgba(47,208,255,0.5)] cursor-pointer group transition-colors"
-                                 onclick="window.coverArtItemExpand(${si},${ii})"
-                                 oncontextmenu="window.coverArtOpenContextMenu(event,${si},${ii})"
-                                 style="${coverArtTileBg(item)}">
-                                ${coverArtItemIcon(item)}
-                                ${item.title ? `<div class="absolute bottom-0 left-0 right-0 bg-black/70 px-1.5 py-1 text-[7.5px] font-black uppercase tracking-widest neon-blue-text truncate">${item.title}</div>` : ''}
-                            </div>
-                        `).join('')}
-                        <div onclick="window.coverArtTriggerUpload(${si},null)"
-                             oncontextmenu="window.coverArtOpenContextMenu(event,${si},null)"
-                             class="${slot.items.length === 0 ? 'col-span-3 h-28' : 'aspect-square'} border border-dashed border-white/15 flex flex-col items-center justify-center gap-1 cursor-pointer text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.5)] transition-colors">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
-                            <span class="text-[7.5px] font-black uppercase tracking-widest">Add</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('') + `
-                <div onclick="window.coverArtAddFolder()" class="border border-dashed border-white/15 flex flex-col items-center justify-center gap-2 cursor-pointer text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.5)] transition-colors" style="min-height:120px;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
-                    <span class="text-[9px] font-black uppercase tracking-widest">New Folder</span>
-                </div>
-            `;
-        };
-
-        window.coverArtRename = function(si) {
-            const current = window.coverArtSlots[si].name;
-            const next = prompt('Rename cover art folder:', current);
-            if (next === null) return;
-            const trimmed = next.trim();
-            if (!trimmed) return;
-            window.coverArtSlots[si].name = trimmed;
-            coverArtSave();
-            window.renderCoverArtSlots();
-        };
-
-        window.coverArtAddFolder = function() {
-            const name = prompt('Name for the new folder:', 'New Folder');
-            if (name === null) return;
-            const trimmed = name.trim();
-            if (!trimmed) return;
-            window.coverArtSlots.push({ name: trimmed, items: [] });
-            coverArtSave();
-            window.renderCoverArtSlots();
-        };
-
-        window.coverArtDeleteFolder = function(si) {
-            const slot = window.coverArtSlots[si];
-            if (!slot) return;
-            const msg = slot.items.length
-                ? `Delete "${slot.name}" and its ${slot.items.length} item${slot.items.length === 1 ? '' : 's'}?`
-                : `Delete "${slot.name}"?`;
-            if (!confirm(msg)) return;
-            window.coverArtSlots.splice(si, 1);
-            coverArtSave();
-            window.renderCoverArtSlots();
-        };
-
-        // --- Upload / replace (shared file input, target set beforehand) ---
-        window.coverArtTriggerUpload = function(si, ii) {
-            window.coverArtPendingTarget = { slotIdx: si, itemIdx: ii };
-            document.getElementById('cover-art-file-input').click();
-        };
-
-        function coverArtReadFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-
-        // Grabs a real frame from an uploaded video to use as its tile thumbnail
-        // (a video src can't be used directly as a CSS background-image).
-        function coverArtVideoThumbnail(videoSrc) {
-            return new Promise((resolve) => {
-                const video = document.createElement('video');
-                video.src = videoSrc;
-                video.muted = true;
-                video.playsInline = true;
-                video.preload = 'auto';
-                video.addEventListener('loadeddata', () => {
-                    try { video.currentTime = Math.min(0.5, (video.duration || 1) / 2); }
-                    catch (e) { resolve(null); }
-                });
-                video.addEventListener('seeked', () => {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth || 320;
-                        canvas.height = video.videoHeight || 320;
-                        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.8));
-                    } catch (e) { resolve(null); }
-                }, { once: true });
-                video.addEventListener('error', () => resolve(null));
-            });
-        }
-
-        async function coverArtBuildItem(file) {
-            const type = file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'image';
-            const dataUrl = await coverArtReadFile(file);
-            const item = { image: dataUrl, type, fileName: file.name, title: '', notes: '', thumbnail: null };
-            if (type === 'video') item.thumbnail = await coverArtVideoThumbnail(dataUrl);
-            return item;
-        }
-
-        window.coverArtFileChosen = async function(event) {
-            const files = Array.from(event.target.files || []);
-            event.target.value = '';
-            const target = window.coverArtPendingTarget;
-            if (!files.length || !target) return;
-            const slot = window.coverArtSlots[target.slotIdx];
-
-            if (target.itemIdx === null || target.itemIdx === undefined) {
-                // Add mode — every file picked becomes its own new tile.
-                for (const file of files) {
-                    slot.items.push(await coverArtBuildItem(file));
-                }
-            } else {
-                // Replace mode only ever applies to the one tile that was right-clicked.
-                const old = slot.items[target.itemIdx] || {};
-                const item = await coverArtBuildItem(files[0]);
-                item.title = old.title || '';
-                item.notes = old.notes || '';
-                slot.items[target.itemIdx] = item;
-            }
-            coverArtSave();
-            window.renderCoverArtSlots();
-        };
-
-        // --- Right-click context menu: Upload/Replace, Cover Art (mp3), Edit Details, Save, Delete ---
-        window.coverArtOpenContextMenu = function(event, si, ii) {
-            event.preventDefault();
-            window.coverArtCtxTarget = { slotIdx: si, itemIdx: ii };
-            const menu = document.getElementById('cover-art-ctx-menu');
-            const hasItem = ii !== null && ii !== undefined;
-            const item = hasItem ? window.coverArtSlots[si].items[ii] : null;
-            document.getElementById('cover-art-ctx-coverart-btn').classList.toggle('hidden', !(hasItem && item && item.type === 'audio'));
-            document.getElementById('cover-art-ctx-details-btn').classList.toggle('hidden', !hasItem);
-            document.getElementById('cover-art-ctx-save-btn').classList.toggle('hidden', !hasItem);
-            document.getElementById('cover-art-ctx-delete-btn').classList.toggle('hidden', !hasItem);
-            document.getElementById('cover-art-ctx-upload-btn').innerText = hasItem ? 'Replace' : 'Upload';
-            menu.style.left = event.pageX + 'px';
-            menu.style.top = event.pageY + 'px';
-            menu.classList.remove('hidden');
-        };
-
-        window.coverArtCloseContextMenu = function() {
-            const menu = document.getElementById('cover-art-ctx-menu');
-            if (menu) menu.classList.add('hidden');
-        };
-
-        document.addEventListener('click', (e) => {
-            const menu = document.getElementById('cover-art-ctx-menu');
-            if (menu && !menu.contains(e.target)) menu.classList.add('hidden');
-        });
-
-        window.coverArtCtxUpload = function() {
-            const ctx = window.coverArtCtxTarget;
-            window.coverArtCloseContextMenu();
-            if (!ctx) return;
-            window.coverArtTriggerUpload(ctx.slotIdx, ctx.itemIdx);
-        };
-
-        // Lets an mp3 tile use a custom picture as its thumbnail (audio files have no video frame to grab from).
-        window.coverArtCtxSetCoverArt = function() {
-            const ctx = window.coverArtCtxTarget;
-            window.coverArtCloseContextMenu();
-            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
-            window.coverArtPendingTarget = ctx;
-            document.getElementById('cover-art-coverart-input').click();
-        };
-
-        window.coverArtCoverArtFileChosen = async function(event) {
-            const file = event.target.files && event.target.files[0];
-            event.target.value = '';
-            const target = window.coverArtPendingTarget;
-            if (!file || !target || target.itemIdx === null || target.itemIdx === undefined) return;
-            const dataUrl = await coverArtReadFile(file);
-            const item = window.coverArtSlots[target.slotIdx].items[target.itemIdx];
-            if (!item) return;
-            item.thumbnail = dataUrl;
-            coverArtSave();
-            window.renderCoverArtSlots();
-        };
-
-        window.coverArtCtxSave = function() {
-            const ctx = window.coverArtCtxTarget;
-            window.coverArtCloseContextMenu();
-            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
-            const item = window.coverArtSlots[ctx.slotIdx].items[ctx.itemIdx];
-            if (!item) return;
-            const a = document.createElement('a');
-            a.href = item.image;
-            a.download = item.fileName || (window.coverArtSlots[ctx.slotIdx].name + '.png');
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        };
-
-        window.coverArtCtxDelete = function() {
-            const ctx = window.coverArtCtxTarget;
-            window.coverArtCloseContextMenu();
-            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
-            if (!confirm('Delete this cover art?')) return;
-            window.coverArtSlots[ctx.slotIdx].items.splice(ctx.itemIdx, 1);
-            coverArtSave();
-            window.renderCoverArtSlots();
-        };
-
-        window.coverArtCtxDetails = function() {
-            const ctx = window.coverArtCtxTarget;
-            window.coverArtCloseContextMenu();
-            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
-            window.coverArtOpenDetails(ctx.slotIdx, ctx.itemIdx);
-        };
-
-        // --- Details modal (title + notes per cover art item) ---
-        window.coverArtDetailsTarget = null;
-
-        window.coverArtOpenDetails = function(si, ii) {
-            const item = window.coverArtSlots[si].items[ii];
-            if (!item) return;
-            window.coverArtDetailsTarget = { slotIdx: si, itemIdx: ii };
-            document.getElementById('cover-art-details-title').value = item.title || '';
-            document.getElementById('cover-art-details-notes').value = item.notes || '';
-            document.getElementById('cover-art-details-modal').classList.remove('hidden');
-        };
-
-        window.closeCoverArtDetails = function() {
-            document.getElementById('cover-art-details-modal').classList.add('hidden');
-            window.coverArtDetailsTarget = null;
-        };
-
-        window.saveCoverArtDetails = function() {
-            const target = window.coverArtDetailsTarget;
-            if (!target) return;
-            const item = window.coverArtSlots[target.slotIdx].items[target.itemIdx];
-            if (!item) return;
-            item.title = document.getElementById('cover-art-details-title').value.trim();
-            item.notes = document.getElementById('cover-art-details-notes').value.trim();
-            coverArtSave();
-            window.closeCoverArtDetails();
-            window.renderCoverArtSlots();
-        };
-
-        // --- Expand a tile into the shared lightbox (image/video/audio) ---
-        window.coverArtExpandTarget = null; // { slotIdx, itemIdx } — tracks position for prev/next in the lightbox
-
-        window.coverArtItemExpand = function(si, ii) {
-            const item = window.coverArtSlots[si].items[ii];
-            if (!item) return;
-            window.coverArtExpandTarget = { slotIdx: si, itemIdx: ii };
-            const modal = document.getElementById('gallery-preview-modal');
-            const vid = document.getElementById('gallery-preview-video');
-            const aud = document.getElementById('gallery-preview-audio');
-            const img = document.getElementById('gallery-preview-image');
-            const label = document.getElementById('gallery-preview-label');
-            vid.pause(); aud.pause();
-            vid.classList.add('hidden'); aud.classList.add('hidden'); img.classList.add('hidden');
-            label.innerText = item.title ? item.title : (item.fileName || window.coverArtSlots[si].name);
-            if (item.type === 'video') {
-                vid.src = item.image; vid.classList.remove('hidden');
-                vid.play().catch(() => {});
-            } else if (item.type === 'audio') {
-                aud.src = item.image; aud.classList.remove('hidden');
-                aud.play().catch(() => {});
-            } else {
-                img.src = item.image; img.classList.remove('hidden');
-            }
-            modal.classList.remove('hidden');
-            const showArrows = window.coverArtSlots[si].items.length > 1;
-            document.getElementById('cover-art-preview-prev').classList.toggle('hidden', !showArrows);
-            document.getElementById('cover-art-preview-next').classList.toggle('hidden', !showArrows);
-        };
-
-        window.coverArtExpandPrev = function() {
-            const t = window.coverArtExpandTarget;
-            if (!t) return;
-            const count = window.coverArtSlots[t.slotIdx].items.length;
-            window.coverArtItemExpand(t.slotIdx, (t.itemIdx - 1 + count) % count);
-        };
-
-        window.coverArtExpandNext = function() {
-            const t = window.coverArtExpandTarget;
-            if (!t) return;
-            const count = window.coverArtSlots[t.slotIdx].items.length;
-            window.coverArtItemExpand(t.slotIdx, (t.itemIdx + 1) % count);
         };
 
         // 6.5 UPLOADABLE PHOTOS (Profile Avatar / Player Icon / Magazine Cover)
@@ -7163,7 +6251,6 @@
             safeInit(window.loadDossier, 'loadDossier');
             safeInit(window.renderLibrary, 'renderLibrary');
             safeInit(window.renderGallery, 'renderGallery');
-            safeInit(window.renderCoverArtSlots, 'renderCoverArtSlots');
             safeInit(window.loadSocialLinks, 'loadSocialLinks');
             safeInit(window.loadRelayPreferences, 'loadRelayPreferences');
             safeInit(window.loadRelayHistory, 'loadRelayHistory');
