@@ -5353,11 +5353,18 @@
             return '';
         }
 
+        window.coverArtSelection = new Set(); // "slotIdx:itemIdx" keys of currently selected tiles
+
+        function coverArtSelKey(si, ii) { return si + ':' + ii; }
+
         window.renderCoverArtSlots = function() {
             const wrap = document.getElementById('cover-art-slots');
             if (!wrap) return;
             wrap.innerHTML = window.coverArtSlots.map((slot, si) => `
-                <div class="bg-[#141414] noir-bezel overflow-hidden flex flex-col">
+                <div class="bg-[#141414] noir-bezel overflow-hidden flex flex-col cover-art-dropzone"
+                     ondragover="window.coverArtDragOver(event,${si})"
+                     ondragleave="window.coverArtDragLeave(event,${si})"
+                     ondrop="window.coverArtDrop(event,${si})">
                     <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/5">
                         <span onclick="window.coverArtRename(${si})" class="neon-blue-text text-xs font-black uppercase tracking-widest truncate cursor-pointer hover:opacity-70 transition-opacity" title="Click to rename">${slot.name}</span>
                         <div class="flex items-center gap-2 flex-shrink-0">
@@ -5368,15 +5375,21 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-1 p-1 overflow-y-auto slick-scroll" style="max-height:420px;">
-                        ${slot.items.map((item, ii) => `
-                            <div class="relative aspect-square bg-black border border-white/10 hover:border-[rgba(47,208,255,0.5)] cursor-pointer group transition-colors"
-                                 onclick="window.coverArtItemExpand(${si},${ii})"
+                        ${slot.items.map((item, ii) => {
+                            const key = coverArtSelKey(si, ii);
+                            const selected = window.coverArtSelection.has(key);
+                            return `
+                            <div class="relative aspect-square bg-black border ${selected ? 'border-[#2fd0ff]' : 'border-white/10 hover:border-[rgba(47,208,255,0.5)]'} cursor-pointer group transition-colors"
+                                 onclick="window.coverArtTileClick(event,${si},${ii})"
                                  oncontextmenu="window.coverArtOpenContextMenu(event,${si},${ii})"
                                  style="${coverArtTileBg(item)}">
                                 ${coverArtItemIcon(item)}
                                 ${item.title ? `<div class="absolute bottom-0 left-0 right-0 bg-black/70 px-1.5 py-1 text-[7.5px] font-black uppercase tracking-widest neon-blue-text truncate">${item.title}</div>` : ''}
+                                <button onclick="window.coverArtToggleSelect(event,${si},${ii})" title="Select" class="absolute top-1 left-1 w-4 h-4 rounded-sm border flex items-center justify-center transition-opacity ${selected ? 'opacity-100 bg-[#2fd0ff] border-[#2fd0ff]' : 'opacity-0 group-hover:opacity-100 bg-black/60 border-white/40'}">
+                                    ${selected ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>' : ''}
+                                </button>
                             </div>
-                        `).join('')}
+                        `; }).join('')}
                         <div onclick="window.coverArtTriggerUpload(${si},null)"
                              oncontextmenu="window.coverArtOpenContextMenu(event,${si},null)"
                              class="${slot.items.length === 0 ? 'col-span-3 h-28' : 'aspect-square'} border border-dashed border-white/15 flex flex-col items-center justify-center gap-1 cursor-pointer text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.5)] transition-colors">
@@ -5391,6 +5404,7 @@
                     <span class="text-[9px] font-black uppercase tracking-widest">New Folder</span>
                 </div>
             `;
+            window.renderCoverArtBulkBar();
         };
 
         window.coverArtRename = function(si) {
@@ -5422,6 +5436,7 @@
                 : `Delete "${slot.name}"?`;
             if (!confirm(msg)) return;
             window.coverArtSlots.splice(si, 1);
+            window.coverArtSelection.clear();
             coverArtSave();
             window.renderCoverArtSlots();
         };
@@ -5765,6 +5780,113 @@
             if (!t) return;
             const count = window.coverArtSlots[t.slotIdx].items.length;
             window.coverArtItemExpand(t.slotIdx, (t.itemIdx + 1) % count);
+        };
+
+        // --- Multi-select ---
+        // Clicking a tile normally expands it; if anything is already selected, clicking
+        // another tile's body toggles its selection too, so you don't have to keep hitting
+        // the tiny checkbox for every item once you've started selecting.
+        window.coverArtTileClick = function(event, si, ii) {
+            if (window.coverArtSelection.size > 0) {
+                window.coverArtToggleSelect(event, si, ii);
+                return;
+            }
+            window.coverArtItemExpand(si, ii);
+        };
+
+        window.coverArtToggleSelect = function(event, si, ii) {
+            event.stopPropagation();
+            const key = coverArtSelKey(si, ii);
+            if (window.coverArtSelection.has(key)) window.coverArtSelection.delete(key);
+            else window.coverArtSelection.add(key);
+            window.renderCoverArtSlots();
+        };
+
+        window.coverArtClearSelection = function() {
+            window.coverArtSelection.clear();
+            window.renderCoverArtSlots();
+        };
+
+        function coverArtSelectedItems() {
+            // Returns [{slotIdx, itemIdx}], sorted so splicing later (highest index first
+            // within each folder) doesn't shift the indices of items still queued for removal.
+            return Array.from(window.coverArtSelection).map(key => {
+                const [si, ii] = key.split(':').map(Number);
+                return { slotIdx: si, itemIdx: ii };
+            }).sort((a, b) => b.itemIdx - a.itemIdx);
+        }
+
+        window.renderCoverArtBulkBar = function() {
+            let bar = document.getElementById('cover-art-bulk-bar');
+            const count = window.coverArtSelection.size;
+            if (!bar) return;
+            if (count === 0) { bar.classList.add('hidden'); return; }
+            bar.classList.remove('hidden');
+            document.getElementById('cover-art-bulk-count').innerText = `${count} selected`;
+            const moveSelect = document.getElementById('cover-art-bulk-move-select');
+            moveSelect.innerHTML = '<option value="">Move to…</option>' +
+                window.coverArtSlots.map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
+        };
+
+        window.coverArtBulkDelete = function() {
+            const count = window.coverArtSelection.size;
+            if (!count) return;
+            if (!confirm(`Delete ${count} selected item${count === 1 ? '' : 's'}?`)) return;
+            coverArtSelectedItems().forEach(({ slotIdx, itemIdx }) => {
+                window.coverArtSlots[slotIdx].items.splice(itemIdx, 1);
+            });
+            window.coverArtSelection.clear();
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        window.coverArtBulkSave = function() {
+            coverArtSelectedItems().forEach(({ slotIdx, itemIdx }) => {
+                const item = window.coverArtSlots[slotIdx].items[itemIdx];
+                if (!item) return;
+                const a = document.createElement('a');
+                a.href = item.image;
+                a.download = item.fileName || (window.coverArtSlots[slotIdx].name + '.png');
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+        };
+
+        window.coverArtBulkMove = function(targetSlotIdxRaw) {
+            const targetSlotIdx = parseInt(targetSlotIdxRaw, 10);
+            if (isNaN(targetSlotIdx)) return;
+            const moved = coverArtSelectedItems().map(({ slotIdx, itemIdx }) => {
+                const [item] = window.coverArtSlots[slotIdx].items.splice(itemIdx, 1);
+                return item;
+            }).filter(Boolean);
+            window.coverArtSlots[targetSlotIdx].items.push(...moved);
+            window.coverArtSelection.clear();
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        // --- Drag-and-drop upload straight onto a folder ---
+        window.coverArtDragOver = function(event, si) {
+            event.preventDefault();
+            event.currentTarget.classList.add('cover-art-drop-active');
+        };
+
+        window.coverArtDragLeave = function(event, si) {
+            event.currentTarget.classList.remove('cover-art-drop-active');
+        };
+
+        window.coverArtDrop = async function(event, si) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('cover-art-drop-active');
+            const files = Array.from(event.dataTransfer ? event.dataTransfer.files : []);
+            if (!files.length) return;
+            const slot = window.coverArtSlots[si];
+            for (const file of files) {
+                slot.items.push(await coverArtBuildItem(file));
+            }
+            coverArtSave();
+            window.renderCoverArtSlots();
         };
 
         // 6.5 UPLOADABLE PHOTOS (Profile Avatar / Player Icon / Magazine Cover)
