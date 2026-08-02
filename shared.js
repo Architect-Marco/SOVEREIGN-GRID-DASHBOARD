@@ -2714,8 +2714,6 @@
             ] },
             { id: 'appearance', label: 'Appearance', children: [
                 { id: 'appearance-ruler', label: 'Ruler/Grid' },
-                { id: 'appearance-media-items', label: 'Media Items' },
-                { id: 'appearance-media-buttons', label: 'Media Item Buttons' },
                 { id: 'appearance-peaks', label: 'Peaks/Waveforms' },
                 { id: 'appearance-fades', label: 'Fades/Crossfades' },
                 { id: 'appearance-track-panels', label: 'Track Control Panels' },
@@ -3170,6 +3168,214 @@
                             }).join('')}
                         </div>
                         <button onclick="window.dawShortcutResetAll()" class="px-4 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.3)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Reset All to Defaults</button>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'appearance') {
+                titleEl.innerText = 'Appearance settings';
+                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
+                content.innerHTML = `
+                    <div class="space-y-3.5">
+                        <div>
+                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">Tooltips:</div>
+                            <div class="flex items-center gap-5 flex-wrap">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> UI elements</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Items/envelopes</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Envs on hover</label>
+                                <span class="text-[10px] text-gray-500 ml-2">Delay:</span>
+                                <input type="range" class="w-24">
+                            </div>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1.5"><input type="checkbox" class="daw-checkbox"> Peak and loudness value when mouse over media item</label>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-y-1.5 gap-x-4">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Legacy text rendering mode (not recommended)</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Draw vertical text bottom-up</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Frameless floating toolbar windows</label>
+                            <span></span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Don't scale toolbar buttons below 1:1</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Don't scale toolbar buttons above 1:1</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Don't animate armed-action toolbar buttons</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Don't animate any toolbar buttons</label>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] font-bold neon-blue-text w-52 flex-shrink-0">Vertical space at bottom of track:</span>
+                            <input type="text" value="4" class="w-16 ${selectCls}">
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[11px] font-bold neon-blue-text w-40 flex-shrink-0">Visual track spacer size:</span>
+                            <input type="text" value="16" class="w-16 ${selectCls}">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text ml-4"><input type="checkbox" checked class="daw-checkbox"> Limit TCP spacer height to lane size</label>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-y-1.5 gap-x-4 pt-1">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Antialised fades and envelopes</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Horizontal grid lines in automation lanes</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Filled automation envelopes</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Filled envelopes drawn over media</label>
+                        </div>
+
+                        <div class="flex items-center gap-6 flex-wrap">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Envelope point size scaling:</span>
+                                <input type="text" value="1.0" class="w-14 ${selectCls}">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-bold neon-blue-text">Scale non-selected points:</span>
+                                <input type="text" value="1.0" class="w-14 ${selectCls}">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-y-1.5 gap-x-4 pt-1">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Highlight edit cursor over last selected track</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Show guide lines when editing</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Solid edge on time selection highlight</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Solid edge on loop selection</label>
+                        </div>
+
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Display vertical line at mouse position:</label>
+                            <select class="${selectCls}"><option>Do not snap indicator line</option><option>Snap to grid</option></select>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] font-bold neon-blue-text">Play cursor width:</span>
+                            <input type="text" value="2" class="w-14 ${selectCls}">
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[11px] font-bold neon-blue-text w-72 flex-shrink-0">Hide docker tabs when single window and smaller than:</span>
+                            <input type="text" value="200" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">pixels</span>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'appearance-peaks') {
+                titleEl.innerText = 'Audio peak/waveform appearance';
+                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
+                content.innerHTML = `
+                    <div class="space-y-3.5">
+                        <div class="flex items-center gap-6 flex-wrap">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Display peaks</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Display while recording</label>
+                            <div class="flex items-center gap-2 ml-auto">
+                                <span class="text-[11px] font-bold neon-blue-text">Minimum height:</span>
+                                <input type="text" value="8" class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">pixels</span>
+                            </div>
+                        </div>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Only display peaks for selected tracks</label>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Only display peaks for tracks and items that are soloed or not muted</label>
+
+                        <div class="flex items-center gap-3">
+                            <label class="text-[11px] font-bold neon-blue-text w-24 flex-shrink-0">Sample view:</label>
+                            <select class="${selectCls}"><option>Dots and lines</option><option>Peaks only</option></select>
+                        </div>
+
+                        <div class="flex items-center gap-6 flex-wrap">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Draw waveform zero-lines above peaks/waveforms</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Fill waveforms to zero line</label>
+                        </div>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Scale peaks by pre-fx volume/pan and per-take envelopes</label>
+                        <div class="flex items-center gap-6 flex-wrap">
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Draw faint peaks in folder tracks</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Draw faint peaks in automation envelope lanes</label>
+                        </div>
+
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="text-[11px] font-bold neon-blue-text w-56 flex-shrink-0">Display MIDI CC lanes in arrange view:</label>
+                            <select class="flex-1 ${selectCls}"><option>Multiple lanes when space permits (default)</option><option>Single lane</option></select>
+                        </div>
+
+                        <div class="flex items-center gap-6 flex-wrap">
+                            <span class="text-[11px] font-bold neon-blue-text">Display MIDI:</span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Program names</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Text events</label>
+                        </div>
+
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" class="daw-checkbox"> Display high-resolution spectrogram when zoomed-in and spectrogram view</label>
+                        <div class="pl-6 space-y-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-[11px] font-bold neon-blue-text w-72 flex-shrink-0">Maximum arrange view width (seconds, 20 is default)</span>
+                                <input type="text" value="20" class="w-16 ${selectCls}">
+                            </div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-[11px] font-bold neon-blue-text w-72 flex-shrink-0">Minimum item height (percentage of view, 25% is default)</span>
+                                <input type="text" value="25" class="w-16 ${selectCls}">
+                            </div>
+                        </div>
+
+                        <div class="bg-black/40 border border-white/5 rounded-xl p-4 mt-1">
+                            <div class="text-gray-500 text-[10px] mb-2.5">Extra peaks display options — many themes including the default override these:</div>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text opacity-60"><input type="checkbox" checked disabled class="daw-checkbox"> Antialiased peak and waveform drawing</label>
+                            <div class="grid grid-cols-3 gap-y-1.5 pt-1">
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text opacity-60"><input type="checkbox" checked disabled class="daw-checkbox"> Draw edges on peaks</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text opacity-60"><input type="checkbox" checked disabled class="daw-checkbox"> Draw edges on waveforms</label>
+                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text opacity-60"><input type="checkbox" checked disabled class="daw-checkbox"> Draw edges on MIDI events</label>
+                            </div>
+                            <div class="pt-3 space-y-1.5">
+                                <div class="flex items-center gap-3 flex-wrap">
+                                    <span class="text-[10.5px] text-gray-400 w-56 flex-shrink-0">Tint media item waveform peaks to:</span>
+                                    <label class="flex items-center gap-2 text-[10.5px] font-bold neon-blue-text opacity-60"><input type="checkbox" checked disabled class="daw-checkbox"> Track color</label>
+                                    <label class="flex items-center gap-2 text-[10.5px] font-bold neon-blue-text opacity-60"><input type="checkbox" disabled class="daw-checkbox"> Item color</label>
+                                    <label class="flex items-center gap-2 text-[10.5px] font-bold neon-blue-text opacity-60"><input type="checkbox" checked disabled class="daw-checkbox"> Take color</label>
+                                </div>
+                                <div class="flex items-center gap-3 flex-wrap">
+                                    <span class="text-[10.5px] text-gray-400 w-56 flex-shrink-0">Tint media item background to:</span>
+                                    <label class="flex items-center gap-2 text-[10.5px] font-bold neon-blue-text opacity-60"><input type="checkbox" checked disabled class="daw-checkbox"> Track color</label>
+                                    <label class="flex items-center gap-2 text-[10.5px] font-bold neon-blue-text opacity-60"><input type="checkbox" disabled class="daw-checkbox"> Item color</label>
+                                    <label class="flex items-center gap-2 text-[10.5px] font-bold neon-blue-text opacity-60"><input type="checkbox" checked disabled class="daw-checkbox"> Take color</label>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-6 flex-wrap pt-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10.5px] text-gray-400">Tint strength (0-4) for selected media item background:</span>
+                                    <input type="text" value="2" disabled class="w-12 ${selectCls} opacity-60">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10.5px] text-gray-400">Unselected:</span>
+                                    <input type="text" value="2" disabled class="w-12 ${selectCls} opacity-60">
+                                </div>
+                            </div>
+                            <div class="text-gray-600 text-[9.5px] pt-2">Set custom track colors from the Track menu, custom item and take colors from the Item menu.</div>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (pageId === 'appearance-fades') {
+                titleEl.innerText = 'Media item fade/crossfade appearance';
+                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
+                content.innerHTML = `
+                    <div class="space-y-3.5">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[11px] font-bold neon-blue-text">Prevent editing fade-in/out when item is less than:</span>
+                            <input type="text" value="28" class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">pixels wide or</span>
+                            <input type="text" value="8" class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">pixels tall</span>
+                        </div>
+
+                        <div class="flex items-center gap-6 flex-wrap">
+                            <span class="text-[11px] font-bold neon-blue-text">Allow mouse to target:</span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> fade-in/out curve</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> fade start/end line</label>
+                        </div>
+
+                        <div class="flex items-center gap-4 flex-wrap">
+                            <span class="text-[11px] font-bold neon-blue-text w-44 flex-shrink-0">Show fade-in/out handle:</span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-fadehandle" class="daw-checkbox" style="border-radius:50%;"> always</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-fadehandle" checked class="daw-checkbox" style="border-radius:50%;"> never</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-fadehandle" class="daw-checkbox" style="border-radius:50%;"> when fade is less than</label>
+                            <input type="text" value="4" class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">pixels wide</span>
+                        </div>
+                        <div class="flex items-center gap-4 flex-wrap">
+                            <span class="text-[11px] font-bold neon-blue-text w-44 flex-shrink-0">Show crossfade handle:</span>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-crossfadehandle" class="daw-checkbox" style="border-radius:50%;"> always</label>
+                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-crossfadehandle" checked class="daw-checkbox" style="border-radius:50%;"> when media items are not aligned vertically</label>
+                        </div>
+
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" class="daw-checkbox"> When editing crossfades with the mouse, use crossfade editor theme colors</label>
+                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> In arrange view, apply crossfade editor theme colors to crossfaded area only</label>
                     </div>`;
                 return;
             }
