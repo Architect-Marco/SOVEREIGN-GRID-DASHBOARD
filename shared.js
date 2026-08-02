@@ -4640,6 +4640,374 @@
             if (vid) vid.pause();
             if (aud) aud.pause();
             document.getElementById('gallery-preview-modal').classList.add('hidden');
+            document.getElementById('cover-art-preview-prev').classList.add('hidden');
+            document.getElementById('cover-art-preview-next').classList.add('hidden');
+            window.coverArtExpandTarget = null;
+        };
+
+        // ===== GALLERY — COVER ART FOLDERS (named folders, each holding multiple cover art tiles) =====
+        window.coverArtSlots = (() => {
+            try {
+                const saved = JSON.parse(localStorage.getItem('sbn-cover-art-slots') || 'null');
+                if (Array.isArray(saved) && saved.length) {
+                    // Migrate from the old single-image-per-slot shape if needed.
+                    return saved.map(s => Array.isArray(s.items) ? s : {
+                        name: s.name,
+                        items: s.image ? [{ image: s.image, type: s.type || 'image', fileName: s.fileName || '', title: '', notes: '' }] : []
+                    });
+                }
+            } catch (e) {}
+            return [
+                { name: 'Cover Art 1', items: [] },
+                { name: 'Cover Art 2', items: [] },
+                { name: 'Cover Art 3', items: [] }
+            ];
+        })();
+
+        function coverArtSave() {
+            try { localStorage.setItem('sbn-cover-art-slots', JSON.stringify(window.coverArtSlots)); } catch (e) {}
+        }
+
+        window.coverArtPendingTarget = null; // { slotIdx, itemIdx } — itemIdx null means "add new"
+        window.coverArtCtxTarget = null;     // { slotIdx, itemIdx } — which tile the open context menu refers to
+
+        function coverArtItemIcon(item) {
+            if (item.type === 'video') {
+                if (item.thumbnail) {
+                    // Thumbnail already fills the tile as a background-image — just a small play badge on top.
+                    return `<div class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-[#2fd0ff]">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    </div>`;
+                }
+                return `<div class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60 text-[#2fd0ff]">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="m22 8-5 4 5 4V8Z"/></svg>
+                </div>`;
+            }
+            if (item.type === 'audio') {
+                if (item.thumbnail) {
+                    // Custom cover art (set via right-click → Cover Art) fills the tile — small note badge on top.
+                    return `<div class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-[#2fd0ff]">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                    </div>`;
+                }
+                return `<div class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60 text-[#2fd0ff]">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                </div>`;
+            }
+            return '';
+        }
+
+        function coverArtTileBg(item) {
+            if (item.type === 'image') return `background-image:url('${item.image}');background-size:cover;background-position:center;`;
+            if ((item.type === 'video' || item.type === 'audio') && item.thumbnail) return `background-image:url('${item.thumbnail}');background-size:cover;background-position:center;`;
+            return '';
+        }
+
+        window.renderCoverArtSlots = function() {
+            const wrap = document.getElementById('cover-art-slots');
+            if (!wrap) return;
+            wrap.innerHTML = window.coverArtSlots.map((slot, si) => `
+                <div class="bg-[#141414] noir-bezel overflow-hidden flex flex-col">
+                    <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/5">
+                        <span onclick="window.coverArtRename(${si})" class="neon-blue-text text-xs font-black uppercase tracking-widest truncate cursor-pointer hover:opacity-70 transition-opacity" title="Click to rename">${slot.name}</span>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="text-[9px] text-gray-600 font-black uppercase tracking-widest">${slot.items.length} item${slot.items.length === 1 ? '' : 's'}</span>
+                            <button onclick="window.coverArtDeleteFolder(${si})" title="Delete folder" class="text-gray-600 hover:text-red-400 transition-colors">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1 p-1 overflow-y-auto slick-scroll" style="max-height:420px;">
+                        ${slot.items.map((item, ii) => `
+                            <div class="relative aspect-square bg-black border border-white/10 hover:border-[rgba(47,208,255,0.5)] cursor-pointer group transition-colors"
+                                 onclick="window.coverArtItemExpand(${si},${ii})"
+                                 oncontextmenu="window.coverArtOpenContextMenu(event,${si},${ii})"
+                                 style="${coverArtTileBg(item)}">
+                                ${coverArtItemIcon(item)}
+                                ${item.title ? `<div class="absolute bottom-0 left-0 right-0 bg-black/70 px-1.5 py-1 text-[7.5px] font-black uppercase tracking-widest neon-blue-text truncate">${item.title}</div>` : ''}
+                            </div>
+                        `).join('')}
+                        <div onclick="window.coverArtTriggerUpload(${si},null)"
+                             oncontextmenu="window.coverArtOpenContextMenu(event,${si},null)"
+                             class="${slot.items.length === 0 ? 'col-span-3 h-28' : 'aspect-square'} border border-dashed border-white/15 flex flex-col items-center justify-center gap-1 cursor-pointer text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.5)] transition-colors">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+                            <span class="text-[7.5px] font-black uppercase tracking-widest">Add</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('') + `
+                <div onclick="window.coverArtAddFolder()" class="border border-dashed border-white/15 flex flex-col items-center justify-center gap-2 cursor-pointer text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.5)] transition-colors" style="min-height:120px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+                    <span class="text-[9px] font-black uppercase tracking-widest">New Folder</span>
+                </div>
+            `;
+        };
+
+        window.coverArtRename = function(si) {
+            const current = window.coverArtSlots[si].name;
+            const next = prompt('Rename cover art folder:', current);
+            if (next === null) return;
+            const trimmed = next.trim();
+            if (!trimmed) return;
+            window.coverArtSlots[si].name = trimmed;
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        window.coverArtAddFolder = function() {
+            const name = prompt('Name for the new folder:', 'New Folder');
+            if (name === null) return;
+            const trimmed = name.trim();
+            if (!trimmed) return;
+            window.coverArtSlots.push({ name: trimmed, items: [] });
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        window.coverArtDeleteFolder = function(si) {
+            const slot = window.coverArtSlots[si];
+            if (!slot) return;
+            const msg = slot.items.length
+                ? `Delete "${slot.name}" and its ${slot.items.length} item${slot.items.length === 1 ? '' : 's'}?`
+                : `Delete "${slot.name}"?`;
+            if (!confirm(msg)) return;
+            window.coverArtSlots.splice(si, 1);
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        // --- Upload / replace (shared file input, target set beforehand) ---
+        window.coverArtTriggerUpload = function(si, ii) {
+            window.coverArtPendingTarget = { slotIdx: si, itemIdx: ii };
+            document.getElementById('cover-art-file-input').click();
+        };
+
+        function coverArtReadFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Grabs a real frame from an uploaded video to use as its tile thumbnail
+        // (a video src can't be used directly as a CSS background-image).
+        function coverArtVideoThumbnail(videoSrc) {
+            return new Promise((resolve) => {
+                const video = document.createElement('video');
+                video.src = videoSrc;
+                video.muted = true;
+                video.playsInline = true;
+                video.preload = 'auto';
+                video.addEventListener('loadeddata', () => {
+                    try { video.currentTime = Math.min(0.5, (video.duration || 1) / 2); }
+                    catch (e) { resolve(null); }
+                });
+                video.addEventListener('seeked', () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth || 320;
+                        canvas.height = video.videoHeight || 320;
+                        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.8));
+                    } catch (e) { resolve(null); }
+                }, { once: true });
+                video.addEventListener('error', () => resolve(null));
+            });
+        }
+
+        async function coverArtBuildItem(file) {
+            const type = file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'image';
+            const dataUrl = await coverArtReadFile(file);
+            const item = { image: dataUrl, type, fileName: file.name, title: '', notes: '', thumbnail: null };
+            if (type === 'video') item.thumbnail = await coverArtVideoThumbnail(dataUrl);
+            return item;
+        }
+
+        window.coverArtFileChosen = async function(event) {
+            const files = Array.from(event.target.files || []);
+            event.target.value = '';
+            const target = window.coverArtPendingTarget;
+            if (!files.length || !target) return;
+            const slot = window.coverArtSlots[target.slotIdx];
+
+            if (target.itemIdx === null || target.itemIdx === undefined) {
+                // Add mode — every file picked becomes its own new tile.
+                for (const file of files) {
+                    slot.items.push(await coverArtBuildItem(file));
+                }
+            } else {
+                // Replace mode only ever applies to the one tile that was right-clicked.
+                const old = slot.items[target.itemIdx] || {};
+                const item = await coverArtBuildItem(files[0]);
+                item.title = old.title || '';
+                item.notes = old.notes || '';
+                slot.items[target.itemIdx] = item;
+            }
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        // --- Right-click context menu: Upload/Replace, Cover Art (mp3), Edit Details, Save, Delete ---
+        window.coverArtOpenContextMenu = function(event, si, ii) {
+            event.preventDefault();
+            window.coverArtCtxTarget = { slotIdx: si, itemIdx: ii };
+            const menu = document.getElementById('cover-art-ctx-menu');
+            const hasItem = ii !== null && ii !== undefined;
+            const item = hasItem ? window.coverArtSlots[si].items[ii] : null;
+            document.getElementById('cover-art-ctx-coverart-btn').classList.toggle('hidden', !(hasItem && item && item.type === 'audio'));
+            document.getElementById('cover-art-ctx-details-btn').classList.toggle('hidden', !hasItem);
+            document.getElementById('cover-art-ctx-save-btn').classList.toggle('hidden', !hasItem);
+            document.getElementById('cover-art-ctx-delete-btn').classList.toggle('hidden', !hasItem);
+            document.getElementById('cover-art-ctx-upload-btn').innerText = hasItem ? 'Replace' : 'Upload';
+            menu.style.left = event.pageX + 'px';
+            menu.style.top = event.pageY + 'px';
+            menu.classList.remove('hidden');
+        };
+
+        window.coverArtCloseContextMenu = function() {
+            const menu = document.getElementById('cover-art-ctx-menu');
+            if (menu) menu.classList.add('hidden');
+        };
+
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('cover-art-ctx-menu');
+            if (menu && !menu.contains(e.target)) menu.classList.add('hidden');
+        });
+
+        window.coverArtCtxUpload = function() {
+            const ctx = window.coverArtCtxTarget;
+            window.coverArtCloseContextMenu();
+            if (!ctx) return;
+            window.coverArtTriggerUpload(ctx.slotIdx, ctx.itemIdx);
+        };
+
+        // Lets an mp3 tile use a custom picture as its thumbnail (audio files have no video frame to grab from).
+        window.coverArtCtxSetCoverArt = function() {
+            const ctx = window.coverArtCtxTarget;
+            window.coverArtCloseContextMenu();
+            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
+            window.coverArtPendingTarget = ctx;
+            document.getElementById('cover-art-coverart-input').click();
+        };
+
+        window.coverArtCoverArtFileChosen = async function(event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            const target = window.coverArtPendingTarget;
+            if (!file || !target || target.itemIdx === null || target.itemIdx === undefined) return;
+            const dataUrl = await coverArtReadFile(file);
+            const item = window.coverArtSlots[target.slotIdx].items[target.itemIdx];
+            if (!item) return;
+            item.thumbnail = dataUrl;
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        window.coverArtCtxSave = function() {
+            const ctx = window.coverArtCtxTarget;
+            window.coverArtCloseContextMenu();
+            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
+            const item = window.coverArtSlots[ctx.slotIdx].items[ctx.itemIdx];
+            if (!item) return;
+            const a = document.createElement('a');
+            a.href = item.image;
+            a.download = item.fileName || (window.coverArtSlots[ctx.slotIdx].name + '.png');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
+
+        window.coverArtCtxDelete = function() {
+            const ctx = window.coverArtCtxTarget;
+            window.coverArtCloseContextMenu();
+            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
+            if (!confirm('Delete this cover art?')) return;
+            window.coverArtSlots[ctx.slotIdx].items.splice(ctx.itemIdx, 1);
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        window.coverArtCtxDetails = function() {
+            const ctx = window.coverArtCtxTarget;
+            window.coverArtCloseContextMenu();
+            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
+            window.coverArtOpenDetails(ctx.slotIdx, ctx.itemIdx);
+        };
+
+        // --- Details modal (title + notes per cover art item) ---
+        window.coverArtDetailsTarget = null;
+
+        window.coverArtOpenDetails = function(si, ii) {
+            const item = window.coverArtSlots[si].items[ii];
+            if (!item) return;
+            window.coverArtDetailsTarget = { slotIdx: si, itemIdx: ii };
+            document.getElementById('cover-art-details-title').value = item.title || '';
+            document.getElementById('cover-art-details-notes').value = item.notes || '';
+            document.getElementById('cover-art-details-modal').classList.remove('hidden');
+        };
+
+        window.closeCoverArtDetails = function() {
+            document.getElementById('cover-art-details-modal').classList.add('hidden');
+            window.coverArtDetailsTarget = null;
+        };
+
+        window.saveCoverArtDetails = function() {
+            const target = window.coverArtDetailsTarget;
+            if (!target) return;
+            const item = window.coverArtSlots[target.slotIdx].items[target.itemIdx];
+            if (!item) return;
+            item.title = document.getElementById('cover-art-details-title').value.trim();
+            item.notes = document.getElementById('cover-art-details-notes').value.trim();
+            coverArtSave();
+            window.closeCoverArtDetails();
+            window.renderCoverArtSlots();
+        };
+
+        // --- Expand a tile into the shared lightbox (image/video/audio) ---
+        window.coverArtExpandTarget = null; // { slotIdx, itemIdx } — tracks position for prev/next in the lightbox
+
+        window.coverArtItemExpand = function(si, ii) {
+            const item = window.coverArtSlots[si].items[ii];
+            if (!item) return;
+            window.coverArtExpandTarget = { slotIdx: si, itemIdx: ii };
+            const modal = document.getElementById('gallery-preview-modal');
+            const vid = document.getElementById('gallery-preview-video');
+            const aud = document.getElementById('gallery-preview-audio');
+            const img = document.getElementById('gallery-preview-image');
+            const label = document.getElementById('gallery-preview-label');
+            vid.pause(); aud.pause();
+            vid.classList.add('hidden'); aud.classList.add('hidden'); img.classList.add('hidden');
+            label.innerText = item.title ? item.title : (item.fileName || window.coverArtSlots[si].name);
+            if (item.type === 'video') {
+                vid.src = item.image; vid.classList.remove('hidden');
+                vid.play().catch(() => {});
+            } else if (item.type === 'audio') {
+                if (item.thumbnail) { img.src = item.thumbnail; img.classList.remove('hidden'); }
+                aud.src = item.image; aud.classList.remove('hidden');
+                aud.play().catch(() => {});
+            } else {
+                img.src = item.image; img.classList.remove('hidden');
+            }
+            modal.classList.remove('hidden');
+            const showArrows = window.coverArtSlots[si].items.length > 1;
+            document.getElementById('cover-art-preview-prev').classList.toggle('hidden', !showArrows);
+            document.getElementById('cover-art-preview-next').classList.toggle('hidden', !showArrows);
+        };
+
+        window.coverArtExpandPrev = function() {
+            const t = window.coverArtExpandTarget;
+            if (!t) return;
+            const count = window.coverArtSlots[t.slotIdx].items.length;
+            window.coverArtItemExpand(t.slotIdx, (t.itemIdx - 1 + count) % count);
+        };
+
+        window.coverArtExpandNext = function() {
+            const t = window.coverArtExpandTarget;
+            if (!t) return;
+            const count = window.coverArtSlots[t.slotIdx].items.length;
+            window.coverArtItemExpand(t.slotIdx, (t.itemIdx + 1) % count);
         };
 
         // 6.5 UPLOADABLE PHOTOS (Profile Avatar / Player Icon / Magazine Cover)
@@ -6254,6 +6622,7 @@
             safeInit(window.loadDossier, 'loadDossier');
             safeInit(window.renderLibrary, 'renderLibrary');
             safeInit(window.renderGallery, 'renderGallery');
+            safeInit(window.renderCoverArtSlots, 'renderCoverArtSlots');
             safeInit(window.loadSocialLinks, 'loadSocialLinks');
             safeInit(window.loadRelayPreferences, 'loadRelayPreferences');
             safeInit(window.loadRelayHistory, 'loadRelayHistory');
