@@ -4414,8 +4414,9 @@
                 const isSelected = item.name === window.gallerySelectedName;
                 const icon = item.type === 'video' ? GALLERY_ICON_VIDEO : (item.type === 'audio' ? GALLERY_ICON_AUDIO : GALLERY_ICON_IMAGE);
                 const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:120%;background-position:center;` : '';
+                const safeName = item.name.replace(/'/g, "\\'");
                 return `
-                <div onclick="window.gallerySelect('${item.name.replace(/'/g, "\\'")}')" class="flex-shrink-0 w-48 h-60 rounded-xl bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all relative overflow-hidden" style="${coverStyle}">
+                <div onclick="window.gallerySelect('${safeName}')" oncontextmenu="window.galleryItemOpenContextMenu(event,'${safeName}')" class="flex-shrink-0 w-48 h-60 rounded-xl bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all relative overflow-hidden" style="${coverStyle}">
                     ${!item.coverArt ? '<span class="neon-blue-text opacity-70">' + icon + '</span>' : ''}
                     ${item.type === 'video' || item.type === 'audio' ? '<span class="absolute bottom-2 left-2 right-2 text-[7px] text-gray-400 font-bold truncate bg-black/60 px-1.5 py-0.5 rounded">' + item.name + '</span>' : ''}
                 </div>`;
@@ -4504,7 +4505,7 @@
                     const coverStyle = item.coverArt ? `background-image:url('${item.coverArt}');background-size:112%;background-position:center;` : '';
                     const safeName = item.name.replace(/'/g, "\\'");
                     return `
-                    <div onclick="window.gallerySelect('${safeName}')" class="group relative aspect-square rounded-lg bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex items-center justify-center cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all overflow-hidden" style="${coverStyle}">
+                    <div onclick="window.gallerySelect('${safeName}')" oncontextmenu="window.galleryItemOpenContextMenu(event,'${safeName}')" class="group relative aspect-square rounded-lg bg-gradient-to-b from-[#2a2a2a] to-[#151515] border ${isSelected ? 'border-[#2fd0ff] neon-blue-glow' : 'border-white/5'} flex items-center justify-center cursor-pointer hover:border-[rgba(47,208,255,0.5)] transition-all overflow-hidden" style="${coverStyle}">
                         ${!item.coverArt ? '<span class="neon-blue-text opacity-70 [&_svg]:w-6 [&_svg]:h-6">' + icon + '</span>' : ''}
                         <span class="absolute bottom-0 inset-x-0 text-[7px] text-gray-300 font-bold truncate bg-black/70 px-1.5 py-1">${item.name}</span>
                         <button onclick="window.deleteGalleryItem('${safeName}', event)" title="Delete" class="absolute top-1 right-1 w-5 h-5 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 neon-blue-text hover:bg-white/20">
@@ -4521,7 +4522,7 @@
                 const iconColor = item.type === 'folder' ? 'neon-blue-text' : 'text-gray-500';
                 const safeName = item.name.replace(/'/g, "\\'");
                 return `
-                <div onclick="window.gallerySelect('${safeName}')" class="group grid gap-2 px-5 py-2 items-center cursor-pointer transition-colors ${isSelected ? 'bg-[#2fd0ff]/10' : (i % 2 === 0 ? 'bg-white/[0.02]' : '') + ' hover:bg-white/5'}" style="grid-template-columns:1fr 90px 140px 140px 32px;">
+                <div onclick="window.gallerySelect('${safeName}')" ${item.type !== 'folder' ? `oncontextmenu="window.galleryItemOpenContextMenu(event,'${safeName}')"` : ''} class="group grid gap-2 px-5 py-2 items-center cursor-pointer transition-colors ${isSelected ? 'bg-[#2fd0ff]/10' : (i % 2 === 0 ? 'bg-white/[0.02]' : '') + ' hover:bg-white/5'}" style="grid-template-columns:1fr 90px 140px 140px 32px;">
                     <span class="flex items-center gap-2.5 min-w-0">
                         <span class="${isSelected ? 'text-[#2fd0ff]' : iconColor} flex-shrink-0 [&_svg]:w-4 [&_svg]:h-4">${icon}</span>
                         <span class="text-xs font-bold truncate ${isSelected ? 'text-[#2fd0ff]' : 'text-gray-200'}">${item.name}</span>
@@ -4906,8 +4907,22 @@
         window.coverArtFileChosen = async function(event) {
             const files = Array.from(event.target.files || []);
             event.target.value = '';
+            if (!files.length) return;
+
+            if (window.galleryItemPendingTarget) {
+                const name = window.galleryItemPendingTarget;
+                window.galleryItemPendingTarget = null;
+                const item = window.galleryItems.find(i => i.name === name);
+                if (!item) return;
+                const file = files[0];
+                item.src = await coverArtReadFile(file);
+                item.type = file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'image';
+                window.renderGallery();
+                return;
+            }
+
             const target = window.coverArtPendingTarget;
-            if (!files.length || !target) return;
+            if (!target) return;
             const slot = window.coverArtSlots[target.slotIdx];
 
             if (target.itemIdx === null || target.itemIdx === undefined) {
@@ -4928,9 +4943,11 @@
         };
 
         // --- Right-click context menu: Upload/Replace, Cover Art (mp3), Edit Details, Save, Delete ---
+        // Shared by cover art folder tiles ({kind:'coverart', slotIdx, itemIdx}) and the main
+        // gallery's filmstrip/list items ({kind:'gallery', name}).
         window.coverArtOpenContextMenu = function(event, si, ii) {
             event.preventDefault();
-            window.coverArtCtxTarget = { slotIdx: si, itemIdx: ii };
+            window.coverArtCtxTarget = { kind: 'coverart', slotIdx: si, itemIdx: ii };
             const menu = document.getElementById('cover-art-ctx-menu');
             const hasItem = ii !== null && ii !== undefined;
             const item = hasItem ? window.coverArtSlots[si].items[ii] : null;
@@ -4939,6 +4956,22 @@
             document.getElementById('cover-art-ctx-save-btn').classList.toggle('hidden', !hasItem);
             document.getElementById('cover-art-ctx-delete-btn').classList.toggle('hidden', !hasItem);
             document.getElementById('cover-art-ctx-upload-btn').innerText = hasItem ? 'Replace' : 'Upload';
+            menu.style.left = event.pageX + 'px';
+            menu.style.top = event.pageY + 'px';
+            menu.classList.remove('hidden');
+        };
+
+        window.galleryItemOpenContextMenu = function(event, name) {
+            event.preventDefault();
+            const item = window.galleryItems.find(i => i.name === name);
+            if (!item) return;
+            window.coverArtCtxTarget = { kind: 'gallery', name };
+            const menu = document.getElementById('cover-art-ctx-menu');
+            document.getElementById('cover-art-ctx-coverart-btn').classList.toggle('hidden', item.type !== 'audio');
+            document.getElementById('cover-art-ctx-details-btn').classList.remove('hidden');
+            document.getElementById('cover-art-ctx-save-btn').classList.remove('hidden');
+            document.getElementById('cover-art-ctx-delete-btn').classList.remove('hidden');
+            document.getElementById('cover-art-ctx-upload-btn').innerText = 'Replace';
             menu.style.left = event.pageX + 'px';
             menu.style.top = event.pageY + 'px';
             menu.classList.remove('hidden');
@@ -4958,23 +4991,43 @@
             const ctx = window.coverArtCtxTarget;
             window.coverArtCloseContextMenu();
             if (!ctx) return;
-            window.coverArtTriggerUpload(ctx.slotIdx, ctx.itemIdx);
+            if (ctx.kind === 'gallery') {
+                window.galleryItemPendingTarget = ctx.name;
+                document.getElementById('cover-art-file-input').click();
+            } else {
+                window.coverArtTriggerUpload(ctx.slotIdx, ctx.itemIdx);
+            }
         };
 
         // Lets an mp3 tile use a custom picture as its thumbnail (audio files have no video frame to grab from).
         window.coverArtCtxSetCoverArt = function() {
             const ctx = window.coverArtCtxTarget;
             window.coverArtCloseContextMenu();
-            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
-            window.coverArtPendingTarget = ctx;
-            document.getElementById('cover-art-coverart-input').click();
+            if (!ctx) return;
+            if (ctx.kind === 'gallery') {
+                window.galleryItemCoverArtPendingTarget = ctx.name;
+                document.getElementById('cover-art-coverart-input').click();
+            } else {
+                if (ctx.itemIdx === null || ctx.itemIdx === undefined) return;
+                window.coverArtPendingTarget = ctx;
+                document.getElementById('cover-art-coverart-input').click();
+            }
         };
 
         window.coverArtCoverArtFileChosen = async function(event) {
             const file = event.target.files && event.target.files[0];
             event.target.value = '';
+            if (!file) return;
+            if (window.galleryItemCoverArtPendingTarget) {
+                const item = window.galleryItems.find(i => i.name === window.galleryItemCoverArtPendingTarget);
+                window.galleryItemCoverArtPendingTarget = null;
+                if (!item) return;
+                item.coverArt = await coverArtReadFile(file);
+                window.renderGallery();
+                return;
+            }
             const target = window.coverArtPendingTarget;
-            if (!file || !target || target.itemIdx === null || target.itemIdx === undefined) return;
+            if (!target || target.itemIdx === null || target.itemIdx === undefined) return;
             const dataUrl = await coverArtReadFile(file);
             const item = window.coverArtSlots[target.slotIdx].items[target.itemIdx];
             if (!item) return;
@@ -4986,7 +5039,25 @@
         window.coverArtCtxSave = function() {
             const ctx = window.coverArtCtxTarget;
             window.coverArtCloseContextMenu();
-            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
+            if (!ctx) return;
+            if (ctx.kind === 'gallery') {
+                const item = window.galleryItems.find(i => i.name === ctx.name);
+                if (!item) return;
+                let src = item.src;
+                if (!src && item.creationId && Array.isArray(window.creations)) {
+                    const c = window.creations.find(cr => cr.id === item.creationId);
+                    if (c) src = c.src;
+                }
+                if (!src) return;
+                const a = document.createElement('a');
+                a.href = src;
+                a.download = item.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                return;
+            }
+            if (ctx.itemIdx === null || ctx.itemIdx === undefined) return;
             const item = window.coverArtSlots[ctx.slotIdx].items[ctx.itemIdx];
             if (!item) return;
             const a = document.createElement('a');
@@ -5000,7 +5071,13 @@
         window.coverArtCtxDelete = function() {
             const ctx = window.coverArtCtxTarget;
             window.coverArtCloseContextMenu();
-            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
+            if (!ctx) return;
+            if (ctx.kind === 'gallery') {
+                if (!confirm('Delete this from the gallery?')) return;
+                window.deleteGalleryItem(ctx.name);
+                return;
+            }
+            if (ctx.itemIdx === null || ctx.itemIdx === undefined) return;
             if (!confirm('Delete this cover art?')) return;
             window.coverArtSlots[ctx.slotIdx].items.splice(ctx.itemIdx, 1);
             coverArtSave();
@@ -5010,30 +5087,59 @@
         window.coverArtCtxDetails = function() {
             const ctx = window.coverArtCtxTarget;
             window.coverArtCloseContextMenu();
-            if (!ctx || ctx.itemIdx === null || ctx.itemIdx === undefined) return;
-            window.coverArtOpenDetails(ctx.slotIdx, ctx.itemIdx);
+            if (!ctx) return;
+            if (ctx.kind === 'gallery') {
+                window.galleryItemOpenDetails(ctx.name);
+            } else {
+                if (ctx.itemIdx === null || ctx.itemIdx === undefined) return;
+                window.coverArtOpenDetails(ctx.slotIdx, ctx.itemIdx);
+            }
         };
 
-        // --- Details modal (title + notes per cover art item) ---
+        // --- Details modal (title + notes) — shared by cover art tiles and gallery items ---
         window.coverArtDetailsTarget = null;
 
         window.coverArtOpenDetails = function(si, ii) {
             const item = window.coverArtSlots[si].items[ii];
             if (!item) return;
-            window.coverArtDetailsTarget = { slotIdx: si, itemIdx: ii };
-            document.getElementById('cover-art-details-title').value = item.title || '';
+            window.coverArtDetailsTarget = { kind: 'coverart', slotIdx: si, itemIdx: ii };
+            const titleInput = document.getElementById('cover-art-details-title');
+            titleInput.value = item.title || '';
+            titleInput.disabled = false;
+            document.getElementById('cover-art-details-notes').value = item.notes || '';
+            document.getElementById('cover-art-details-modal').classList.remove('hidden');
+        };
+
+        // Gallery items keep their filename as the lookup key elsewhere in the app, so the
+        // Title field is shown read-only here — only Notes are editable for these.
+        window.galleryItemOpenDetails = function(name) {
+            const item = window.galleryItems.find(i => i.name === name);
+            if (!item) return;
+            window.coverArtDetailsTarget = { kind: 'gallery', name };
+            const titleInput = document.getElementById('cover-art-details-title');
+            titleInput.value = item.name;
+            titleInput.disabled = true;
             document.getElementById('cover-art-details-notes').value = item.notes || '';
             document.getElementById('cover-art-details-modal').classList.remove('hidden');
         };
 
         window.closeCoverArtDetails = function() {
             document.getElementById('cover-art-details-modal').classList.add('hidden');
+            document.getElementById('cover-art-details-title').disabled = false;
             window.coverArtDetailsTarget = null;
         };
 
         window.saveCoverArtDetails = function() {
             const target = window.coverArtDetailsTarget;
             if (!target) return;
+            if (target.kind === 'gallery') {
+                const item = window.galleryItems.find(i => i.name === target.name);
+                if (!item) return;
+                item.notes = document.getElementById('cover-art-details-notes').value.trim();
+                window.closeCoverArtDetails();
+                window.renderGallery();
+                return;
+            }
             const item = window.coverArtSlots[target.slotIdx].items[target.itemIdx];
             if (!item) return;
             item.title = document.getElementById('cover-art-details-title').value.trim();
