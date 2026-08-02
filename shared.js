@@ -6116,8 +6116,8 @@
                         // A blank/transparent PNG at this size encodes to a suspiciously
                         // short data URL — good enough a signal to retry without needing
                         // to inspect actual pixel data.
-                        if (dataUrl.length < 2000 && attempt < 2) {
-                            setTimeout(() => resolve(pkCaptureForgedCard(cardEl, attempt + 1)), 400);
+                        if (dataUrl.length < 2000 && attempt < 3) {
+                            setTimeout(() => resolve(pkCaptureForgedCard(cardEl, attempt + 1)), 500 * (attempt + 1));
                         } else {
                             resolve(dataUrl);
                         }
@@ -6183,22 +6183,22 @@
                 return `
                 <div class="flex flex-col gap-1.5">
                     <div onclick="window.pkTileClick(event,'${pk.id}','${safeName}')" class="bg-black/40 border ${selected ? 'border-[#2fd0ff]' : 'border-white/10'} rounded-lg p-3 aspect-square flex flex-col ${pk.cardImage ? 'cursor-pointer hover:border-[rgba(47,208,255,0.4)]' : ''} overflow-hidden relative group">
-                        ${pk.cardImage ? `
-                        <img src="${pk.cardImage}" class="absolute inset-0 w-full h-full object-cover opacity-80">
+                        ${pk.cardImage ? `<img src="${pk.cardImage}" class="absolute inset-0 w-full h-full object-cover opacity-80">` : `<div class="flex-1 flex items-center justify-center text-gray-700 text-lg">〰️</div>`}
                         <button onclick="event.stopPropagation(); window.pkToggleSelect(event,'${pk.id}')" title="Select" class="absolute top-1.5 left-1.5 z-10 w-4 h-4 rounded-sm border flex items-center justify-center transition-opacity ${selected ? 'opacity-100 bg-[#2fd0ff] border-[#2fd0ff]' : 'opacity-0 group-hover:opacity-100 bg-black/60 border-white/40'}">
                             ${selected ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>' : ''}
                         </button>
                         <div class="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onclick="event.stopPropagation(); window.pkTriggerReplace('${pk.id}')" title="Replace" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-[#2fd0ff]">
+                            <button onclick="event.stopPropagation(); window.pkTriggerReplace('${pk.id}')" title="${pk.cardImage ? 'Replace' : 'Add image'}" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-[#2fd0ff]">
                                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
                             </button>
+                            ${pk.cardImage ? `
                             <button onclick="event.stopPropagation(); window.downloadPressKitImage('${pk.id}')" title="Download" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-[#2fd0ff]">
                                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M7 10l5 5 5-5M5 21h14"/></svg>
-                            </button>
+                            </button>` : ''}
                             <button onclick="event.stopPropagation(); window.deletePressKit('${pk.id}')" title="Remove" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-red-400">
                                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
                             </button>
-                        </div>` : `<div class="flex-1 flex items-center justify-center text-gray-700 text-lg">〰️</div>`}
+                        </div>
                     </div>
                     <div class="px-0.5">
                         <div class="neon-blue-text text-[10px] font-black uppercase tracking-tight truncate">${pk.artistName}</div>
