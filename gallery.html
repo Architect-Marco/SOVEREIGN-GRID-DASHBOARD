@@ -14,6 +14,9 @@
         .slick-scroll::-webkit-scrollbar-thumb { background: #2fd0ff !important; border-radius: 0 !important; }
         .slick-scroll::-webkit-scrollbar-thumb:hover { background: #6fe0ff !important; }
         .slick-scroll { scrollbar-width: thin; scrollbar-color: #2fd0ff rgba(255,255,255,0.04); }
+
+        /* Neon blue playback bar/controls for the cover art lightbox's video & audio players */
+        #gallery-preview-video, #gallery-preview-audio { accent-color: #2fd0ff; }
     </style>
 </head>
 <body class="flex flex-col">
@@ -357,9 +360,9 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 </button>
             </div>
-            <video id="gallery-preview-video" controls class="hidden w-full max-h-[60vh] rounded-xl bg-black"></video>
-            <audio id="gallery-preview-audio" controls class="hidden w-full"></audio>
-            <img id="gallery-preview-image" class="hidden w-full max-h-[60vh] object-contain rounded-xl">
+            <video id="gallery-preview-video" controls class="hidden w-full max-h-[60vh] rounded-xl bg-black" style="accent-color:#2fd0ff;"></video>
+            <img id="gallery-preview-image" class="hidden w-full max-h-[60vh] object-contain rounded-xl mb-3">
+            <audio id="gallery-preview-audio" controls class="hidden w-full" style="accent-color:#2fd0ff;"></audio>
         </div>
     </div>
 
