@@ -5182,6 +5182,9 @@
             if (vid) vid.pause();
             if (aud) aud.pause();
             document.getElementById('gallery-preview-modal').classList.add('hidden');
+            document.getElementById('cover-art-preview-prev').classList.add('hidden');
+            document.getElementById('cover-art-preview-next').classList.add('hidden');
+            window.coverArtExpandTarget = null;
         };
 
         // ===== GALLERY — COVER ART FOLDERS (named folders, each holding multiple cover art tiles) =====
@@ -5249,7 +5252,12 @@
                 <div class="bg-[#141414] noir-bezel overflow-hidden flex flex-col">
                     <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/5">
                         <span onclick="window.coverArtRename(${si})" class="neon-blue-text text-xs font-black uppercase tracking-widest truncate cursor-pointer hover:opacity-70 transition-opacity" title="Click to rename">${slot.name}</span>
-                        <span class="text-[9px] text-gray-600 font-black uppercase tracking-widest flex-shrink-0">${slot.items.length} item${slot.items.length === 1 ? '' : 's'}</span>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="text-[9px] text-gray-600 font-black uppercase tracking-widest">${slot.items.length} item${slot.items.length === 1 ? '' : 's'}</span>
+                            <button onclick="window.coverArtDeleteFolder(${si})" title="Delete folder" class="text-gray-600 hover:text-red-400 transition-colors">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                            </button>
+                        </div>
                     </div>
                     <div class="grid grid-cols-3 gap-1 p-1 overflow-y-auto slick-scroll" style="max-height:420px;">
                         ${slot.items.map((item, ii) => `
@@ -5269,7 +5277,12 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `).join('') + `
+                <div onclick="window.coverArtAddFolder()" class="border border-dashed border-white/15 flex flex-col items-center justify-center gap-2 cursor-pointer text-gray-600 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.5)] transition-colors" style="min-height:120px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+                    <span class="text-[9px] font-black uppercase tracking-widest">New Folder</span>
+                </div>
+            `;
         };
 
         window.coverArtRename = function(si) {
@@ -5279,6 +5292,28 @@
             const trimmed = next.trim();
             if (!trimmed) return;
             window.coverArtSlots[si].name = trimmed;
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        window.coverArtAddFolder = function() {
+            const name = prompt('Name for the new folder:', 'New Folder');
+            if (name === null) return;
+            const trimmed = name.trim();
+            if (!trimmed) return;
+            window.coverArtSlots.push({ name: trimmed, items: [] });
+            coverArtSave();
+            window.renderCoverArtSlots();
+        };
+
+        window.coverArtDeleteFolder = function(si) {
+            const slot = window.coverArtSlots[si];
+            if (!slot) return;
+            const msg = slot.items.length
+                ? `Delete "${slot.name}" and its ${slot.items.length} item${slot.items.length === 1 ? '' : 's'}?`
+                : `Delete "${slot.name}"?`;
+            if (!confirm(msg)) return;
+            window.coverArtSlots.splice(si, 1);
             coverArtSave();
             window.renderCoverArtSlots();
         };
@@ -5473,9 +5508,12 @@
         };
 
         // --- Expand a tile into the shared lightbox (image/video/audio) ---
+        window.coverArtExpandTarget = null; // { slotIdx, itemIdx } — tracks position for prev/next in the lightbox
+
         window.coverArtItemExpand = function(si, ii) {
             const item = window.coverArtSlots[si].items[ii];
             if (!item) return;
+            window.coverArtExpandTarget = { slotIdx: si, itemIdx: ii };
             const modal = document.getElementById('gallery-preview-modal');
             const vid = document.getElementById('gallery-preview-video');
             const aud = document.getElementById('gallery-preview-audio');
@@ -5494,6 +5532,23 @@
                 img.src = item.image; img.classList.remove('hidden');
             }
             modal.classList.remove('hidden');
+            const showArrows = window.coverArtSlots[si].items.length > 1;
+            document.getElementById('cover-art-preview-prev').classList.toggle('hidden', !showArrows);
+            document.getElementById('cover-art-preview-next').classList.toggle('hidden', !showArrows);
+        };
+
+        window.coverArtExpandPrev = function() {
+            const t = window.coverArtExpandTarget;
+            if (!t) return;
+            const count = window.coverArtSlots[t.slotIdx].items.length;
+            window.coverArtItemExpand(t.slotIdx, (t.itemIdx - 1 + count) % count);
+        };
+
+        window.coverArtExpandNext = function() {
+            const t = window.coverArtExpandTarget;
+            if (!t) return;
+            const count = window.coverArtSlots[t.slotIdx].items.length;
+            window.coverArtItemExpand(t.slotIdx, (t.itemIdx + 1) % count);
         };
 
         // 6.5 UPLOADABLE PHOTOS (Profile Avatar / Player Icon / Magazine Cover)
