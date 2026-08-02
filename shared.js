@@ -6111,7 +6111,7 @@
         function pkCaptureForgedCard(cardEl, attempt) {
             return new Promise((resolve) => {
                 requestAnimationFrame(() => requestAnimationFrame(() => {
-                    html2canvas(cardEl, { backgroundColor: null, scale: 2 }).then(canvas => {
+                    html2canvas(cardEl, { backgroundColor: null, scale: 2, useCORS: true, imageTimeout: 15000 }).then(canvas => {
                         const dataUrl = canvas.toDataURL('image/png');
                         // A blank/transparent PNG at this size encodes to a suspiciously
                         // short data URL — good enough a signal to retry without needing
@@ -6122,8 +6122,12 @@
                             resolve(dataUrl);
                         }
                     }).catch(err => {
-                        console.warn('Press kit card capture failed (entry still created):', err);
-                        resolve(null);
+                        console.warn('Press kit card capture failed on attempt ' + (attempt + 1) + ':', err && err.message ? err.message : err);
+                        if (attempt < 3) {
+                            setTimeout(() => resolve(pkCaptureForgedCard(cardEl, attempt + 1)), 500 * (attempt + 1));
+                        } else {
+                            resolve(null);
+                        }
                     });
                 }));
             });
