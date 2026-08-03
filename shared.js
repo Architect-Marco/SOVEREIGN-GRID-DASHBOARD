@@ -6133,6 +6133,17 @@
             });
         }
 
+        // Pulls the actual image URL out of a background-image style — used as a
+        // last-resort fallback that reads straight from what's currently on screen,
+        // rather than trusting a separately-tracked variable that could in theory
+        // fall out of sync with it.
+        function pkExtractBgImageUrl(el) {
+            if (!el) return null;
+            const bg = el.style.backgroundImage || (window.getComputedStyle ? getComputedStyle(el).backgroundImage : '');
+            const match = /url\(["']?(.*?)["']?\)/.exec(bg || '');
+            return match && match[1] && match[1] !== 'none' ? match[1] : null;
+        }
+
         window.deployForgedArtist = function(btn) {
             // Read from the form input directly, not the card's own text elements —
             // simpler and avoids ever depending on element visibility/state.
@@ -6142,7 +6153,9 @@
             // guaranteed fallback in case the full styled-card capture below fails (the
             // photo is applied to the card as a CSS background-image, which html2canvas
             // can intermittently fail to rasterize, even though this raw copy is fine).
-            const fallbackImage = window.epkPhotoDataUrl || null;
+            // Two sources, in order: the tracked variable, then — in case that's ever
+            // stale — whatever image is actually showing on the card right now.
+            const fallbackImage = window.epkPhotoDataUrl || pkExtractBgImageUrl(document.getElementById('forged-img'));
 
             if (btn) {
                 const original = btn.innerText;
@@ -6310,7 +6323,7 @@
 
         window.addPressKit = function({ artistName, cardImage } = {}) {
             const pk = {
-                id: 'pk-' + Date.now(),
+                id: 'pk-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
                 date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
                 artistName: artistName || 'New Artist Unit',
                 cardImage: cardImage || null
