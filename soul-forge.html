@@ -278,6 +278,69 @@
                 </div>
             </div>
 
+            <!-- ARTIST SOUL FORGE — saved artist cards (data-driven, not a screenshot gallery) -->
+            <div class="bg-[#0a0a0a] noir-bezel p-8 rounded-2xl mt-6">
+                <div class="flex items-center gap-2 mb-6">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="neon-blue-text flex-shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                    <h4 class="neon-blue-text text-sm font-black uppercase italic tracking-tight">Artist Soul Forge</h4>
+                </div>
+                <div id="soul-forge-cards-list" class="grid grid-cols-6 gap-4"></div>
+            </div>
+
+            <!-- ARTIST SOUL FORGE — floating bulk-action bar (shown once 1+ cards are selected) -->
+            <div id="sfc-bulk-bar" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-black border border-[rgba(47,208,255,0.4)] rounded-full shadow-2xl px-5 py-2.5 flex items-center gap-4">
+                <span id="sfc-bulk-count" class="neon-blue-text text-[11px] font-black uppercase tracking-widest">0 selected</span>
+                <button onclick="window.sfcBulkRemove()" class="text-[10px] font-black uppercase tracking-widest text-red-400 hover:opacity-70 transition-opacity">Remove</button>
+                <button onclick="window.sfcClearSelection()" class="text-gray-500 hover:text-white transition-colors">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- ARTIST SOUL FORGE — card detail pop-out -->
+            <div id="sfc-detail-modal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6" onclick="if(event.target===this) window.sfcCloseDetail()">
+                <div class="w-full max-w-2xl bg-[#0a0a0a] border-[1.8px] border-[rgba(47,208,255,0.25)] rounded-3xl p-7 shadow-2xl">
+                    <div class="flex items-start justify-between mb-5">
+                        <div>
+                            <div id="sfc-detail-name" class="neon-blue-text text-xl font-black uppercase italic tracking-tight"></div>
+                            <div id="sfc-detail-date" class="text-gray-500 text-[10px] uppercase tracking-widest mt-1"></div>
+                        </div>
+                        <button onclick="window.sfcCloseDetail()" class="text-gray-500 hover:text-white transition-colors">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="aspect-square rounded-xl overflow-hidden border border-white/10 bg-black relative">
+                            <div id="sfc-detail-photo" class="hidden absolute inset-0" style="background-size:cover; background-position:center;"></div>
+                            <div id="sfc-detail-photo-placeholder" class="absolute inset-0 flex items-center justify-center text-3xl opacity-30">🎵</div>
+                        </div>
+                        <div class="flex flex-col gap-4">
+                            <div id="sfc-detail-themes" class="text-[10px] font-black uppercase tracking-widest neon-blue-text opacity-75"></div>
+                            <p id="sfc-detail-quote" class="text-sm neon-blue-text italic leading-relaxed"></p>
+                            <p id="sfc-detail-genre" class="text-[11px] neon-blue-text opacity-65"></p>
+                            <div class="grid grid-cols-4 gap-1 mt-auto">
+                                <div class="rounded-lg py-2 text-center bg-white/5">
+                                    <div id="sfc-detail-resonance" class="font-black text-lg neon-blue-text">--</div>
+                                    <div class="text-[7px] font-black uppercase tracking-widest mt-1 text-gray-500">Resonance</div>
+                                </div>
+                                <div class="rounded-lg py-2 text-center bg-white/5">
+                                    <div id="sfc-detail-virality" class="font-black text-lg neon-blue-text">--</div>
+                                    <div class="text-[7px] font-black uppercase tracking-widest mt-1 text-gray-500">Virality</div>
+                                </div>
+                                <div class="rounded-lg py-2 text-center bg-white/5">
+                                    <div id="sfc-detail-mystery" class="font-black text-lg neon-blue-text">--</div>
+                                    <div class="text-[7px] font-black uppercase tracking-widest mt-1 text-gray-500">Mystery</div>
+                                </div>
+                                <div class="rounded-lg py-2 text-center bg-white/5">
+                                    <div id="sfc-detail-members" class="font-black text-lg neon-blue-text">--</div>
+                                    <div class="text-[7px] font-black uppercase tracking-widest mt-1 text-gray-500">Members</div>
+                                </div>
+                            </div>
+                            <p id="sfc-detail-tagline" class="text-[10px] font-black text-center neon-blue-text opacity-70 border-t border-white/10 pt-3"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 3. VIEW: CREATE (THE FORGE) -->
         </main>
     </div>
