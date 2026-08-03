@@ -6138,6 +6138,11 @@
             // simpler and avoids ever depending on element visibility/state.
             const nameInput = document.getElementById('epk-band-name');
             const name = (nameInput && nameInput.value ? nameInput.value : 'New Artist Unit').toUpperCase();
+            // The artist photo is only a plain, already-decoded data URL — grab it now as a
+            // guaranteed fallback in case the full styled-card capture below fails (the
+            // photo is applied to the card as a CSS background-image, which html2canvas
+            // can intermittently fail to rasterize, even though this raw copy is fine).
+            const fallbackImage = window.epkPhotoDataUrl || null;
 
             if (btn) {
                 const original = btn.innerText;
@@ -6157,13 +6162,21 @@
 
             if (cardEl && typeof html2canvas !== 'undefined') {
                 pkCaptureForgedCard(cardEl, 0).then(dataUrl => {
-                    if (!dataUrl) return;
                     const target = window.pressKits.find(p => p.id === pk.id);
-                    if (target) {
+                    if (!target) return;
+                    if (dataUrl) {
                         target.cardImage = dataUrl;
+                        window.renderPressKits();
+                    } else if (fallbackImage) {
+                        // Full card capture failed even after retries — better to show the
+                        // artist's actual photo than leave the card permanently blank.
+                        target.cardImage = fallbackImage;
                         window.renderPressKits();
                     }
                 });
+            } else if (fallbackImage) {
+                const target = window.pressKits.find(p => p.id === pk.id);
+                if (target) { target.cardImage = fallbackImage; window.renderPressKits(); }
             }
         };
 
