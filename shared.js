@@ -6102,60 +6102,11 @@
             });
         };
 
-        // Captures #forged-card-frame to a PNG data URL. The card reveals itself with a
-        // 700ms CSS opacity/scale transition (see #result-card in soul-forge.html) — if
-        // html2canvas snapshots mid-transition, or before the browser has even painted
-        // the newly-revealed card, it silently produces a blank image with no error.
-        // So: wait a couple of paint frames, and if the result still comes back blank,
-        // retry once after the transition would definitely be done.
-        function pkCaptureForgedCard(cardEl, attempt) {
-            return new Promise((resolve) => {
-                requestAnimationFrame(() => requestAnimationFrame(() => {
-                    html2canvas(cardEl, { backgroundColor: null, scale: 2, useCORS: true, imageTimeout: 15000 }).then(canvas => {
-                        const dataUrl = canvas.toDataURL('image/png');
-                        // A blank/transparent PNG at this size encodes to a suspiciously
-                        // short data URL — good enough a signal to retry without needing
-                        // to inspect actual pixel data.
-                        if (dataUrl.length < 2000 && attempt < 3) {
-                            setTimeout(() => resolve(pkCaptureForgedCard(cardEl, attempt + 1)), 500 * (attempt + 1));
-                        } else {
-                            resolve(dataUrl);
-                        }
-                    }).catch(err => {
-                        console.warn('Press kit card capture failed on attempt ' + (attempt + 1) + ':', err && err.message ? err.message : err);
-                        if (attempt < 3) {
-                            setTimeout(() => resolve(pkCaptureForgedCard(cardEl, attempt + 1)), 500 * (attempt + 1));
-                        } else {
-                            resolve(null);
-                        }
-                    });
-                }));
-            });
-        }
-
-        // Pulls the actual image URL out of a background-image style — used as a
-        // last-resort fallback that reads straight from what's currently on screen,
-        // rather than trusting a separately-tracked variable that could in theory
-        // fall out of sync with it.
-        function pkExtractBgImageUrl(el) {
-            if (!el) return null;
-            const bg = el.style.backgroundImage || (window.getComputedStyle ? getComputedStyle(el).backgroundImage : '');
-            const match = /url\(["']?(.*?)["']?\)/.exec(bg || '');
-            return match && match[1] && match[1] !== 'none' ? match[1] : null;
-        }
-
         window.deployForgedArtist = function(btn) {
             // Read from the form input directly, not the card's own text elements —
             // simpler and avoids ever depending on element visibility/state.
             const nameInput = document.getElementById('epk-band-name');
             const name = (nameInput && nameInput.value ? nameInput.value : 'New Artist Unit').toUpperCase();
-            // The artist photo is only a plain, already-decoded data URL — grab it now as a
-            // guaranteed fallback in case the full styled-card capture below fails (the
-            // photo is applied to the card as a CSS background-image, which html2canvas
-            // can intermittently fail to rasterize, even though this raw copy is fine).
-            // Two sources, in order: the tracked variable, then — in case that's ever
-            // stale — whatever image is actually showing on the card right now.
-            const fallbackImage = window.epkPhotoDataUrl || pkExtractBgImageUrl(document.getElementById('forged-img'));
 
             if (btn) {
                 const original = btn.innerText;
@@ -6164,194 +6115,155 @@
             }
             if (typeof window.addCreation === 'function') window.addCreation(name, '');
 
-            // Create the card entry right away — it must never depend on the card-image
-            // capture below succeeding. The image is a nice-to-have that fills in a
-            // moment later if it works; the entry itself is not optional.
-            if (typeof window.addPressKit !== 'function') return;
-            const pk = window.addPressKit({ artistName: name });
-            if (!pk) return;
+            const textOf = (id) => { const el = document.getElementById(id); return el ? el.innerText : ''; };
 
-            const cardEl = document.getElementById('forged-card-frame');
-
-            if (cardEl && typeof html2canvas !== 'undefined') {
-                pkCaptureForgedCard(cardEl, 0).then(dataUrl => {
-                    const target = window.pressKits.find(p => p.id === pk.id);
-                    if (!target) return;
-                    if (dataUrl) {
-                        target.cardImage = dataUrl;
-                        window.renderPressKits();
-                    } else if (fallbackImage) {
-                        // Full card capture failed even after retries — better to show the
-                        // artist's actual photo than leave the card permanently blank.
-                        target.cardImage = fallbackImage;
-                        window.renderPressKits();
-                    }
-                });
-            } else if (fallbackImage) {
-                const target = window.pressKits.find(p => p.id === pk.id);
-                if (target) { target.cardImage = fallbackImage; window.renderPressKits(); }
-            }
+            // Saves the card's actual DATA, not a screenshot of it — this is the whole
+            // point of the rebuild: the gallery re-renders each card live from these
+            // fields, so there's no html2canvas capture step to fail intermittently
+            // (the kind of blank-card bug the old screenshot-based version kept hitting).
+            const card = {
+                id: 'sfc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+                artistName: name,
+                genre: textOf('forged-genre'),
+                themes: textOf('forged-themes'),
+                quote: textOf('forged-quote'),
+                tagline: textOf('forged-tagline'),
+                resonance: textOf('forged-resonance'),
+                virality: textOf('forged-virality'),
+                mystery: textOf('forged-mystery'),
+                members: textOf('forged-members'),
+                photo: window.epkPhotoDataUrl || null
+            };
+            window.soulForgeCards.unshift(card);
+            window.renderSoulForgeCards();
         };
 
-        // ===== ARTIST SOUL FORGE (home page) — one card per deploy from Soul Forge =====
-        window.pressKits = [];
-        window.pkSelection = new Set(); // ids of currently selected cards
+        // ===== ARTIST SOUL FORGE GALLERY (Soul Forge page) — one entry per deploy =====
+        window.soulForgeCards = [];
+        window.sfcSelection = new Set(); // ids of currently selected cards
 
-        window.renderPressKits = function() {
-            try { localStorage.setItem('sbn-press-kits', JSON.stringify(window.pressKits)); } catch (err) { console.error('Could not save press kits:', err); }
+        function sfcSave() {
+            try { localStorage.setItem('sbn-soul-forge-cards', JSON.stringify(window.soulForgeCards)); } catch (err) { console.error('Could not save Soul Forge cards:', err); }
+        }
 
-            const list = document.getElementById('press-kits-list');
+        window.renderSoulForgeCards = function() {
+            sfcSave();
+            const list = document.getElementById('soul-forge-cards-list');
             if (!list) return;
-            if (window.pressKits.length === 0) {
-                list.innerHTML = `<p class="text-gray-600 text-[10px] uppercase tracking-widest text-center py-10 opacity-40">No artist cards yet — forge and deploy an artist in EPK Soul Forge to generate one</p>`;
-                window.renderPkBulkBar();
+            if (window.soulForgeCards.length === 0) {
+                list.innerHTML = `<p class="text-gray-600 text-[10px] uppercase tracking-widest text-center py-10 opacity-40 col-span-full">No artist cards yet — forge and deploy an artist above to save one here</p>`;
+                window.renderSfcBulkBar();
                 return;
             }
-            list.innerHTML = `<div class="grid grid-cols-4 gap-3">` + window.pressKits.map(pk => {
-                const selected = window.pkSelection.has(pk.id);
-                const safeName = (pk.artistName || '').replace(/'/g, "\\'");
+            list.innerHTML = window.soulForgeCards.map(card => {
+                const selected = window.sfcSelection.has(card.id);
                 return `
                 <div class="flex flex-col gap-1.5">
-                    <div onclick="window.pkTileClick(event,'${pk.id}','${safeName}')" class="bg-black/40 border ${selected ? 'border-[#2fd0ff]' : 'border-white/10'} rounded-lg p-3 aspect-square flex flex-col ${pk.cardImage ? 'cursor-pointer hover:border-[rgba(47,208,255,0.4)]' : ''} overflow-hidden relative group">
-                        ${pk.cardImage ? `<img src="${pk.cardImage}" class="absolute inset-0 w-full h-full object-cover opacity-80">` : `<div class="flex-1 flex items-center justify-center text-gray-700 text-lg">〰️</div>`}
-                        <button onclick="event.stopPropagation(); window.pkToggleSelect(event,'${pk.id}')" title="Select" class="absolute top-1.5 left-1.5 z-10 w-4 h-4 rounded-sm border flex items-center justify-center transition-opacity ${selected ? 'opacity-100 bg-[#2fd0ff] border-[#2fd0ff]' : 'opacity-0 group-hover:opacity-100 bg-black/60 border-white/40'}">
+                    <div onclick="window.sfcTileClick(event,'${card.id}')" class="bg-black/40 border ${selected ? 'border-[#2fd0ff]' : 'border-white/10'} rounded-lg aspect-square overflow-hidden relative group cursor-pointer hover:border-[rgba(47,208,255,0.4)] transition-colors" style="${card.photo ? `background-image:url('${card.photo}');background-size:cover;background-position:center;` : ''}">
+                        ${!card.photo ? `<div class="absolute inset-0 flex items-center justify-center text-gray-700 text-2xl">🎵</div>` : ''}
+                        <button onclick="event.stopPropagation(); window.sfcToggleSelect(event,'${card.id}')" title="Select" class="absolute top-1.5 left-1.5 z-10 w-4 h-4 rounded-sm border flex items-center justify-center transition-opacity ${selected ? 'opacity-100 bg-[#2fd0ff] border-[#2fd0ff]' : 'opacity-0 group-hover:opacity-100 bg-black/60 border-white/40'}">
                             ${selected ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>' : ''}
                         </button>
-                        <div class="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onclick="event.stopPropagation(); window.pkTriggerReplace('${pk.id}')" title="${pk.cardImage ? 'Replace' : 'Add image'}" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-[#2fd0ff]">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-                            </button>
-                            ${pk.cardImage ? `
-                            <button onclick="event.stopPropagation(); window.downloadPressKitImage('${pk.id}')" title="Download" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-[#2fd0ff]">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M7 10l5 5 5-5M5 21h14"/></svg>
-                            </button>` : ''}
-                            <button onclick="event.stopPropagation(); window.deletePressKit('${pk.id}')" title="Remove" class="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 hover:text-red-400">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                            </button>
+                        <button onclick="event.stopPropagation(); window.sfcRemove('${card.id}')" title="Remove" class="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-black/70 flex items-center justify-center text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </button>
+                        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-2 pt-8 pb-1.5">
+                            <div class="neon-blue-text text-[10px] font-black uppercase tracking-tight truncate">${card.artistName}</div>
                         </div>
                     </div>
-                    <div class="px-0.5">
-                        <div class="neon-blue-text text-[10px] font-black uppercase tracking-tight truncate">${pk.artistName}</div>
-                        <div class="text-gray-600 text-[8px] uppercase tracking-widest">${pk.date}</div>
-                    </div>
+                    <div class="text-gray-600 text-[8px] uppercase tracking-widest px-0.5">${card.date}</div>
                 </div>`;
-            }).join('') + `</div>`;
-            window.renderPkBulkBar();
+            }).join('');
+            window.renderSfcBulkBar();
         };
 
-        // Clicking a filled card normally opens the lightbox; if anything is already
-        // selected, clicking another card just toggles its selection too.
-        window.pkTileClick = function(event, id, safeName) {
-            const pk = window.pressKits.find(p => p.id === id);
-            if (!pk || !pk.cardImage) return;
-            if (window.pkSelection.size > 0) {
-                window.pkToggleSelect(event, id);
+        // Clicking a card normally opens the detail pop-out; if anything is already
+        // selected, clicking another card just toggles its selection instead.
+        window.sfcTileClick = function(event, id) {
+            if (window.sfcSelection.size > 0) {
+                window.sfcToggleSelect(event, id);
                 return;
             }
-            window.openGalleryPreviewFromSrc(safeName, pk.cardImage);
+            window.sfcOpenDetail(id);
         };
 
-        window.pkToggleSelect = function(event, id) {
+        window.sfcToggleSelect = function(event, id) {
             event.stopPropagation();
-            if (window.pkSelection.has(id)) window.pkSelection.delete(id);
-            else window.pkSelection.add(id);
-            window.renderPressKits();
+            if (window.sfcSelection.has(id)) window.sfcSelection.delete(id);
+            else window.sfcSelection.add(id);
+            window.renderSoulForgeCards();
         };
 
-        window.pkClearSelection = function() {
-            window.pkSelection.clear();
-            window.renderPressKits();
+        window.sfcClearSelection = function() {
+            window.sfcSelection.clear();
+            window.renderSoulForgeCards();
         };
 
-        window.pkBulkRemove = function() {
-            const count = window.pkSelection.size;
+        window.sfcRemove = function(id) {
+            if (!confirm('Remove this artist card?')) return;
+            window.soulForgeCards = window.soulForgeCards.filter(c => c.id !== id);
+            window.sfcSelection.delete(id);
+            window.renderSoulForgeCards();
+        };
+
+        window.sfcBulkRemove = function() {
+            const count = window.sfcSelection.size;
             if (!count) return;
             if (!confirm(`Remove ${count} selected card${count === 1 ? '' : 's'}?`)) return;
-            window.pressKits = window.pressKits.filter(p => !window.pkSelection.has(p.id));
-            window.pkSelection.clear();
-            window.renderPressKits();
+            window.soulForgeCards = window.soulForgeCards.filter(c => !window.sfcSelection.has(c.id));
+            window.sfcSelection.clear();
+            window.renderSoulForgeCards();
         };
 
-        window.renderPkBulkBar = function() {
-            const bar = document.getElementById('pk-bulk-bar');
+        window.renderSfcBulkBar = function() {
+            const bar = document.getElementById('sfc-bulk-bar');
             if (!bar) return;
-            const count = window.pkSelection.size;
+            const count = window.sfcSelection.size;
             if (count === 0) { bar.classList.add('hidden'); return; }
             bar.classList.remove('hidden');
-            document.getElementById('pk-bulk-count').innerText = `${count} selected`;
+            document.getElementById('sfc-bulk-count').innerText = `${count} selected`;
         };
 
-        window.deletePressKit = function(id) {
-            window.pressKits = window.pressKits.filter(p => p.id !== id);
-            window.pkSelection.delete(id);
-            window.renderPressKits();
+        // --- Detail pop-out: shows the full saved data for one card ---
+        window.sfcOpenDetail = function(id) {
+            const card = window.soulForgeCards.find(c => c.id === id);
+            if (!card) return;
+            const modal = document.getElementById('sfc-detail-modal');
+            const photo = document.getElementById('sfc-detail-photo');
+            const photoPlaceholder = document.getElementById('sfc-detail-photo-placeholder');
+            if (card.photo) {
+                photo.style.backgroundImage = `url('${card.photo}')`;
+                photo.classList.remove('hidden');
+                photoPlaceholder.classList.add('hidden');
+            } else {
+                photo.classList.add('hidden');
+                photoPlaceholder.classList.remove('hidden');
+            }
+            document.getElementById('sfc-detail-name').innerText = card.artistName;
+            document.getElementById('sfc-detail-date').innerText = card.date;
+            document.getElementById('sfc-detail-themes').innerText = card.themes || '';
+            document.getElementById('sfc-detail-themes').classList.toggle('hidden', !card.themes);
+            document.getElementById('sfc-detail-quote').innerText = card.quote || '';
+            document.getElementById('sfc-detail-genre').innerText = card.genre || '';
+            document.getElementById('sfc-detail-tagline').innerText = card.tagline || '';
+            document.getElementById('sfc-detail-resonance').innerText = card.resonance || '--';
+            document.getElementById('sfc-detail-virality').innerText = card.virality || '--';
+            document.getElementById('sfc-detail-mystery').innerText = card.mystery || '--';
+            document.getElementById('sfc-detail-members').innerText = card.members || '--';
+            modal.classList.remove('hidden');
         };
 
-        window.downloadPressKitImage = function(id) {
-            const pk = window.pressKits.find(p => p.id === id);
-            if (!pk || !pk.cardImage) return;
-            const link = document.createElement('a');
-            link.download = (pk.artistName || 'artist-card').trim().replace(/[^a-z0-9]+/gi, '-') + '.png';
-            link.href = pk.cardImage;
-            link.click();
+        window.sfcCloseDetail = function() {
+            document.getElementById('sfc-detail-modal').classList.add('hidden');
         };
 
-        // --- Replace: swap in a new image for an existing card without a full re-deploy ---
-        window.pkReplaceTarget = null;
-
-        window.pkTriggerReplace = function(id) {
-            window.pkReplaceTarget = id;
-            const input = document.getElementById('pk-replace-input');
-            if (input) input.click();
-        };
-
-        window.pkReplaceFileChosen = function(event) {
-            const file = event.target.files && event.target.files[0];
-            event.target.value = '';
-            const targetId = window.pkReplaceTarget;
-            window.pkReplaceTarget = null;
-            if (!file || !targetId) return;
-            const pk = window.pressKits.find(p => p.id === targetId);
-            if (!pk) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-                pk.cardImage = reader.result;
-                window.renderPressKits();
-            };
-            reader.readAsDataURL(file);
-        };
-
-        window.addPressKit = function({ artistName, cardImage } = {}) {
-            const pk = {
-                id: 'pk-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-                date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
-                artistName: artistName || 'New Artist Unit',
-                cardImage: cardImage || null
-            };
-            window.pressKits.unshift(pk);
-            window.renderPressKits();
-            return pk;
-        };
-
-        window.loadPressKits = function() {
+        window.loadSoulForgeCards = function() {
             try {
-                const saved = JSON.parse(localStorage.getItem('sbn-press-kits') || 'null');
-                if (saved) {
-                    // Migrate from the old 4-slots-per-version shape if needed — each
-                    // filled slot becomes its own flat card.
-                    window.pressKits = [];
-                    saved.forEach(entry => {
-                        if (Array.isArray(entry.cardImages)) {
-                            entry.cardImages.filter(Boolean).forEach(img => {
-                                window.pressKits.push({ id: 'pk-' + Math.random().toString(36).slice(2), date: entry.date, artistName: entry.artistName, cardImage: img });
-                            });
-                        } else {
-                            window.pressKits.push(entry);
-                        }
-                    });
-                }
-            } catch (err) { console.error('Could not load press kits:', err); }
-            window.renderPressKits();
+                const saved = JSON.parse(localStorage.getItem('sbn-soul-forge-cards') || 'null');
+                if (Array.isArray(saved)) window.soulForgeCards = saved;
+            } catch (err) { console.error('Could not load Soul Forge cards:', err); }
+            window.renderSoulForgeCards();
         };
 
         // Opens the captured card image full-size in the Gallery preview modal
@@ -7520,7 +7432,7 @@
             } catch (err) { console.error('Station data migration failed:', err); }
             safeInit(window.loadStation, 'loadStation');
             safeInit(window.initPulseBeacon, 'initPulseBeacon');
-            safeInit(window.loadPressKits, 'loadPressKits');
+            safeInit(window.loadSoulForgeCards, 'loadSoulForgeCards');
             safeInit(window.loadArchiveFolders, 'loadArchiveFolders');
             safeInit(() => { if (typeof window.renderSyndicateRoster === 'function') window.renderSyndicateRoster(); }, 'renderSyndicateRoster');
             safeInit(() => {
