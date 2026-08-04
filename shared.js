@@ -7331,6 +7331,25 @@
                 : '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/>';
         };
 
+        // --- Text-to-speech for Lexi-Con's replies, via the browser's built-in Web Speech API ---
+        window.speakRelayMessage = function(text) {
+            if (window.relayMuted) return;
+            if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
+            try {
+                window.speechSynthesis.cancel(); // stop any prior reply so they don't overlap/queue up
+                const clean = text
+                    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '') // strip emoji — sounds odd read literally
+                    .replace(/\*/g, '')
+                    .trim();
+                if (!clean) return;
+                const utter = new SpeechSynthesisUtterance(clean);
+                utter.pitch = 1.15;
+                utter.rate = 1.05;
+                utter.volume = 0.9;
+                window.speechSynthesis.speak(utter);
+            } catch (err) { console.error('Speech synthesis failed:', err); }
+        };
+
         // --- Adding a new signal to the relay (this is the core hook, per K-Volt/Operator's spec) ---
         window.addSignal = function(persona, message, mediaUrl, mediaType) {
             const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -7339,6 +7358,7 @@
             window.renderRelayFeed();
             window.saveRelayHistory();
             if (persona !== 'ARCHITECT') window.playRelayPing(); // only ping on incoming signals, not Marco's own
+            if (persona === 'LEXI-CON') window.speakRelayMessage(message);
         };
 
         // --- Toggles ---
@@ -7352,6 +7372,7 @@
         window.toggleRelayMute = function() {
             window.relayMuted = !window.relayMuted;
             window.applyRelayMuteIcon();
+            if (window.relayMuted && 'speechSynthesis' in window) window.speechSynthesis.cancel();
             try { localStorage.setItem('sbn-relay-muted', window.relayMuted ? '1' : '0'); } catch (err) {}
         };
 
