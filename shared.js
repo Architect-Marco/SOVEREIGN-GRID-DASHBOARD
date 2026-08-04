@@ -7332,6 +7332,27 @@
         };
 
         // --- Text-to-speech for Lexi-Con's replies, via the browser's built-in Web Speech API ---
+        // The API has no actual "gender" setting — only a list of voices the OS/browser
+        // provides, each with its own name (e.g. "Samantha", "Microsoft Zira", "Google UK
+        // English Female"). So "pick a female voice" means matching against known female
+        // voice names across the common platforms.
+        window.relayFemaleVoice = null;
+
+        function sfcPickFemaleVoice() {
+            if (!('speechSynthesis' in window)) return null;
+            const voices = window.speechSynthesis.getVoices();
+            if (!voices.length) return null;
+            const femaleHints = ['female', 'zira', 'samantha', 'victoria', 'karen', 'moira', 'tessa', 'susan', 'fiona', 'aria', 'jenny', 'eva', 'linda', 'hazel', 'salli', 'kendra', 'kimberly', 'joanna', 'ivy', 'kathy'];
+            const englishVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+            const pool = englishVoices.length ? englishVoices : voices;
+            return pool.find(v => femaleHints.some(h => v.name.toLowerCase().includes(h))) || pool[0] || voices[0];
+        }
+
+        if ('speechSynthesis' in window) {
+            window.relayFemaleVoice = sfcPickFemaleVoice(); // in case voices are already loaded
+            window.speechSynthesis.onvoiceschanged = () => { window.relayFemaleVoice = sfcPickFemaleVoice(); };
+        }
+
         window.speakRelayMessage = function(text) {
             if (window.relayMuted) return;
             if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
@@ -7343,6 +7364,7 @@
                     .trim();
                 if (!clean) return;
                 const utter = new SpeechSynthesisUtterance(clean);
+                if (window.relayFemaleVoice) utter.voice = window.relayFemaleVoice;
                 utter.pitch = 1.15;
                 utter.rate = 1.05;
                 utter.volume = 0.9;
