@@ -2216,32 +2216,29 @@
 
         window.dawClipDragStart = function(e, trackId) {
             const startX = e.touches ? e.touches[0].clientX : e.clientX;
-            const bpm = parseFloat(window.dawBpm) || 120;
-            const secPerBar = (60 / bpm) * 4; // 4/4 time signature
-            const { markPx } = dawComputeTimelineLayout(); // current zoom's pixels-per-bar, fixed for this drag
-            const startOffsetSec = window.dawClipOffsets[trackId] || 0;
+            const startOffset = window.dawClipOffsets[trackId] || 0;
             const wrap = document.getElementById('clip-wrap-' + trackId);
             if (!wrap) return;
             let dragging = false;
+            const PIXELS_PER_BAR = 108; // matches .daw-ruler-mark width
             const move = (ev) => {
                 const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
-                const deltaPx = clientX - startX;
-                if (!dragging && Math.abs(deltaPx) > 5) dragging = true;
+                const delta = clientX - startX;
+                if (!dragging && Math.abs(delta) > 5) dragging = true;
                 if (dragging) {
                     ev.preventDefault();
-                    const deltaSec = (deltaPx / markPx) * secPerBar;
-                    let newOffsetSec = Math.max(0, startOffsetSec + deltaSec); // never drag left of the track's own start
+                    let newOffset = Math.max(0, startOffset + delta); // never drag left of the track's own start
 
                     // Mouse Modifiers (Preferences → Editing Behavior → Mouse Modifiers): "Shift: Move item ignoring snap" is live.
                     const shiftHeld = !!ev.shiftKey;
                     let effectiveSnap = window.dawSnapOn && !shiftHeld;
 
                     if (effectiveSnap) {
-                        const snapSec = secPerBar / (window.dawGridDivision || 16);
-                        newOffsetSec = Math.round(newOffsetSec / snapSec) * snapSec;
+                        const snapPx = PIXELS_PER_BAR / (window.dawGridDivision || 16);
+                        newOffset = Math.round(newOffset / snapPx) * snapPx;
                     }
-                    window.dawClipOffsets[trackId] = newOffsetSec;
-                    wrap.style.transform = `translateX(${Math.round((newOffsetSec / secPerBar) * markPx)}px)`;
+                    window.dawClipOffsets[trackId] = newOffset;
+                    wrap.style.transform = `translateX(${newOffset}px)`;
                     wrap.style.outline = shiftHeld ? '1px dashed rgba(239,68,68,0.7)' : 'none';
                 }
             };
@@ -2251,7 +2248,6 @@
                 document.removeEventListener('mouseup', up);
                 document.removeEventListener('touchmove', move);
                 document.removeEventListener('touchend', up);
-                window.dawUpdateClipWidths(); // recompute the timeline's total length in case this drag extended it
             };
             document.addEventListener('mousemove', move);
             document.addEventListener('mouseup', up);
@@ -2315,13 +2311,12 @@
 
             lanes.innerHTML = window.dawTracks.map((t, i) => `
                 <div class="relative border-b border-white/5 flex items-center overflow-hidden" oncontextmenu="window.openDawTrackContextMenu(event,'${t.id}')" style="height:${dawRowHeight(t)}px; overflow:hidden; z-index:1;">
-                    <div id="clip-wrap-${t.id}" data-track-id="${t.id}" class="relative h-full" style="width:100%; transform:translateX(0px); overflow:hidden; z-index:1;">
+                    <div id="clip-wrap-${t.id}" class="relative w-full h-full" style="transform:translateX(${window.dawClipOffsets[t.id] || 0}px); overflow:hidden; z-index:1;">
                         <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full" style="cursor:grab; overflow:hidden; z-index:1;"></div>
                     </div>
                 </div>`).join('');
 
             window.renderDawMixer();
-            window.dawUpdateClipWidths();
         };
 
         window.dawGridDivision = window.dawGridDivision || 16; // ticks per bar: 4, 8, 16, or 32 (matches the Grid selector)
@@ -2340,47 +2335,9 @@
             const scrollEl = document.getElementById('master-scroll-container');
             const visibleLaneWidth = scrollEl ? Math.max(200, scrollEl.clientWidth - DAW_HEADER_SIDEBAR_WIDTH) : 900;
             const barsToFillScreen = Math.ceil(visibleLaneWidth / markPx) + 1;
-
-            // Also make sure the timeline reaches past wherever clips have actually been
-            // dragged to, plus some working room beyond — otherwise a clip dragged far out
-            // can sit right at (or past) the edge of the generated ruler with nowhere to go.
-            const bpm = parseFloat(window.dawBpm) || 120;
-            const secPerBar = (60 / bpm) * 4;
-            let furthestClipEndBar = 0;
-            (window.dawTracks || []).forEach(t => {
-                const w = window.waves && window.waves['daw-' + t.id];
-                const duration = w && w.getDuration ? w.getDuration() : 0;
-                if (!duration) return;
-                const endBar = dawClipStartSeconds(t.id) / secPerBar + duration / secPerBar;
-                if (endBar > furthestClipEndBar) furthestClipEndBar = endBar;
-            });
-            const barsForClips = Math.ceil(furthestClipEndBar) + 16; // 16 bars of working room past the last clip
-
-            const totalBars = Math.max(DAW_RULER_TOTAL_BARS, barsToFillScreen, barsForClips);
+            const totalBars = Math.max(DAW_RULER_TOTAL_BARS, barsToFillScreen);
             return { markPx, totalBars, totalWidthPx: markPx * totalBars };
         }
-
-        // Sizes AND positions each track's clip to its actual audio duration/drag-offset at
-        // the current zoom level. Without this, a clip stretched to fill 100% regardless of
-        // real length, and a dragged clip's position (stored zoom-independent) was rendered
-        // as raw pixels — only correct at one specific zoom, drifting off the ruler at any other.
-        window.dawUpdateClipWidths = function() {
-            const bpm = parseFloat(window.dawBpm) || 120;
-            const secPerBar = (60 / bpm) * 4; // 4/4 time signature
-            const { markPx } = dawComputeTimelineLayout();
-            window.dawTracks.forEach(t => {
-                const wrap = document.getElementById('clip-wrap-' + t.id);
-                if (!wrap) return;
-                const startBar = dawClipStartSeconds(t.id) / secPerBar;
-                wrap.style.transform = 'translateX(' + Math.round(startBar * markPx) + 'px)';
-                const w = window.waves['daw-' + t.id];
-                const duration = w && w.getDuration ? w.getDuration() : 0;
-                if (!duration) return; // no audio loaded yet — leave the 100% fallback width in place
-                const bars = duration / secPerBar;
-                const widthPx = Math.max(4, Math.round(bars * markPx));
-                wrap.style.width = widthPx + 'px';
-            });
-        };
 
         window.renderDawRuler = function() {
             const ruler = document.getElementById('daw-ruler');
@@ -2431,7 +2388,6 @@
             if (wrapper) wrapper.style.width = dawComputeTimelineLayout().totalWidthPx + 'px';
             if (label) label.innerText = Math.round(window.dawZoom * 100) + '%';
             if (document.getElementById('daw-ruler')) window.renderDawRuler(); // re-scale bar marks to match
-            window.dawUpdateClipWidths();
         };
 
         // clientX (optional): viewport X of the cursor to zoom around, so the point
@@ -4055,15 +4011,13 @@
                 }
                 window.waves[key] = WaveSurfer.create({
                     container: `#wave-${key}`, waveColor: t.color, progressColor: t.color,
-                    cursorWidth: 0, barWidth: 2, barGap: 1, barRadius: 0, // barAlign intentionally omitted = symmetric bipolar rendering (both above and below the center line)
-                    responsive: true, height: 56, normalize: true, interact: false
+                    cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 30, normalize: true, interact: false
                 });
                 window.waves[key].setVolume((t.volume ?? 80) / 100);
                 window.waves[key].on('audioprocess', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
                 window.waves[key].on('ready', () => {
                     console.log('[DAW] wave READY for', key, '— duration:', window.waves[key].getDuration());
                     window.updateDawTimer(key); window.updateDawPlayhead();
-                    window.dawUpdateClipWidths();
                     if (resumeAt !== null) { window.waves[key].play(); window.waves[key].seekTo(resumeAt / window.waves[key].getDuration()); }
                 });
                 window.waves[key].on('seek', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
@@ -4475,7 +4429,11 @@
         window.dawTransportRafId = null;
 
         function dawClipStartSeconds(trackId) {
-            return window.dawClipOffsets[trackId] || 0; // stored directly in seconds now — zoom-independent
+            const px = window.dawClipOffsets[trackId] || 0;
+            const bpm = parseFloat(window.dawBpm) || 120;
+            const secPerBar = (60 / bpm) * 4; // 4/4 time signature
+            const logicalPxPerBar = 108; // same logical unit the drag/snap system uses, independent of visual zoom
+            return (px / logicalPxPerBar) * secPerBar;
         }
 
         function dawArrangementDuration() {
@@ -7395,6 +7353,51 @@
             window.speechSynthesis.onvoiceschanged = () => { window.relayFemaleVoice = sfcPickFemaleVoice(); };
         }
 
+        // --- Adjustable voice settings (rate/pitch), saved so they stick between visits ---
+        window.relayVoiceSettings = (() => {
+            try {
+                const saved = JSON.parse(localStorage.getItem('sbn-relay-voice-settings') || 'null');
+                if (saved && typeof saved.rate === 'number' && typeof saved.pitch === 'number') return saved;
+            } catch (err) {}
+            return { rate: 0.85, pitch: 1.15 }; // slower than a browser's default 1.0 — was talking too fast
+        })();
+
+        function sfcSaveVoiceSettings() {
+            try { localStorage.setItem('sbn-relay-voice-settings', JSON.stringify(window.relayVoiceSettings)); } catch (err) {}
+        }
+
+        window.toggleRelayVoiceSettings = function(event) {
+            if (event) event.stopPropagation();
+            const panel = document.getElementById('relay-voice-settings');
+            if (!panel) return;
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) {
+                document.getElementById('relay-rate-slider').value = window.relayVoiceSettings.rate;
+                document.getElementById('relay-pitch-slider').value = window.relayVoiceSettings.pitch;
+                document.getElementById('relay-rate-value').innerText = window.relayVoiceSettings.rate.toFixed(2) + 'x';
+                document.getElementById('relay-pitch-value').innerText = window.relayVoiceSettings.pitch.toFixed(2);
+            }
+        };
+
+        window.updateRelayVoiceSetting = function(key, value) {
+            window.relayVoiceSettings[key] = parseFloat(value);
+            document.getElementById('relay-' + key + '-value').innerText = key === 'rate' ? parseFloat(value).toFixed(2) + 'x' : parseFloat(value).toFixed(2);
+            sfcSaveVoiceSettings();
+        };
+
+        window.testRelayVoice = function(event) {
+            if (event) event.stopPropagation();
+            window.speakRelayMessage("Hi-hi-hi! This is how I sound now, Architect.");
+        };
+
+        document.addEventListener('click', (e) => {
+            const panel = document.getElementById('relay-voice-settings');
+            const btn = document.getElementById('relay-voice-settings-btn');
+            if (panel && !panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+                panel.classList.add('hidden');
+            }
+        });
+
         window.speakRelayMessage = function(text) {
             if (window.relayMuted) return;
             if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
@@ -7407,8 +7410,8 @@
                 if (!clean) return;
                 const utter = new SpeechSynthesisUtterance(clean);
                 if (window.relayFemaleVoice) utter.voice = window.relayFemaleVoice;
-                utter.pitch = 1.15;
-                utter.rate = 1.05;
+                utter.pitch = window.relayVoiceSettings.pitch;
+                utter.rate = window.relayVoiceSettings.rate;
                 utter.volume = 0.9;
                 window.speechSynthesis.speak(utter);
             } catch (err) { console.error('Speech synthesis failed:', err); }
