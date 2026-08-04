@@ -6133,7 +6133,30 @@
             });
         };
 
-        window.deployForgedArtist = function(btn) {
+        // Shrinks a photo to a small JPEG thumbnail before it's saved. Storing the
+        // original full-resolution upload in every card is what was silently blowing
+        // through localStorage's ~5-10MB quota after just a few deploys — the save
+        // would fail, get caught, and log to console where nobody would ever see it,
+        // so the card looked fine right up until the next page refresh wiped it out.
+        function sfcShrinkPhoto(dataUrl) {
+            return new Promise((resolve) => {
+                if (!dataUrl) { resolve(null); return; }
+                const img = new Image();
+                img.onload = () => {
+                    const maxSide = 400;
+                    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.75));
+                };
+                img.onerror = () => resolve(dataUrl); // fall back to the original rather than lose the photo entirely
+                img.src = dataUrl;
+            });
+        }
+
+        window.deployForgedArtist = async function(btn) {
             // Read from the form input directly, not the card's own text elements —
             // simpler and avoids ever depending on element visibility/state.
             const nameInput = document.getElementById('epk-band-name');
@@ -6146,6 +6169,7 @@
             }
 
             const textOf = (id) => { const el = document.getElementById(id); return el ? el.innerText : ''; };
+            const shrunkPhoto = await sfcShrinkPhoto(window.epkPhotoDataUrl);
 
             // Saves the card's actual DATA, not a screenshot of it — this is the whole
             // point of the rebuild: the gallery re-renders each card live from these
@@ -6166,7 +6190,7 @@
                 virality: textOf('forged-virality'),
                 mystery: textOf('forged-mystery'),
                 members: textOf('forged-members'),
-                photo: window.epkPhotoDataUrl || null
+                photo: shrunkPhoto
             };
             window.soulForgeCards.unshift(card);
             window.renderSoulForgeCards();
@@ -6177,7 +6201,22 @@
         window.sfcSelection = new Set(); // ids of currently selected cards
 
         function sfcSave() {
-            try { localStorage.setItem('sbn-soul-forge-cards', JSON.stringify(window.soulForgeCards)); } catch (err) { console.error('Could not save Soul Forge cards:', err); }
+            try {
+                localStorage.setItem('sbn-soul-forge-cards', JSON.stringify(window.soulForgeCards));
+            } catch (err) {
+                console.error('Could not save Soul Forge cards:', err);
+                // Most likely cause: localStorage is full (old cards saved before photos
+                // were downscaled can still be large). Drop the oldest card and retry once
+                // rather than silently losing everything on the next refresh.
+                if (window.soulForgeCards.length > 1) {
+                    window.soulForgeCards.pop();
+                    try {
+                        localStorage.setItem('sbn-soul-forge-cards', JSON.stringify(window.soulForgeCards));
+                        return;
+                    } catch (err2) { console.error('Still could not save after trimming:', err2); }
+                }
+                alert('Could not save this artist card — storage is full. Try removing some older cards.');
+            }
         }
 
         window.renderSoulForgeCards = function() {
