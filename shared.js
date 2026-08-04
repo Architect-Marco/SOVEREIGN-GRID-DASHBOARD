@@ -2312,7 +2312,7 @@
             lanes.innerHTML = window.dawTracks.map((t, i) => `
                 <div class="relative border-b border-white/5 flex items-center overflow-hidden" oncontextmenu="window.openDawTrackContextMenu(event,'${t.id}')" style="height:${dawRowHeight(t)}px; overflow:hidden; z-index:1;">
                     <div id="clip-wrap-${t.id}" class="relative w-full h-full" style="transform:translateX(${window.dawClipOffsets[t.id] || 0}px); overflow:hidden; z-index:1;">
-                        <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full flex items-center" style="cursor:grab; overflow:hidden; z-index:1;"></div>
+                        <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full" style="cursor:grab; overflow:hidden; z-index:1;"></div>
                     </div>
                 </div>`).join('');
 
@@ -2346,33 +2346,15 @@
             const secPerBar = (60 / bpm) * 4; // 4/4 time signature
             const subdivisions = window.dawGridDivision || 16;
             const beatEvery = Math.max(1, subdivisions / 4); // ticks-per-quarter-note boundary
-            const { markPx, totalBars, totalWidthPx } = dawComputeTimelineLayout();
+            // .daw-ruler-mark has a CSS min-width:76px floor meant for the default (100%) zoom —
+            // override it inline per-mark so the ruler (and the waveform lanes that align to it)
+            // can actually shrink below that floor when zoomed out, not just stop shrinking at ~75%.
+            const { markPx, totalBars } = dawComputeTimelineLayout();
             // Below ~40px a bar mark is narrower than its own "N.1" + timecode text, so labels
             // start colliding into their neighbors — thin them out to every Nth bar instead.
             const labelStride = markPx >= 40 ? 1 : markPx >= 20 ? 2 : markPx >= 10 ? 4 : markPx >= 5 ? 8 : 16;
-
-            // The ruler (and the underlying timeline) now spans a fixed 10-minute-ish floor
-            // regardless of zoom or how long the current audio actually is — so at extreme
-            // zoom-out that can mean thousands of bars. Rendering all of them as real DOM
-            // nodes (each with up to ~16 tick spans) is what actually made zoom-out feel
-            // "capped" before: it wasn't a deliberate limit, the browser was just choking on
-            // the DOM size. Instead, absolutely-position each mark and only render the ones
-            // actually within (or just outside) the visible scroll viewport.
-            ruler.style.position = 'relative';
-            ruler.style.width = totalWidthPx + 'px';
-
-            const scrollEl = document.getElementById('master-scroll-container');
-            let firstBar = 1, lastBar = totalBars;
-            if (scrollEl) {
-                const viewStart = Math.max(0, scrollEl.scrollLeft - DAW_HEADER_SIDEBAR_WIDTH);
-                const viewEnd = viewStart + scrollEl.clientWidth;
-                const bufferBars = 15; // headroom so a quick scroll doesn't flash blank space before the next render
-                firstBar = Math.max(1, Math.floor(viewStart / markPx) - bufferBars);
-                lastBar = Math.min(totalBars, Math.ceil(viewEnd / markPx) + bufferBars);
-            }
-
             let html = '';
-            for (let i = firstBar; i <= lastBar; i++) {
+            for (let i = 1; i <= totalBars; i++) {
                 const t = (i - 1) * secPerBar;
                 const mins = Math.floor(t / 60);
                 const secs = (t % 60).toFixed(3).padStart(6, '0');
@@ -2382,7 +2364,7 @@
                     ticks += `<span class="daw-ruler-tick${isBeat ? ' beat' : ''}" style="left:${(s / subdivisions) * 100}%;"></span>`;
                 }
                 const showLabel = (i - 1) % labelStride === 0;
-                html += `<div class="daw-ruler-mark" style="position:absolute; top:0; left:${(i - 1) * markPx}px; width:${markPx}px; min-width:${markPx}px; height:100%;">
+                html += `<div class="daw-ruler-mark" style="width:${markPx}px; min-width:${markPx}px;">
                     <div class="daw-ruler-ticks">${ticks}</div>
                     ${showLabel ? `<div class="daw-ruler-bar">${i}.1</div><div class="daw-ruler-time">${mins}:${secs}</div>` : ''}
                 </div>`;
@@ -2390,24 +2372,12 @@
             ruler.innerHTML = html;
         };
 
-        window.dawInitRulerVirtualization = function() {
-            const scrollEl = document.getElementById('master-scroll-container');
-            if (!scrollEl || scrollEl.dataset.rulerVirtualBound) return;
-            scrollEl.dataset.rulerVirtualBound = '1';
-            let ticking = false;
-            scrollEl.addEventListener('scroll', () => {
-                if (ticking) return;
-                ticking = true;
-                requestAnimationFrame(() => { window.renderDawRuler(); ticking = false; });
-            });
-        };
-
         // ============================================================
         // DAW ARRANGEMENT ZOOM — "+"/"−" buttons or Ctrl/Cmd + mouse wheel,
         // zooms the timeline horizontally around the cursor position.
         // ============================================================
         const DAW_RULER_BASE_MARK_WIDTH = 76; // matches the .daw-ruler-mark CSS floor at zoom 1
-        const DAW_RULER_TOTAL_BARS = 300; // ~10 minutes at 120bpm — a hard floor so the grid/ruler always exist far past any current clip, not just up to where audio happens to end
+        const DAW_RULER_TOTAL_BARS = 48;
         window.dawZoom = window.dawZoom || 0.4;
         const DAW_ZOOM_MIN = 0.02, DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = DAW_RULER_BASE_MARK_WIDTH * DAW_RULER_TOTAL_BARS;
         const DAW_HEADER_SIDEBAR_WIDTH = 288; // w-72 track-header column, not part of the scrollable timeline
@@ -2415,7 +2385,7 @@
         window.dawApplyZoom = function() {
             const wrapper = document.querySelector('.daw-grid-wrapper');
             const label = document.getElementById('daw-zoom-label');
-            if (wrapper) wrapper.style.width = (dawComputeTimelineLayout().totalWidthPx + DAW_HEADER_SIDEBAR_WIDTH) + 'px';
+            if (wrapper) wrapper.style.width = dawComputeTimelineLayout().totalWidthPx + 'px';
             if (label) label.innerText = Math.round(window.dawZoom * 100) + '%';
             if (document.getElementById('daw-ruler')) window.renderDawRuler(); // re-scale bar marks to match
         };
@@ -2763,16 +2733,8 @@
                 { id: 'editing-mouse', label: 'Mouse' },
                 { id: 'editing-mouse-modifiers', label: 'Mouse Modifiers' }
             ] },
-            { id: 'media', label: 'Audio', children: [
-                { id: 'media-audio', label: 'Audio Files' },
-                { id: 'audio-device', label: 'Device' },
-                { id: 'audio-buffering', label: 'Buffering' },
-                { id: 'audio-mute-solo', label: 'Mute/Solo' },
-                { id: 'audio-recording', label: 'Recording' },
-                { id: 'audio-loop-lane', label: 'Loop/Lane Recording' },
-                { id: 'audio-seeking', label: 'Seeking' },
-                { id: 'audio-playback', label: 'Playback' },
-                { id: 'audio-rendering', label: 'Rendering' }
+            { id: 'media', label: 'Media', children: [
+                { id: 'media-audio', label: 'Audio Files' }
             ] }
         ];
         window.dawSettingsActive = 'project-backups';
@@ -3178,340 +3140,6 @@
                             </div>
                         </div>
                         <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Time selection auto-punch audio recording creates loopable section</label>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'audio-device') {
-                titleEl.innerText = 'Audio device settings';
-                content.innerHTML = `
-                    <div class="space-y-4">
-                        <div class="bg-black/40 border border-[rgba(47,208,255,0.25)] rounded-xl p-4">
-                            <div class="flex items-center gap-3 flex-wrap">
-                                <label class="text-[11px] font-bold neon-blue-text w-32 flex-shrink-0">Audio Device:</label>
-                                <select id="daw-audio-output-select" onchange="window.dawApplyAudioOutputDevice(this.value)" class="flex-1 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none"><option>Loading devices…</option></select>
-                                <span class="text-[9px] text-gray-500 italic">⚡ live</span>
-                            </div>
-                            <p id="daw-audio-output-note" class="text-[9.5px] text-gray-500 pt-2 leading-relaxed"></p>
-                        </div>
-
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Request sample rate:</label>
-                            <input type="text" value="48000" class="w-20 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                        </div>
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <div class="flex items-center gap-3">
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Request block size:</label>
-                                <input type="text" value="512" class="w-20 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                            </div>
-                            <button class="px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.25)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Audio MIDI Setup...</button>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" class="daw-checkbox"> Ignore running change notifications (may be required for some devices)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Allow projects to override device sample rate</label>
-                        <p class="text-gray-600 text-[9.5px] pl-6">If you need to use multiple devices, open Audio MIDI Setup and create an aggregate device.</p>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-2"><input type="checkbox" class="daw-checkbox"> Allow use of different input and output devices (legacy option, not recommended)</label>
-                    </div>`;
-                setTimeout(() => window.dawLoadAudioOutputDevices(), 0);
-                return;
-            }
-
-            if (pageId === 'audio-buffering') {
-                titleEl.innerText = 'Audio buffering settings';
-                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Auto-detect the number of needed audio processing threads</label>
-                        <div class="flex items-center gap-6 flex-wrap opacity-60">
-                            <div class="flex items-center gap-2">
-                                <span class="text-[11px] font-bold neon-blue-text">Audio reading/processing threads:</span>
-                                <input type="text" value="4" disabled class="w-16 ${selectCls}">
-                                <span class="text-[9px] text-gray-500">(recommended: 1 per CPU core, can also be 0)</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-6 flex-wrap">
-                            <div class="flex items-center gap-2">
-                                <span class="text-[11px] font-bold neon-blue-text">Thread priority:</span>
-                                <select class="${selectCls}"><option>Highest (recommended)</option><option>Normal</option></select>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-[11px] font-bold neon-blue-text">Behavior:</span>
-                                <select class="${selectCls}"><option>Automatic (default)</option><option>Manual</option></select>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-4 flex-wrap pt-1">
-                            <div class="flex items-center gap-2">
-                                <span class="text-[11px] font-bold neon-blue-text">Media buffer size:</span>
-                                <input type="text" value="1200" class="w-20 ${selectCls}"><span class="text-[9px] text-gray-500">ms (default is 1200ms), prebuffer:</span>
-                                <input type="text" value="100" class="w-16 ${selectCls}"><span class="text-[9px] text-gray-500">% (default is 100%)</span>
-                            </div>
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Disable media buffering for tracks with open MIDI editors (recommended)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Disable media buffering for tracks that are selected</label>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="text-[11px] font-bold neon-blue-text">Media buffer size when per-take FX UI open:</span>
-                            <input type="text" value="200" class="w-20 ${selectCls}"><span class="text-[9px] text-gray-500">ms (default is 200ms)</span>
-                        </div>
-
-                        <div class="bg-black/40 border border-white/5 rounded-xl p-4 mt-1">
-                            <div class="neon-blue-text text-[11px] font-black mb-2.5">FX processing/multiprocessing settings</div>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Anticipative FX processing — superior multiprocessing and lower interface latencies</label>
-                            <div class="pl-6 space-y-1.5 pt-1.5">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-[11px] font-bold neon-blue-text">Render-ahead:</span>
-                                    <input type="text" value="200" class="w-16 ${selectCls}"><span class="text-[9px] text-gray-500">ms (default: 200)</span>
-                                </div>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Allow on tracks without FX (may give higher multiprocessor utilization)</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Allow on tracks with open MIDI editors (will increase MIDI preview latency)</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Allow on tracks in touch/latch/write automation mode</label>
-                            </div>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-2"><input type="checkbox" checked class="daw-checkbox"> Allow live FX multiprocessing on:</label>
-                            <div class="flex items-center gap-2 pl-6 pt-1">
-                                <input type="text" value="4" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">CPUs</span>
-                            </div>
-                            <p class="text-gray-600 text-[9.5px] pl-6 pt-1">[enables multiprocessing of live input, but may reduce performance at low latencies]</p>
-                            <div class="pt-3">
-                                <button class="px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.25)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Advanced Disk I/O options...</button>
-                            </div>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'audio-mute-solo') {
-                titleEl.innerText = 'Mute settings';
-                content.innerHTML = `
-                    <div class="space-y-4">
-                        <p class="text-gray-500 text-[10.5px] leading-relaxed">This page only has the one REAPER setting that maps to something real here — muting/soloing already works in this DAW, it just used to be an instant on/off. Everything else on REAPER's real Mute/Solo page (auto-mute-above-dB, CPU savings, solo bus routing, etc.) has no engine to attach to yet, so it's left out rather than faked.</p>
-                        <div class="bg-black/40 border border-[rgba(47,208,255,0.25)] rounded-xl p-4">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-[11px] font-bold neon-blue-text">Track mute fade:</span>
-                                <input type="text" value="${window.dawMuteFadeMs}" oninput="window.dawSetMuteFadeMs(this.value)" class="w-16 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none">
-                                <span class="text-[10px] text-gray-500">ms (100 ms max)</span>
-                                <span class="text-[9px] text-gray-500 italic ml-2">⚡ live</span>
-                            </div>
-                            <p class="text-[9.5px] text-gray-500 pt-2">Try it: set this to 0 vs. ~80ms, then mute a playing track — 0 is an instant cut, higher values actually ramp the volume down/up.</p>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'audio-recording') {
-                titleEl.innerText = 'Recording settings';
-                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Scroll arrange view while recording (if enabled for playback in options menu)</label>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Show preview of recording items while recording, update frequency:</label>
-                            <input type="text" value="3" class="w-14 ${selectCls}"><span class="text-[10px] text-gray-500">Hz (default 3)</span>
-                        </div>
-
-                        <div class="flex items-center gap-6 flex-wrap">
-                            <span class="text-[11px] font-bold neon-blue-text">Build peaks for recorded files:</span>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-build-peaks" checked class="daw-checkbox" style="border-radius:50%;"> On the fly (recommended)</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-build-peaks" class="daw-checkbox" style="border-radius:50%;"> After recording</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-build-peaks" class="daw-checkbox" style="border-radius:50%;"> Manually</label>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Always show full track control panel on armed tracks</label>
-                        <div class="flex items-center gap-6 flex-wrap">
-                            <span class="text-[11px] font-bold neon-blue-text">Prompt to save/delete/rename new files:</span>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> on stop</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> on punch-out/play</label>
-                        </div>
-
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Start new files every</label>
-                            <input type="text" value="1024" class="w-20 ${selectCls}"><span class="text-[10px] text-gray-500">megabytes (approximate)</span>
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pl-6"><input type="checkbox" class="daw-checkbox"> When recording multiple tracks, offset file switches for better performance</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Prevent recording from starting when no tracks armed</label>
-
-                        <div>
-                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Recorded filenames:</div>
-                            <div class="flex items-center gap-2">
-                                <input type="text" value="$tracknumber-$track-$year2$month$day_$hour$minute" class="flex-1 ${selectCls}">
-                                <button class="px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.25)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors flex-shrink-0">Wildcards</button>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">In-project MIDI items:</div>
-                            <div class="flex items-center gap-2">
-                                <input type="text" value="$rectag-$tracknumber-$track-MIDI" class="flex-1 ${selectCls}">
-                                <button class="px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.25)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors flex-shrink-0">Wildcards</button>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-2 flex-wrap pt-1">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Check free disk space on record start, warn if less than</label>
-                            <input type="text" value="1024" class="w-20 ${selectCls}"><span class="text-[10px] text-gray-500">megabytes</span>
-                        </div>
-                        <div class="flex items-center gap-6 flex-wrap">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Show free disk space in menu bar</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Show primary recording path in menu bar</label>
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Record audio during pre-roll</label>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" checked class="daw-checkbox"> Use audio driver reported latency</label>
-                        <div class="pl-6 space-y-2">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-[11px] font-bold neon-blue-text w-28 flex-shrink-0">Output manual offset:</span>
-                                <input type="text" value="0.00" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">ms +</span>
-                                <input type="text" value="0" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">samples</span>
-                            </div>
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-[11px] font-bold neon-blue-text w-28 flex-shrink-0">Input manual offset:</span>
-                                <input type="text" value="0.00" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">ms +</span>
-                                <input type="text" value="0" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">samples</span>
-                            </div>
-                        </div>
-
-                        <p class="text-gray-600 text-[9.5px] pt-1">Display a medium-resolution peak/waveform preview of audio items while recording. Regardless, a high-resolution display will be shown afterwards.</p>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'audio-loop-lane') {
-                titleEl.innerText = 'Loop/Lane recording settings';
-                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
-                content.innerHTML = `
-                    <div class="space-y-3.5">
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> In loop recording, discard incomplete first or last takes if at least one full loop was recorded</label>
-                        <div class="flex items-center gap-2 pl-6">
-                            <span class="text-[11px] font-bold neon-blue-text">Threshold for complete take:</span>
-                            <input type="text" value="90" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">%</span>
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> MIDI overdub/replace recording always creates selection-length media item</label>
-
-                        <div class="pt-1">
-                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">When recording and looped, add recorded media to project:</div>
-                            <div class="flex items-center gap-6 flex-wrap">
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-loop-record-mode" checked class="daw-checkbox" style="border-radius:50%;"> On stop (default, recommended)</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-loop-record-mode" class="daw-checkbox" style="border-radius:50%;"> Create new files on loop</label>
-                            </div>
-                            <p class="text-gray-600 text-[9.5px] pt-1">At each loop creates new files, good for recording multiple audio layers on the fly etc.</p>
-                        </div>
-
-                        <div class="bg-black/40 border border-white/5 rounded-xl p-4 mt-1">
-                            <div class="neon-blue-text text-[11px] font-black mb-2.5">Recording into fixed lane tracks</div>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> When new recording can add lanes, record into an existing lane if there is space</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1.5"><input type="checkbox" class="daw-checkbox"> When auto-punch recording into a fixed lane track, add the whole recording</label>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'audio-seeking') {
-                titleEl.innerText = 'Seek settings';
-                content.innerHTML = `
-                    <div class="space-y-4">
-                        <p class="text-gray-500 text-[10.5px] leading-relaxed">Same approach — only the toggles below actually control something. REAPER's other seek settings (pre-roll, loop-point seeking, smooth-seek measures) would need a scheduling engine this app doesn't have yet.</p>
-                        <div class="bg-black/40 border border-[rgba(47,208,255,0.25)] rounded-xl p-4 space-y-2">
-                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Seek playback when clicked:</div>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" ${window.dawSeekOnRulerClick ? 'checked' : ''} onchange="window.dawSetSeekOnRulerClick(this.checked)" class="daw-checkbox"> Top ruler</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" ${window.dawSeekOnEmptyTrackClick ? 'checked' : ''} onchange="window.dawSetSeekOnEmptyTrackClick(this.checked)" class="daw-checkbox"> Empty areas of tracks</label>
-                            <span class="text-[9px] text-gray-500 italic">⚡ both live</span>
-                            <p class="text-[9.5px] text-gray-500 pt-1">Try it: with "Top ruler" on, click anywhere along the ruler above the tracks — the playhead jumps there immediately, even mid-playback.</p>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'audio-playback') {
-                titleEl.innerText = 'Playback settings';
-                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Stop/repeat playback at end of project</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Stop playback at end of loop if repeat is disabled</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Scroll view to edit cursor on stop</label>
-
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="text-[11px] font-bold neon-blue-text">Max MIDI playback speed when applying negative media playback offset:</span>
-                            <input type="text" value="2.0" class="w-16 ${selectCls}"><span class="text-[10px] text-gray-500">(0=immediate)</span>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" class="daw-checkbox"> Flush FX when looping (good for autotune, bad for instruments, etc)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Run FX when stopped (good for certain VSTi)</label>
-                        <div class="pl-6 space-y-2">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Flush FX on stop</label>
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-[11px] font-bold neon-blue-text">Run FX for</span>
-                                <input type="text" value="4000" class="w-20 ${selectCls}"><span class="text-[10px] text-gray-500">ms after stopping (for reverb tails, etc)</span>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-6 flex-wrap pt-1">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" ${window.dawTinyFadeOut ? 'checked' : ''} onchange="window.dawSetTinyFadeOut(this.checked)" class="daw-checkbox"> Tiny fade out on playback stop</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" ${window.dawTinyFadeIn ? 'checked' : ''} onchange="window.dawSetTinyFadeIn(this.checked)" class="daw-checkbox"> Tiny fade in on playback start</label>
-                            <span class="text-[9px] text-gray-500 italic">⚡ both live</span>
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Reduce mixing CPU use of silent tracks during playback</label>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" checked class="daw-checkbox"> Send MIDI note-offs when un-record-arming a track</label>
-                        <div class="flex items-center gap-6 flex-wrap">
-                            <span class="text-[11px] font-bold neon-blue-text">Reset MIDI CC/Pitch on:</span>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> playback start</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> playback stop</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> playback loop/skip</label>
-                        </div>
-                        <div>
-                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">CC reset overrides:</div>
-                            <input type="text" class="w-full ${selectCls}">
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (pageId === 'audio-rendering') {
-                titleEl.innerText = 'Rendering settings';
-                const selectCls = "bg-black border border-[rgba(47,208,255,0.3)] rounded-lg px-3 py-1.5 text-[11px] neon-blue-text outline-none";
-                content.innerHTML = `
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="text-[11px] font-bold neon-blue-text">Block size to use when rendering:</span>
-                            <input type="text" class="w-20 ${selectCls}"><span class="text-[10px] text-gray-500">samples (blank = audio device buffer size)</span>
-                        </div>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" checked class="daw-checkbox"> Allow anticipative FX processing when rendering (better multiprocessing)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Limit apply FX/render stems to realtime (good for some plug-ins)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Process all tracks during stem render (some hardware-based plugins may need this)</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Disable FX auto-bypass when using offline render/apply FX/render stems</label>
-
-                        <div class="flex items-center gap-2 flex-wrap pt-1">
-                            <span class="text-[11px] font-bold neon-blue-text">Default tail length:</span>
-                            <input type="text" value="1000" class="w-20 ${selectCls}"><span class="text-[10px] text-gray-500">ms, render tails when:</span>
-                        </div>
-                        <div class="pl-6 space-y-1.5">
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Rendering stems for full project via action</label>
-                            <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Rendering stems for time selection via action</label>
-                        </div>
-                        <p class="text-gray-600 text-[9.5px]">These settings also affect the default tail options in the render window (projects can override the render tail options).</p>
-
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text pt-1"><input type="checkbox" class="daw-checkbox"> When freezing, render the entire track length if there are track or per-take FX</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Include tail when freezing entire tracks</label>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Freeze muted items into muted silent items</label>
-
-                        <div class="pt-2">
-                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">Incomplete files after canceling render:</div>
-                            <div class="flex items-center gap-5">
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-incomplete-render" class="daw-checkbox" style="border-radius:50%;"> Save</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-incomplete-render" class="daw-checkbox" style="border-radius:50%;"> Delete</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="radio" name="daw-incomplete-render" checked class="daw-checkbox" style="border-radius:50%;"> Prompt</label>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">After rendering:</div>
-                            <div class="flex items-center gap-5 flex-wrap">
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Close render windows</label>
-                                <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" class="daw-checkbox"> Return to render setup</label>
-                                <button class="px-3 py-1.5 rounded-lg bg-white/5 border border-[rgba(47,208,255,0.25)] neon-blue-text text-[10px] font-black uppercase hover:bg-white/10 transition-colors">Stats/Charts</button>
-                            </div>
-                        </div>
-                        <label class="flex items-center gap-2 text-[11px] font-bold neon-blue-text"><input type="checkbox" checked class="daw-checkbox"> Reopen render results window modelessly to allow focus to return to project</label>
                     </div>`;
                 return;
             }
@@ -4363,61 +3991,6 @@
             window.closeDawPluginDetail();
         };
 
-        // ============================================================
-        // AUDIO OUTPUT DEVICE — real, using the browser's actual device API.
-        // WaveSurfer here renders through real <audio> elements, so we can
-        // genuinely route playback to a different output (setSinkId), where
-        // the browser supports it (Chrome/Edge; not Firefox/Safari).
-        // ============================================================
-        window.dawAudioOutputDeviceId = (function() {
-            try { return localStorage.getItem('sbn-daw-audio-output-device') || ''; } catch (e) { return ''; }
-        })();
-
-        window.dawApplyAudioOutputDevice = function(deviceId) {
-            window.dawAudioOutputDeviceId = deviceId;
-            try { localStorage.setItem('sbn-daw-audio-output-device', deviceId); } catch (e) {}
-            Object.values(window.waves || {}).forEach(w => {
-                if (!w || typeof w.getMediaElement !== 'function') return;
-                const el = w.getMediaElement();
-                if (el && typeof el.setSinkId === 'function' && deviceId) {
-                    el.setSinkId(deviceId).catch(err => console.warn('[DAW] setSinkId failed:', err));
-                }
-            });
-        };
-
-        window.dawLoadAudioOutputDevices = async function() {
-            const selectEl = document.getElementById('daw-audio-output-select');
-            const noteEl = document.getElementById('daw-audio-output-note');
-            if (!selectEl) return;
-            const testEl = document.createElement('audio');
-            const supportsSinkId = typeof testEl.setSinkId === 'function';
-            if (!supportsSinkId) {
-                selectEl.innerHTML = '<option>Not supported in this browser</option>';
-                selectEl.disabled = true;
-                if (noteEl) noteEl.innerText = 'Your browser doesn\'t support switching audio output devices (this works in Chrome/Edge, not Firefox/Safari).';
-                return;
-            }
-            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-                selectEl.innerHTML = '<option>Not supported in this browser</option>';
-                selectEl.disabled = true;
-                return;
-            }
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const outputs = devices.filter(d => d.kind === 'audiooutput');
-                if (!outputs.length) {
-                    selectEl.innerHTML = '<option value="">Default</option>';
-                    if (noteEl) noteEl.innerText = 'No labeled output devices found yet — your browser may need mic/permission access once before it shows device names.';
-                    return;
-                }
-                selectEl.innerHTML = outputs.map((d, i) => `<option value="${d.deviceId}" ${d.deviceId === window.dawAudioOutputDeviceId ? 'selected' : ''}>${d.label || ('Audio Output ' + (i + 1))}</option>`).join('');
-                if (noteEl) noteEl.innerText = 'This is real — picking a device actually routes your track playback to it.';
-            } catch (e) {
-                selectEl.innerHTML = '<option>Could not list devices</option>';
-                selectEl.disabled = true;
-            }
-        };
-
         window.initDawWaves = function() {
             window.dawTracks.forEach(t => {
                 const key = 'daw-' + t.id;
@@ -4438,8 +4011,7 @@
                 }
                 window.waves[key] = WaveSurfer.create({
                     container: `#wave-${key}`, waveColor: t.color, progressColor: t.color,
-                    cursorWidth: 0, barWidth: 2, barGap: 1, barRadius: 0, barAlign: undefined, // barAlign left unset = symmetric bipolar rendering (both above and below the center line), not one-sided
-                    responsive: true, height: 56, normalize: true, interact: false
+                    cursorWidth: 0, barWidth: 2, barRadius: 2, responsive: true, height: 30, normalize: true, interact: false
                 });
                 window.waves[key].setVolume((t.volume ?? 80) / 100);
                 window.waves[key].on('audioprocess', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
@@ -4459,7 +4031,6 @@
                 if (window.dawFiles[t.id]) window.waves[key].loadBlob(window.dawFiles[t.id]); // restore from the retained File — no network fetch involved
                 else if (window.dawUrls[t.id]) window.waves[key].load(window.dawUrls[t.id]); // fallback for older stored sessions with only a URL
             });
-            if (window.dawAudioOutputDeviceId) window.dawApplyAudioOutputDevice(window.dawAudioOutputDeviceId);
         };
 
         window.addDawTrack = function() {
@@ -4903,36 +4474,13 @@
             window.dawTransportRafId = requestAnimationFrame(dawTransportTick);
         }
 
-        window.dawTinyFadeIn = (function() { try { return localStorage.getItem('sbn-daw-tiny-fade-in') !== 'false'; } catch (e) { return true; } })();
-        window.dawTinyFadeOut = (function() { try { return localStorage.getItem('sbn-daw-tiny-fade-out') !== 'false'; } catch (e) { return true; } })();
-        window.dawSetTinyFadeIn = function(on) { window.dawTinyFadeIn = on; try { localStorage.setItem('sbn-daw-tiny-fade-in', on); } catch (e) {} };
-        window.dawSetTinyFadeOut = function(on) { window.dawTinyFadeOut = on; try { localStorage.setItem('sbn-daw-tiny-fade-out', on); } catch (e) {} };
-        window.dawFadeWaveVolume = function(wave, from, to, ms, onDone) {
-            const steps = 10;
-            const stepMs = ms / steps;
-            let i = 0;
-            try { wave.setVolume(from); } catch (e) {}
-            const timer = setInterval(() => {
-                i++;
-                const v = from + (to - from) * (i / steps);
-                try { wave.setVolume(Math.max(0, Math.min(1, v))); } catch (e) {}
-                if (i >= steps) { clearInterval(timer); if (onDone) onDone(); }
-            }, stepMs);
-        };
-
         window.dawPauseAll = function() {
             window.dawIsPlaying = false;
             dawClearPendingTimeouts();
             if (window.dawTransportRafId) { cancelAnimationFrame(window.dawTransportRafId); window.dawTransportRafId = null; }
             window.dawTracks.forEach(t => {
                 const w = window.waves['daw-' + t.id];
-                if (w && w.isPlaying()) {
-                    if (window.dawTinyFadeOut) {
-                        window.dawFadeWaveVolume(w, 1, 0, 40, () => { w.pause(); w.setVolume(1); });
-                    } else {
-                        w.pause();
-                    }
-                }
+                if (w && w.isPlaying()) w.pause();
             });
             window.updateDawStatus();
         };
@@ -4958,16 +4506,11 @@
                 if (window.dawTransportTime >= clipStart) {
                     // playhead is already inside this clip — jump in at the right point and play now
                     w.seekTo(Math.max(0, Math.min(0.999, (window.dawTransportTime - clipStart) / w.getDuration())));
-                    if (window.dawTinyFadeIn) { w.setVolume(0); w.play(); window.dawFadeWaveVolume(w, 0, 1, 40); }
-                    else w.play();
+                    w.play();
                 } else {
                     // playhead hasn't reached this clip yet — schedule it for exactly when it should start
                     const delayMs = (clipStart - window.dawTransportTime) * 1000;
-                    const timeoutId = setTimeout(() => {
-                        w.seekTo(0);
-                        if (window.dawTinyFadeIn) { w.setVolume(0); w.play(); window.dawFadeWaveVolume(w, 0, 1, 40); }
-                        else w.play();
-                    }, delayMs);
+                    const timeoutId = setTimeout(() => { w.seekTo(0); w.play(); }, delayMs);
                     window.dawPendingTimeouts.push(timeoutId);
                 }
             });
@@ -5000,43 +4543,6 @@
             window.dawTransportTime = dawArrangementDuration();
             window.updateDawPlayhead();
             window.updateDawTimer();
-        };
-
-        // ============================================================
-        // CLICK-TO-SEEK — real. Click the ruler (or empty track space, if
-        // enabled) to jump the playhead there. Preferences → Seeking.
-        // ============================================================
-        window.dawSeekOnRulerClick = (function() { try { return localStorage.getItem('sbn-daw-seek-ruler') !== 'false'; } catch (e) { return true; } })();
-        window.dawSeekOnEmptyTrackClick = (function() { try { return localStorage.getItem('sbn-daw-seek-empty-track') === 'true'; } catch (e) { return false; } })();
-        window.dawSetSeekOnRulerClick = function(on) { window.dawSeekOnRulerClick = on; try { localStorage.setItem('sbn-daw-seek-ruler', on); } catch (e) {} };
-        window.dawSetSeekOnEmptyTrackClick = function(on) { window.dawSeekOnEmptyTrackClick = on; try { localStorage.setItem('sbn-daw-seek-empty-track', on); } catch (e) {} };
-
-        window.dawSeekToPosition = function(seconds) {
-            const wasPlaying = window.dawIsPlaying;
-            if (wasPlaying) window.dawPauseAll();
-            window.dawTransportTime = Math.max(0, seconds);
-            window.dawTracks.forEach(t => {
-                const w = window.waves['daw-' + t.id];
-                if (!w || !w.getDuration || !w.getDuration()) return;
-                const within = window.dawTransportTime - dawClipStartSeconds(t.id);
-                if (within >= 0 && within <= w.getDuration()) w.seekTo(within / w.getDuration());
-            });
-            window.updateDawPlayhead();
-            window.updateDawTimer();
-            if (wasPlaying) window.playAllDaw();
-        };
-
-        window.dawHandleTimelineClick = function(e, requireEmptyTarget) {
-            if (requireEmptyTarget && e.target !== e.currentTarget) return; // clicked a clip/child, not empty space
-            const scrollEl = document.getElementById('master-scroll-container');
-            if (!scrollEl) return;
-            const rect = scrollEl.getBoundingClientRect();
-            const xInTimeline = (e.clientX - rect.left) + scrollEl.scrollLeft - DAW_HEADER_SIDEBAR_WIDTH;
-            if (xInTimeline < 0) return;
-            const { markPx } = dawComputeTimelineLayout();
-            const bpm = parseFloat(window.dawBpm) || 120;
-            const secPerBar = (60 / bpm) * 4;
-            window.dawSeekToPosition((xInTimeline / markPx) * secPerBar);
         };
 
         window.toggleDawLoop = function() {
@@ -5126,29 +4632,12 @@
             if (btn) btn.classList.toggle('armed', track.recordEnabled);
         };
 
-        window.dawMuteFadeMs = (function() { try { return Number(localStorage.getItem('sbn-daw-mute-fade-ms')) || 5; } catch (e) { return 5; } })();
-        window.dawSetMuteFadeMs = function(ms) {
-            window.dawMuteFadeMs = Math.max(0, Number(ms) || 0);
-            try { localStorage.setItem('sbn-daw-mute-fade-ms', window.dawMuteFadeMs); } catch (e) {}
-        };
-        function dawApplyTrackAudibility(track, shouldBeSilent) {
-            const w = window.waves['daw-' + track.id];
-            if (!w) return;
-            const targetVol = shouldBeSilent ? 0 : (track.volume ?? 80) / 100;
-            const mediaEl = typeof w.getMediaElement === 'function' ? w.getMediaElement() : null;
-            const currentVol = mediaEl ? mediaEl.volume : targetVol;
-            if (window.dawMuteFadeMs > 0) {
-                window.dawFadeWaveVolume(w, currentVol, targetVol, window.dawMuteFadeMs);
-            } else if (w.setVolume) {
-                w.setVolume(targetVol);
-            }
-        }
-
         window.toggleDawMute = function(trackId) {
             const track = window.dawTracks.find(t => t.id === trackId);
             if (!track) return;
             track.muted = !track.muted;
-            dawApplyTrackAudibility(track, track.muted);
+            const w = window.waves['daw-' + trackId];
+            if (w) w.setMuted ? w.setMuted(track.muted) : w.setVolume(track.muted ? 0 : (track.volume ?? 80) / 100);
             [document.getElementById('daw-mute-' + trackId), document.getElementById('daw-mixer-mute-' + trackId)].forEach(btn => {
                 if (btn) btn.classList.toggle('on-mute', track.muted);
             });
@@ -5164,8 +4653,10 @@
             // Soloing a track mutes all others (a real DAW convention); un-soloing restores them
             const anySolo = window.dawTracks.some(t => t.solo);
             window.dawTracks.forEach(t => {
+                const w = window.waves['daw-' + t.id];
+                if (!w) return;
                 const shouldMute = anySolo ? !t.solo : t.muted;
-                dawApplyTrackAudibility(t, shouldMute);
+                w.setMuted ? w.setMuted(shouldMute) : w.setVolume(shouldMute ? 0 : (t.volume ?? 80) / 100);
             });
         };
 
@@ -6586,6 +6077,37 @@
                     themesEl.classList.add('hidden');
                 }
 
+                // Song title, in the slimmed header — hidden entirely when not given.
+                const songTitleEl = document.getElementById('forged-song-title');
+                const songTitle = document.getElementById('epk-song-title') ? document.getElementById('epk-song-title').value.trim() : '';
+                if (songTitle) {
+                    songTitleEl.innerText = songTitle;
+                    songTitleEl.classList.remove('hidden');
+                } else {
+                    songTitleEl.classList.add('hidden');
+                }
+
+                // Member names — the numeric "Members" stat box already covers the count,
+                // this line is just the actual names, shown under the themes tag.
+                const memberNamesEl = document.getElementById('forged-member-names');
+                const memberNames = document.getElementById('epk-member-names') ? document.getElementById('epk-member-names').value.trim() : '';
+                if (memberNames) {
+                    memberNamesEl.innerText = memberNames;
+                    memberNamesEl.classList.remove('hidden');
+                } else {
+                    memberNamesEl.classList.add('hidden');
+                }
+
+                // Influences — a second small tag line under Genre, same treatment.
+                const influencesEl = document.getElementById('forged-influences');
+                const influences = document.getElementById('epk-influences') ? document.getElementById('epk-influences').value.trim() : '';
+                if (influences) {
+                    influencesEl.innerText = 'Influences: ' + influences;
+                    influencesEl.classList.remove('hidden');
+                } else {
+                    influencesEl.classList.add('hidden');
+                }
+
                 card.classList.remove('hidden');
                 requestAnimationFrame(() => card.classList.add('materialize'));
             }, 2000);
@@ -6634,8 +6156,11 @@
                 id: 'sfc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
                 date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
                 artistName: name,
+                songTitle: textOf('forged-song-title'),
                 genre: textOf('forged-genre'),
+                influences: textOf('forged-influences'),
                 themes: textOf('forged-themes'),
+                memberNames: textOf('forged-member-names'),
                 quote: textOf('forged-quote'),
                 tagline: textOf('forged-tagline'),
                 resonance: textOf('forged-resonance'),
@@ -6751,10 +6276,16 @@
             }
             document.getElementById('sfc-detail-name').innerText = card.artistName;
             document.getElementById('sfc-detail-date').innerText = card.date;
+            document.getElementById('sfc-detail-song-title').innerText = card.songTitle || '';
+            document.getElementById('sfc-detail-song-title').classList.toggle('hidden', !card.songTitle);
             document.getElementById('sfc-detail-themes').innerText = card.themes || '';
             document.getElementById('sfc-detail-themes').classList.toggle('hidden', !card.themes);
+            document.getElementById('sfc-detail-member-names').innerText = card.memberNames || '';
+            document.getElementById('sfc-detail-member-names').classList.toggle('hidden', !card.memberNames);
             document.getElementById('sfc-detail-quote').innerText = card.quote || '';
             document.getElementById('sfc-detail-genre').innerText = card.genre || '';
+            document.getElementById('sfc-detail-influences').innerText = card.influences || '';
+            document.getElementById('sfc-detail-influences').classList.toggle('hidden', !card.influences);
             document.getElementById('sfc-detail-tagline').innerText = card.tagline || '';
             document.getElementById('sfc-detail-resonance').innerText = card.resonance || '--';
             document.getElementById('sfc-detail-virality').innerText = card.virality || '--';
@@ -7955,18 +7486,6 @@
                     if (window.dawTracks && window.dawTracks.length && !window.waves['daw-' + window.dawTracks[0].id]) {
                         setTimeout(window.initDawWaves, 300);
                     }
-                    // Real click-to-seek: click the ruler, or empty (non-clip) space in the
-                    // track lanes, to jump the playhead there — gated by Preferences → Seeking.
-                    const rulerEl = document.getElementById('daw-ruler');
-                    if (rulerEl && !rulerEl.dataset.seekBound) {
-                        rulerEl.dataset.seekBound = '1';
-                        rulerEl.addEventListener('click', (e) => { if (window.dawSeekOnRulerClick) window.dawHandleTimelineClick(e, false); });
-                    }
-                    if (!dawTracksEl.dataset.seekBound) {
-                        dawTracksEl.dataset.seekBound = '1';
-                        dawTracksEl.addEventListener('click', (e) => { if (window.dawSeekOnEmptyTrackClick) window.dawHandleTimelineClick(e, true); });
-                    }
-                    window.dawInitRulerVirtualization();
                 }
             }, 'dawInit');
             safeInit(() => {
