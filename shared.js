@@ -6144,7 +6144,6 @@
                 btn.innerText = '[ DEPLOYED ✅ ]';
                 setTimeout(() => { btn.innerText = original; }, 1500);
             }
-            if (typeof window.addCreation === 'function') window.addCreation(name, '');
 
             const textOf = (id) => { const el = document.getElementById(id); return el ? el.innerText : ''; };
 
