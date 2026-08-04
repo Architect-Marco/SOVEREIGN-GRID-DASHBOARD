@@ -2216,29 +2216,32 @@
 
         window.dawClipDragStart = function(e, trackId) {
             const startX = e.touches ? e.touches[0].clientX : e.clientX;
-            const startOffset = window.dawClipOffsets[trackId] || 0;
+            const bpm = parseFloat(window.dawBpm) || 120;
+            const secPerBar = (60 / bpm) * 4; // 4/4 time signature
+            const { markPx } = dawComputeTimelineLayout(); // current zoom's pixels-per-bar, fixed for this drag
+            const startOffsetSec = window.dawClipOffsets[trackId] || 0;
             const wrap = document.getElementById('clip-wrap-' + trackId);
             if (!wrap) return;
             let dragging = false;
-            const PIXELS_PER_BAR = 108; // matches .daw-ruler-mark width
             const move = (ev) => {
                 const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
-                const delta = clientX - startX;
-                if (!dragging && Math.abs(delta) > 5) dragging = true;
+                const deltaPx = clientX - startX;
+                if (!dragging && Math.abs(deltaPx) > 5) dragging = true;
                 if (dragging) {
                     ev.preventDefault();
-                    let newOffset = Math.max(0, startOffset + delta); // never drag left of the track's own start
+                    const deltaSec = (deltaPx / markPx) * secPerBar;
+                    let newOffsetSec = Math.max(0, startOffsetSec + deltaSec); // never drag left of the track's own start
 
                     // Mouse Modifiers (Preferences → Editing Behavior → Mouse Modifiers): "Shift: Move item ignoring snap" is live.
                     const shiftHeld = !!ev.shiftKey;
                     let effectiveSnap = window.dawSnapOn && !shiftHeld;
 
                     if (effectiveSnap) {
-                        const snapPx = PIXELS_PER_BAR / (window.dawGridDivision || 16);
-                        newOffset = Math.round(newOffset / snapPx) * snapPx;
+                        const snapSec = secPerBar / (window.dawGridDivision || 16);
+                        newOffsetSec = Math.round(newOffsetSec / snapSec) * snapSec;
                     }
-                    window.dawClipOffsets[trackId] = newOffset;
-                    wrap.style.transform = `translateX(${newOffset}px)`;
+                    window.dawClipOffsets[trackId] = newOffsetSec;
+                    wrap.style.transform = `translateX(${Math.round((newOffsetSec / secPerBar) * markPx)}px)`;
                     wrap.style.outline = shiftHeld ? '1px dashed rgba(239,68,68,0.7)' : 'none';
                 }
             };
@@ -2248,6 +2251,7 @@
                 document.removeEventListener('mouseup', up);
                 document.removeEventListener('touchmove', move);
                 document.removeEventListener('touchend', up);
+                window.dawUpdateClipWidths(); // recompute the timeline's total length in case this drag extended it
             };
             document.addEventListener('mousemove', move);
             document.addEventListener('mouseup', up);
@@ -2311,7 +2315,7 @@
 
             lanes.innerHTML = window.dawTracks.map((t, i) => `
                 <div class="relative border-b border-white/5 flex items-center overflow-hidden" oncontextmenu="window.openDawTrackContextMenu(event,'${t.id}')" style="height:${dawRowHeight(t)}px; overflow:hidden; z-index:1;">
-                    <div id="clip-wrap-${t.id}" data-track-id="${t.id}" class="relative h-full" style="width:100%; transform:translateX(${window.dawClipOffsets[t.id] || 0}px); overflow:hidden; z-index:1;">
+                    <div id="clip-wrap-${t.id}" data-track-id="${t.id}" class="relative h-full" style="width:100%; transform:translateX(0px); overflow:hidden; z-index:1;">
                         <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full" style="cursor:grab; overflow:hidden; z-index:1;"></div>
                     </div>
                 </div>`).join('');
@@ -2336,14 +2340,30 @@
             const scrollEl = document.getElementById('master-scroll-container');
             const visibleLaneWidth = scrollEl ? Math.max(200, scrollEl.clientWidth - DAW_HEADER_SIDEBAR_WIDTH) : 900;
             const barsToFillScreen = Math.ceil(visibleLaneWidth / markPx) + 1;
-            const totalBars = Math.max(DAW_RULER_TOTAL_BARS, barsToFillScreen);
+
+            // Also make sure the timeline reaches past wherever clips have actually been
+            // dragged to, plus some working room beyond — otherwise a clip dragged far out
+            // can sit right at (or past) the edge of the generated ruler with nowhere to go.
+            const bpm = parseFloat(window.dawBpm) || 120;
+            const secPerBar = (60 / bpm) * 4;
+            let furthestClipEndBar = 0;
+            (window.dawTracks || []).forEach(t => {
+                const w = window.waves && window.waves['daw-' + t.id];
+                const duration = w && w.getDuration ? w.getDuration() : 0;
+                if (!duration) return;
+                const endBar = dawClipStartSeconds(t.id) / secPerBar + duration / secPerBar;
+                if (endBar > furthestClipEndBar) furthestClipEndBar = endBar;
+            });
+            const barsForClips = Math.ceil(furthestClipEndBar) + 16; // 16 bars of working room past the last clip
+
+            const totalBars = Math.max(DAW_RULER_TOTAL_BARS, barsToFillScreen, barsForClips);
             return { markPx, totalBars, totalWidthPx: markPx * totalBars };
         }
 
-        // Sizes each track's clip to its ACTUAL audio duration at the current zoom level,
-        // instead of always stretching to fill 100% of its row — without this, a 3-second
-        // clip and a 30-minute clip both looked identical (full-width) at any zoom, since
-        // WaveSurfer's fillParent just fills whatever box it's given regardless of length.
+        // Sizes AND positions each track's clip to its actual audio duration/drag-offset at
+        // the current zoom level. Without this, a clip stretched to fill 100% regardless of
+        // real length, and a dragged clip's position (stored zoom-independent) was rendered
+        // as raw pixels — only correct at one specific zoom, drifting off the ruler at any other.
         window.dawUpdateClipWidths = function() {
             const bpm = parseFloat(window.dawBpm) || 120;
             const secPerBar = (60 / bpm) * 4; // 4/4 time signature
@@ -2351,9 +2371,11 @@
             window.dawTracks.forEach(t => {
                 const wrap = document.getElementById('clip-wrap-' + t.id);
                 if (!wrap) return;
+                const startBar = dawClipStartSeconds(t.id) / secPerBar;
+                wrap.style.transform = 'translateX(' + Math.round(startBar * markPx) + 'px)';
                 const w = window.waves['daw-' + t.id];
                 const duration = w && w.getDuration ? w.getDuration() : 0;
-                if (!duration) return; // no audio loaded yet — leave the 100% fallback in place
+                if (!duration) return; // no audio loaded yet — leave the 100% fallback width in place
                 const bars = duration / secPerBar;
                 const widthPx = Math.max(4, Math.round(bars * markPx));
                 wrap.style.width = widthPx + 'px';
@@ -4453,11 +4475,7 @@
         window.dawTransportRafId = null;
 
         function dawClipStartSeconds(trackId) {
-            const px = window.dawClipOffsets[trackId] || 0;
-            const bpm = parseFloat(window.dawBpm) || 120;
-            const secPerBar = (60 / bpm) * 4; // 4/4 time signature
-            const logicalPxPerBar = 108; // same logical unit the drag/snap system uses, independent of visual zoom
-            return (px / logicalPxPerBar) * secPerBar;
+            return window.dawClipOffsets[trackId] || 0; // stored directly in seconds now — zoom-independent
         }
 
         function dawArrangementDuration() {
