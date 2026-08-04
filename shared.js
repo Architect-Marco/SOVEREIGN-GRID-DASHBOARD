@@ -2346,15 +2346,33 @@
             const secPerBar = (60 / bpm) * 4; // 4/4 time signature
             const subdivisions = window.dawGridDivision || 16;
             const beatEvery = Math.max(1, subdivisions / 4); // ticks-per-quarter-note boundary
-            // .daw-ruler-mark has a CSS min-width:76px floor meant for the default (100%) zoom —
-            // override it inline per-mark so the ruler (and the waveform lanes that align to it)
-            // can actually shrink below that floor when zoomed out, not just stop shrinking at ~75%.
-            const { markPx, totalBars } = dawComputeTimelineLayout();
+            const { markPx, totalBars, totalWidthPx } = dawComputeTimelineLayout();
             // Below ~40px a bar mark is narrower than its own "N.1" + timecode text, so labels
             // start colliding into their neighbors — thin them out to every Nth bar instead.
             const labelStride = markPx >= 40 ? 1 : markPx >= 20 ? 2 : markPx >= 10 ? 4 : markPx >= 5 ? 8 : 16;
+
+            // The ruler (and the underlying timeline) now spans a fixed 10-minute-ish floor
+            // regardless of zoom or how long the current audio actually is — so at extreme
+            // zoom-out that can mean thousands of bars. Rendering all of them as real DOM
+            // nodes (each with up to ~16 tick spans) is what actually made zoom-out feel
+            // "capped" before: it wasn't a deliberate limit, the browser was just choking on
+            // the DOM size. Instead, absolutely-position each mark and only render the ones
+            // actually within (or just outside) the visible scroll viewport.
+            ruler.style.position = 'relative';
+            ruler.style.width = totalWidthPx + 'px';
+
+            const scrollEl = document.getElementById('master-scroll-container');
+            let firstBar = 1, lastBar = totalBars;
+            if (scrollEl) {
+                const viewStart = Math.max(0, scrollEl.scrollLeft - DAW_HEADER_SIDEBAR_WIDTH);
+                const viewEnd = viewStart + scrollEl.clientWidth;
+                const bufferBars = 15; // headroom so a quick scroll doesn't flash blank space before the next render
+                firstBar = Math.max(1, Math.floor(viewStart / markPx) - bufferBars);
+                lastBar = Math.min(totalBars, Math.ceil(viewEnd / markPx) + bufferBars);
+            }
+
             let html = '';
-            for (let i = 1; i <= totalBars; i++) {
+            for (let i = firstBar; i <= lastBar; i++) {
                 const t = (i - 1) * secPerBar;
                 const mins = Math.floor(t / 60);
                 const secs = (t % 60).toFixed(3).padStart(6, '0');
@@ -2364,7 +2382,7 @@
                     ticks += `<span class="daw-ruler-tick${isBeat ? ' beat' : ''}" style="left:${(s / subdivisions) * 100}%;"></span>`;
                 }
                 const showLabel = (i - 1) % labelStride === 0;
-                html += `<div class="daw-ruler-mark" style="width:${markPx}px; min-width:${markPx}px;">
+                html += `<div class="daw-ruler-mark" style="position:absolute; top:0; left:${(i - 1) * markPx}px; width:${markPx}px; min-width:${markPx}px; height:100%;">
                     <div class="daw-ruler-ticks">${ticks}</div>
                     ${showLabel ? `<div class="daw-ruler-bar">${i}.1</div><div class="daw-ruler-time">${mins}:${secs}</div>` : ''}
                 </div>`;
@@ -2372,12 +2390,24 @@
             ruler.innerHTML = html;
         };
 
+        window.dawInitRulerVirtualization = function() {
+            const scrollEl = document.getElementById('master-scroll-container');
+            if (!scrollEl || scrollEl.dataset.rulerVirtualBound) return;
+            scrollEl.dataset.rulerVirtualBound = '1';
+            let ticking = false;
+            scrollEl.addEventListener('scroll', () => {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(() => { window.renderDawRuler(); ticking = false; });
+            });
+        };
+
         // ============================================================
         // DAW ARRANGEMENT ZOOM — "+"/"−" buttons or Ctrl/Cmd + mouse wheel,
         // zooms the timeline horizontally around the cursor position.
         // ============================================================
         const DAW_RULER_BASE_MARK_WIDTH = 76; // matches the .daw-ruler-mark CSS floor at zoom 1
-        const DAW_RULER_TOTAL_BARS = 48;
+        const DAW_RULER_TOTAL_BARS = 300; // ~10 minutes at 120bpm — a hard floor so the grid/ruler always exist far past any current clip, not just up to where audio happens to end
         window.dawZoom = window.dawZoom || 0.4;
         const DAW_ZOOM_MIN = 0.02, DAW_ZOOM_MAX = 5, DAW_BASE_GRID_WIDTH = DAW_RULER_BASE_MARK_WIDTH * DAW_RULER_TOTAL_BARS;
         const DAW_HEADER_SIDEBAR_WIDTH = 288; // w-72 track-header column, not part of the scrollable timeline
@@ -2385,7 +2415,7 @@
         window.dawApplyZoom = function() {
             const wrapper = document.querySelector('.daw-grid-wrapper');
             const label = document.getElementById('daw-zoom-label');
-            if (wrapper) wrapper.style.width = dawComputeTimelineLayout().totalWidthPx + 'px';
+            if (wrapper) wrapper.style.width = (dawComputeTimelineLayout().totalWidthPx + DAW_HEADER_SIDEBAR_WIDTH) + 'px';
             if (label) label.innerText = Math.round(window.dawZoom * 100) + '%';
             if (document.getElementById('daw-ruler')) window.renderDawRuler(); // re-scale bar marks to match
         };
@@ -7568,6 +7598,7 @@
                     if (window.dawTracks && window.dawTracks.length && !window.waves['daw-' + window.dawTracks[0].id]) {
                         setTimeout(window.initDawWaves, 300);
                     }
+                    window.dawInitRulerVirtualization();
                 }
             }, 'dawInit');
             safeInit(() => {
