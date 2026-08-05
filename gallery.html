@@ -7,20 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/wavesurfer.js@7"></script>
     <link rel="stylesheet" href="shared.css">
-    <style>
-        /* Neon blue scrollbar for expandable boxes (cover art folders, file list, filmstrip) */
-        .slick-scroll::-webkit-scrollbar { height: 6px !important; width: 6px !important; }
-        .slick-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.04) !important; }
-        .slick-scroll::-webkit-scrollbar-thumb { background: #2fd0ff !important; border-radius: 0 !important; }
-        .slick-scroll::-webkit-scrollbar-thumb:hover { background: #6fe0ff !important; }
-        .slick-scroll { scrollbar-width: thin; scrollbar-color: #2fd0ff rgba(255,255,255,0.04); }
-
-        /* Neon blue playback bar for the cover art lightbox's custom video & audio controls */
-        #gallery-preview-seek { accent-color: #2fd0ff; }
-
-        /* Cover art folder — highlight while a file is being dragged over it */
-        .cover-art-dropzone.cover-art-drop-active { outline: 2px solid #2fd0ff; outline-offset: -2px; background: rgba(47,208,255,0.06); }
-    </style>
 </head>
 <body class="flex flex-col">
     <div class="scanline"></div>
@@ -118,19 +104,6 @@
                 <!-- COVER ART SLOTS -->
                 <div id="cover-art-slots" class="grid grid-cols-3 gap-5 mt-6 items-start"></div>
                 <input type="file" id="cover-art-file-input" accept=".png,.jpg,.jpeg,.mp3,.mp4" multiple class="hidden" onchange="window.coverArtFileChosen(event)">
-
-                <!-- COVER ART — floating bulk-action bar (shown once 1+ tiles are selected) -->
-                <div id="cover-art-bulk-bar" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-black border border-[rgba(47,208,255,0.4)] rounded-full shadow-2xl px-5 py-2.5 flex items-center gap-4">
-                    <span id="cover-art-bulk-count" class="neon-blue-text text-[11px] font-black uppercase tracking-widest">0 selected</span>
-                    <select id="cover-art-bulk-move-select" onchange="if(this.value){window.coverArtBulkMove(this.value); this.value='';}" class="bg-black border border-white/15 rounded-lg px-2 py-1 text-[10px] neon-blue-text outline-none">
-                        <option value="">Move to…</option>
-                    </select>
-                    <button onclick="window.coverArtBulkSave()" class="text-[10px] font-black uppercase tracking-widest neon-blue-text hover:opacity-70 transition-opacity">Save</button>
-                    <button onclick="window.coverArtBulkDelete()" class="text-[10px] font-black uppercase tracking-widest text-red-400 hover:opacity-70 transition-opacity">Delete</button>
-                    <button onclick="window.coverArtClearSelection()" class="text-gray-500 hover:text-white transition-colors">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                    </button>
-                </div>
             </div>
 
             <!-- 6. VIEW: RADIO STATION -->
@@ -237,7 +210,7 @@
         <div class="flex flex-col h-[500px] bg-[#050505] border border-teal-900/40 rounded-lg overflow-hidden shadow-2xl font-mono">
 
             <!-- HEADER: TACTICAL OVERLAY -->
-            <div class="flex items-center justify-between px-4 py-2 bg-black border-b border-teal-900/40 cursor-pointer select-none" onclick="toggleRelayMinimize()">
+            <div class="flex items-center justify-between px-4 py-2 bg-black border-b border-teal-900/40 cursor-pointer select-none relative" onclick="toggleRelayMinimize()">
                 <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full neon-blue-dot animate-pulse"></span>
                     <span class="neon-blue-text text-[10px] tracking-[0.2em] font-bold">PARLEY RELAY</span>
@@ -247,6 +220,9 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
                         <span id="relay-key-status-dot" class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500"></span>
                     </button>
+                    <button onclick="window.toggleRelayVoiceSettings(event)" id="relay-voice-settings-btn" class="neon-blue-text hover:text-[#2fd0ff] transition-colors" title="Voice settings">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </button>
                     <button onclick="event.stopPropagation(); toggleRelayMute()" id="relay-mute-btn" class="neon-blue-text hover:text-[#2fd0ff] transition-colors" title="Mute/Unmute">
                         <svg id="relay-mute-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>
                     </button>
@@ -254,6 +230,21 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M19 9l-7 7-7-7"/></svg>
                     </button>
                 </div>
+            <!-- VOICE SETTINGS — rate/pitch for Lexi-Con's text-to-speech replies -->
+            <div id="relay-voice-settings" class="hidden absolute top-full right-4 mt-1 z-50 w-56 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg shadow-2xl p-4" onclick="event.stopPropagation()">
+                <div class="neon-blue-text text-[9px] font-black uppercase tracking-widest mb-3">Voice Settings</div>
+                <label class="flex items-center justify-between text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1">
+                    <span>Speed</span>
+                    <span id="relay-rate-value" class="neon-blue-text">0.85x</span>
+                </label>
+                <input type="range" id="relay-rate-slider" min="0.5" max="1.5" step="0.05" value="0.85" oninput="window.updateRelayVoiceSetting('rate', this.value)" class="w-full mb-3 accent-[#2fd0ff]">
+                <label class="flex items-center justify-between text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1">
+                    <span>Pitch</span>
+                    <span id="relay-pitch-value" class="neon-blue-text">1.15</span>
+                </label>
+                <input type="range" id="relay-pitch-slider" min="0.5" max="2" step="0.05" value="1.15" oninput="window.updateRelayVoiceSetting('pitch', this.value)" class="w-full mb-3 accent-[#2fd0ff]">
+                <button onclick="window.testRelayVoice(event)" class="w-full py-1.5 border border-[#2fd0ff] rounded text-[9px] neon-blue-text font-black uppercase tracking-widest hover:bg-[#2fd0ff]/10 transition-colors">Test Voice</button>
+            </div>
             </div>
 
             <!-- PROFILE BOX (only visible while the relay is open) -->
@@ -272,7 +263,7 @@
             </div>
 
             <!-- 1. CHAT HISTORY: DATA STREAM -->
-            <div id="relay-feed" class="flex-grow overflow-y-auto p-4 space-y-4 text-xs leading-relaxed"></div>
+<div id="relay-feed" class="flex-grow overflow-y-auto slick-scroll p-4 space-y-4 text-xs leading-relaxed"></div>
 
             <!-- 2. TACTICAL PREVIEW SHELF (STAGING AREA) -->
             <div id="relay-media-shelf" class="hidden border-t border-teal-500/20 bg-teal-900/5 p-3 relative animate-fade-in">
@@ -318,33 +309,30 @@
     <div id="lyrics-panel-backdrop" onclick="closeLyricsPanel()" class="hidden-section fixed inset-0 bg-black/50 z-40"></div>
     <div id="lyrics-panel" class="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-[#0a0a0a] border-l border-white/10 z-50 transform translate-x-full transition-transform duration-300 ease-out shadow-2xl">
         <div class="flex items-center justify-between p-6 border-b border-white/10">
-            <h3 class="text-pink-500 text-[11px] font-black uppercase italic tracking-widest">Lyrics</h3>
+            <h3 class="neon-blue-text text-[11px] font-black uppercase italic tracking-widest">Lyrics</h3>
             <button onclick="closeLyricsPanel()" class="text-gray-500 hover:text-white transition-colors">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
         </div>
         <div class="p-6 space-y-5 overflow-y-auto" style="height: calc(100% - 73px);">
             <div class="flex items-center gap-3">
-                <div id="lyrics-panel-cover" class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-purple-600 to-pink-500 flex items-center justify-center"></div>
+                <div id="lyrics-panel-cover" class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-purple-600 to-pink-500 flex items-center justify-center border-2 border-[#2fd0ff]"></div>
                 <div class="min-w-0">
-                    <div id="lyrics-panel-title" class="text-sm font-bold text-white italic truncate"></div>
+                    <div id="lyrics-panel-title" class="text-sm font-bold neon-blue-text italic truncate"></div>
                     <div id="lyrics-panel-meta" class="text-[9px] text-gray-600 uppercase font-black tracking-widest mt-0.5"></div>
                 </div>
             </div>
-            <textarea id="lyrics-panel-textarea" class="w-full h-96 bg-black border border-white/10 rounded-2xl p-5 text-white font-mono text-sm outline-none focus:border-pink-500 leading-relaxed" placeholder="No lyrics yet — write some and save..."></textarea>
-            <button onclick="saveLyricsPanel()" class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-black font-black uppercase italic tracking-widest rounded-xl">Save Lyrics</button>
+            <textarea id="lyrics-panel-textarea" class="w-full h-96 bg-black border border-[#2fd0ff] rounded-2xl p-5 neon-blue-text placeholder:text-[#2fd0ff]/50 font-mono text-sm outline-none focus:border-[#6fe0ff] leading-relaxed" placeholder="No lyrics yet — write some and save..."></textarea>
+            <button onclick="saveLyricsPanel()" class="w-full py-3 bg-transparent border border-[#2fd0ff] neon-blue-text font-black uppercase italic tracking-widest rounded-xl hover:bg-[#2fd0ff]/10 transition-colors">Save Lyrics</button>
         </div>
     </div>
 
     <!-- COVER ART — right-click context menu -->
     <div id="cover-art-ctx-menu" class="hidden fixed z-50 w-40 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg shadow-2xl overflow-hidden" onclick="event.stopPropagation()">
         <button id="cover-art-ctx-upload-btn" onclick="window.coverArtCtxUpload()" class="w-full text-left px-3 py-2 text-[11px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Upload</button>
-        <button id="cover-art-ctx-coverart-btn" onclick="window.coverArtCtxSetCoverArt()" class="hidden w-full text-left px-3 py-2 text-[11px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Cover Art</button>
         <button id="cover-art-ctx-details-btn" onclick="window.coverArtCtxDetails()" class="w-full text-left px-3 py-2 text-[11px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Edit Details</button>
-        <button id="cover-art-ctx-save-btn" onclick="window.coverArtCtxSave()" class="w-full text-left px-3 py-2 text-[11px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Save</button>
         <button id="cover-art-ctx-delete-btn" onclick="window.coverArtCtxDelete()" class="w-full text-left px-3 py-2 text-[11px] font-bold text-red-400 hover:bg-red-500/10 transition-colors">Delete</button>
     </div>
-    <input type="file" id="cover-art-coverart-input" accept=".png,.jpg,.jpeg" class="hidden" onchange="window.coverArtCoverArtFileChosen(event)">
 
     <!-- COVER ART — details modal (title + notes) -->
     <div id="cover-art-details-modal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6" onclick="if(event.target===this) window.closeCoverArtDetails()">
@@ -363,12 +351,6 @@
 
     <!-- GALLERY PREVIEW — image/video/audio lightbox -->
     <div id="gallery-preview-modal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6" onclick="if(event.target===this) window.closeGalleryPreview()">
-        <button id="cover-art-preview-prev" onclick="window.coverArtExpandPrev()" class="hidden fixed left-4 top-1/2 -translate-y-1/2 z-[51] w-10 h-10 rounded-full bg-black/70 border border-[rgba(47,208,255,0.3)] neon-blue-text flex items-center justify-center hover:bg-black transition-colors">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <button id="cover-art-preview-next" onclick="window.coverArtExpandNext()" class="hidden fixed right-4 top-1/2 -translate-y-1/2 z-[51] w-10 h-10 rounded-full bg-black/70 border border-[rgba(47,208,255,0.3)] neon-blue-text flex items-center justify-center hover:bg-black transition-colors">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-        </button>
         <div class="w-full max-w-2xl bg-[#0a0a0a] border-[1.8px] border-[rgba(47,208,255,0.25)] rounded-3xl p-7 shadow-2xl">
             <div class="flex items-center justify-between mb-4">
                 <h3 id="gallery-preview-label" class="neon-blue-text text-sm font-black uppercase italic tracking-tight truncate pr-4">—</h3>
@@ -376,23 +358,9 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 </button>
             </div>
-            <video id="gallery-preview-video" class="hidden w-full max-h-[60vh] rounded-xl bg-black"></video>
-            <img id="gallery-preview-image" class="hidden w-full max-h-[60vh] object-contain rounded-xl mb-3">
-            <audio id="gallery-preview-audio" class="hidden w-full"></audio>
-
-            <div id="gallery-preview-controls" class="hidden items-center gap-3 mt-3">
-                <button id="gallery-preview-playpause" onclick="window.galleryPreviewTogglePlay()" class="neon-blue-text flex-shrink-0 hover:opacity-70 transition-opacity">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                </button>
-                <span id="gallery-preview-time" class="text-[10px] neon-blue-text font-mono flex-shrink-0 w-24 text-center">0:00 / 0:00</span>
-                <input type="range" id="gallery-preview-seek" min="0" max="100" value="0" step="0.1" oninput="window.galleryPreviewSeek(this.value)" class="flex-1 h-1 accent-[#2fd0ff]">
-                <button id="gallery-preview-mute" onclick="window.galleryPreviewToggleMute()" class="neon-blue-text flex-shrink-0 hover:opacity-70 transition-opacity">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
-                </button>
-                <button id="gallery-preview-fullscreen" onclick="window.galleryPreviewFullscreen()" class="neon-blue-text flex-shrink-0 hover:opacity-70 transition-opacity">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-                </button>
-            </div>
+            <video id="gallery-preview-video" controls class="hidden w-full max-h-[60vh] rounded-xl bg-black"></video>
+            <audio id="gallery-preview-audio" controls class="hidden w-full"></audio>
+            <img id="gallery-preview-image" class="hidden w-full max-h-[60vh] object-contain rounded-xl">
         </div>
     </div>
 
