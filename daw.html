@@ -310,10 +310,28 @@
                     <button onclick="event.stopPropagation(); toggleRelayMute()" id="relay-mute-btn" class="neon-blue-text hover:text-[#2fd0ff] transition-colors" title="Mute/Unmute">
                         <svg id="relay-mute-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>
                     </button>
+                    <button onclick="event.stopPropagation(); window.toggleRelayVoiceSettings(event)" id="relay-voice-settings-btn" class="neon-blue-text hover:text-[#2fd0ff] transition-colors" title="Voice Settings">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </button>
                     <button onclick="event.stopPropagation(); toggleRelayMinimize()" class="neon-blue-text hover:text-[#2fd0ff] transition-colors" title="Minimize">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M19 9l-7 7-7-7"/></svg>
                     </button>
                 </div>
+            </div>
+
+            <!-- VOICE SETTINGS DROPDOWN -->
+            <div id="relay-voice-settings" class="hidden absolute top-11 right-3 z-50 w-52 bg-[#0a0a0a] border border-teal-900/40 rounded-lg p-3 shadow-2xl" onclick="event.stopPropagation()">
+                <div class="flex items-center justify-between mb-1.5">
+                    <label class="text-[9px] font-bold uppercase tracking-widest neon-blue-text">Rate</label>
+                    <span id="relay-rate-value" class="text-[9px] text-gray-400">0.85x</span>
+                </div>
+                <input id="relay-rate-slider" type="range" min="0.5" max="1.5" step="0.05" value="0.85" oninput="window.updateRelayVoiceSetting('rate', this.value)" class="w-full mb-3">
+                <div class="flex items-center justify-between mb-1.5">
+                    <label class="text-[9px] font-bold uppercase tracking-widest neon-blue-text">Pitch</label>
+                    <span id="relay-pitch-value" class="text-[9px] text-gray-400">1.15</span>
+                </div>
+                <input id="relay-pitch-slider" type="range" min="0.5" max="2" step="0.05" value="1.15" oninput="window.updateRelayVoiceSetting('pitch', this.value)" class="w-full mb-3">
+                <button onclick="window.testRelayVoice(event)" class="w-full text-[9px] font-black uppercase tracking-widest neon-blue-text border border-teal-900/40 rounded-md py-1.5 hover:bg-white/5 transition-colors">Test Voice</button>
             </div>
 
             <!-- PROFILE BOX (only visible while the relay is open) -->
