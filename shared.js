@@ -2251,6 +2251,7 @@
                 document.removeEventListener('mouseup', up);
                 document.removeEventListener('touchmove', move);
                 document.removeEventListener('touchend', up);
+                if (dragging) window.dawJustDragged = true; // suppress the click-to-seek that fires right after this
                 window.dawApplyZoom(); // recompute the timeline's total width + ruler in case this drag extended it
             };
             document.addEventListener('mousemove', move);
@@ -2314,7 +2315,7 @@
             }).join('');
 
             lanes.innerHTML = window.dawTracks.map((t, i) => `
-                <div class="relative border-b border-white/5 flex items-center overflow-hidden" oncontextmenu="window.openDawTrackContextMenu(event,'${t.id}')" style="height:${dawRowHeight(t)}px; overflow:hidden; z-index:1;">
+                <div class="relative border-b border-white/5 flex items-center overflow-hidden" oncontextmenu="window.openDawTrackContextMenu(event,'${t.id}')" onclick="window.dawSeekToClick(event)" style="height:${dawRowHeight(t)}px; overflow:hidden; z-index:1; cursor:pointer;">
                     <div id="clip-wrap-${t.id}" data-track-id="${t.id}" class="relative h-full" style="width:100%; transform:translateX(0px); overflow:hidden; z-index:1;">
                         <div id="wave-daw-${t.id}" onmousedown="window.dawClipDragStart(event,'${t.id}')" ontouchstart="window.dawClipDragStart(event,'${t.id}')" class="w-full h-full" style="cursor:grab; overflow:hidden; z-index:1;"></div>
                     </div>
@@ -4567,6 +4568,26 @@
             window.dawTracks.forEach(t => { const w = window.waves['daw-' + t.id]; if (w) w.seekTo(0); });
             window.updateDawPlayhead();
             window.updateDawTimer();
+        };
+
+        // Click anywhere on the ruler or a track lane to move the playhead there —
+        // if already playing, restarts playback scheduling from the new position.
+        window.dawSeekToClick = function(event) {
+            if (window.dawJustDragged) { window.dawJustDragged = false; return; } // this click is the tail end of a drag, not an intentional seek
+            const rect = event.currentTarget.getBoundingClientRect();
+            const clickX = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+            const { markPx } = dawComputeTimelineLayout();
+            const bpm = parseFloat(window.dawBpm) || 120;
+            const secPerBar = (60 / bpm) * 4; // 4/4 time signature
+            const bars = Math.max(0, clickX / markPx);
+            const seconds = bars * secPerBar;
+
+            const wasPlaying = window.dawIsPlaying;
+            if (wasPlaying) window.dawPauseAll();
+            window.dawTransportTime = seconds;
+            window.updateDawPlayhead();
+            window.updateDawTimer();
+            if (wasPlaying) window.playAllDaw();
         };
 
         window.dawSeekToStart = function() {
