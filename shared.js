@@ -6508,6 +6508,7 @@
         window.STATION_META = {
             wkor: {
                 id: 'WKOR-FM-001', frequency: '107.9 FM',
+                siteUrl: 'https://architect-marco.github.io/wkorfm-radio/',
                 defaultName: '107.9 W-K-O-R FM - Broadcast',
                 defaultBio: '107.9 W-K-O-R FM — THE SICK TEAM BROADCAST. Broadcasting live from the epicenter of the Aetherwave Syndicate. WKOR 107.9 is the pulse of the global grid.',
                 defaultGenres: 'Electronic, Techno, House, Funk, Parody / Comedy',
@@ -6518,6 +6519,7 @@
             },
             cdfm: {
                 id: 'CDFM-FM-001', frequency: '108.8 FM',
+                siteUrl: 'https://architect-marco.github.io/cdfm-radio/',
                 defaultName: '108.8 CDFM - Chinese Dance FM',
                 defaultBio: '108.8 CDFM — THE SICK TEAM BROADCAST. Chinese Dance FM, broadcasting from the same Sovereign Grid as WKOR — its own queue, its own songs.',
                 defaultGenres: 'Mandopop, Dance, Electronic',
@@ -6963,6 +6965,9 @@
             document.getElementById('station-frequency-value').textContent = meta.frequency;
             document.getElementById('station-tab-wkor').classList.toggle('station-tab-active', key === 'wkor');
             document.getElementById('station-tab-cdfm').classList.toggle('station-tab-active', key === 'cdfm');
+
+            const linkBtn = document.getElementById('station-site-link');
+            if (linkBtn && meta.siteUrl) linkBtn.href = meta.siteUrl;
 
             try {
                 // Cover — falls back to the empty placeholder box if this
@@ -7526,6 +7531,64 @@
         };
 
         // --- Send flow (Architect speaks, Parley Family replies — simulated until a real backend exists) ---
+        // --- Speech-to-text mic input (pairs with the text-to-speech already in place) ---
+        // Chrome/Edge support this well; Safari is patchy; Firefox doesn't support it at all.
+        window.relayListening = false;
+        window.relayRecognition = null;
+
+        function sfcGetSpeechRecognition() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            return SR ? new SR() : null;
+        }
+
+        window.toggleRelayMic = function(event) {
+            if (event) event.stopPropagation();
+            const btn = document.getElementById('relay-mic-btn');
+            if (!btn) return;
+
+            if (window.relayListening) {
+                if (window.relayRecognition) window.relayRecognition.stop();
+                return;
+            }
+
+            const recognition = sfcGetSpeechRecognition();
+            if (!recognition) {
+                alert('Voice input isn\'t supported in this browser — try Chrome or Edge.');
+                return;
+            }
+            window.relayRecognition = recognition;
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                window.relayListening = true;
+                btn.classList.add('text-red-500');
+                btn.classList.remove('neon-blue-text');
+                btn.title = 'Listening... click to stop';
+            };
+
+            recognition.onresult = (e) => {
+                const transcript = e.results[0][0].transcript;
+                const input = document.getElementById('relay-input');
+                if (input) input.value = transcript;
+                window.sendRelayMessage();
+            };
+
+            recognition.onerror = (e) => {
+                console.error('Speech recognition error:', e.error);
+            };
+
+            recognition.onend = () => {
+                window.relayListening = false;
+                btn.classList.remove('text-red-500');
+                btn.classList.add('neon-blue-text');
+                btn.title = 'Speak to Lexi';
+            };
+
+            recognition.start();
+        };
+
         window.sendRelayMessage = async function() {
             const input = document.getElementById('relay-input');
             if (!input) return;
