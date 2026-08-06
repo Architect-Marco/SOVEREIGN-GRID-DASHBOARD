@@ -140,6 +140,12 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- STATION LINK — external site, updates automatically per station -->
+                        <a id="station-site-link" href="https://architect-marco.github.io/wkorfm-radio/" target="_blank" rel="noopener" class="flex items-center justify-center gap-2 bg-[#0a0a0a] noir-bezel rounded-xl py-3 border border-[#2fd0ff] neon-blue-text text-[10px] font-black uppercase tracking-widest hover:bg-[#2fd0ff]/10 transition-colors">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            Visit Station Site
+                        </a>
                     </div>
                 </div>
 
@@ -162,15 +168,6 @@
                         <button onclick="window.saveStationChanges()" class="flex-1 py-3 bg-teal-400 text-black rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-teal-300">Save Changes 💾</button>
                     </div>
                 </div>
-
-
-<div class="bg-[#0a0a0a] noir-bezel rounded-xl p-4 mt-4">
-<div class="text-gray-500 text-[9px] font-black uppercase tracking-widest mb-3">Live Broadcast</div>
-<a id="station-radio-link" href="https://architect-marco.github.io/wkorfm-radio/" target="_blank" class="group flex items-center gap-3 rounded-xl border border-cyan-400/30 bg-black/40 p-3 hover:border-cyan-400 transition">
-<div class="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">📻</div>
-<div class="flex-1"><div id="station-radio-title" class="font-black text-sm neon-blue-text">Open WKOR FM</div><div class="text-[10px] text-gray-500 uppercase tracking-widest">Launch Radio Player</div></div>
-<div class="text-cyan-400">↗</div>
-</a></div>
 
                 <!-- STATION TRACKS -->
                 <div class="bg-[#0a0a0a] noir-bezel rounded-3xl p-8">
@@ -438,21 +435,5 @@
     </div>
 
     <script src="shared.js"></script>
-
-<script>
-document.addEventListener('DOMContentLoaded',()=>{
- const old=window.switchStationView;
- if(old){
- window.switchStationView=function(st){
- old(st);
- const a=document.getElementById('station-radio-link');
- const t=document.getElementById('station-radio-title');
- if(!a||!t)return;
- if(st==='cdfm'){a.href='https://architect-marco.github.io/cdfm-radio/';t.textContent='Open CDFM';}
- else{a.href='https://architect-marco.github.io/wkorfm-radio/';t.textContent='Open WKOR FM';}
- }
- }
-});
-</script>
 </body>
 </html>
