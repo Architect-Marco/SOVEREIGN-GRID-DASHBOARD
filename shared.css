@@ -33,6 +33,8 @@
             font-size: 12pt;
             color: #2fd0ff !important;
             text-shadow: 0 0 6px rgba(47,208,255,0.6);
+            letter-spacing: 0.12em !important;
+            line-height: 1.25 !important;
         }
 
         body { background-color: #050505; color: #ffffff; font-family: 'JetBrains Mono', monospace; margin: 0; overflow: hidden; height: 100vh; }
