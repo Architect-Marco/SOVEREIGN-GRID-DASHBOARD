@@ -287,6 +287,10 @@
 
                     <input type="text" id="relay-input" placeholder="Transmit to the Family..." class="flex-1 bg-[#080808] border border-[rgba(47,208,255,0.4)] rounded px-3 py-2 text-[11px] neon-blue-text placeholder:text-teal-900 focus:outline-none focus:border-[#2fd0ff] transition-all" onkeydown="if(event.key==='Enter') sendRelayMessage()">
 
+                    <button onclick="window.toggleRelayMic(event)" id="relay-mic-btn" class="neon-blue-text hover:opacity-70 transition-colors flex-shrink-0" title="Speak to Lexi">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4M8 23h8"/></svg>
+                    </button>
+
                     <button onclick="sendRelayMessage()" class="neon-blue-text hover:text-[#2fd0ff] transform hover:scale-110 transition-all flex-shrink-0" title="Transmit">
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
                     </button>
