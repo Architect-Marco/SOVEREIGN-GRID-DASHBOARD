@@ -7361,10 +7361,43 @@
             if (!('speechSynthesis' in window)) return null;
             const voices = window.speechSynthesis.getVoices();
             if (!voices.length) return null;
-            const femaleHints = ['female', 'zira', 'samantha', 'victoria', 'karen', 'moira', 'tessa', 'susan', 'fiona', 'aria', 'jenny', 'eva', 'linda', 'hazel', 'salli', 'kendra', 'kimberly', 'joanna', 'ivy', 'kathy'];
+
+            const femaleHints = [
+                'female', 'zira', 'samantha', 'victoria', 'karen', 'moira', 'tessa', 'susan', 'fiona',
+                'aria', 'jenny', 'eva', 'linda', 'hazel', 'salli', 'kendra', 'kimberly', 'joanna', 'ivy',
+                'kathy', 'siti', 'yasmin', 'noor', 'amira', 'nicky', 'shelley', 'catherine', 'sara', 'sonia',
+                'emma', 'amy', 'nova', 'shimmer', 'allison', 'ava', 'susan', 'zoe', 'olivia', 'grace',
+                'chloe', 'mia', 'lucy', 'ella', 'sofia', 'valeria', 'mariska', 'ting-ting', 'mei-jia'
+            ];
+            // Explicitly excluded so a name-match miss never silently hands Lexi-Con a male voice
+            const maleHints = [
+                'male', 'david', 'mark', 'alex', 'daniel', 'fred', 'james', 'george', 'mike', 'tom',
+                'guy', 'eric', 'oliver', 'ryan', 'aaron', 'gordon', 'ahmad', 'rishi', 'diego', 'thomas',
+                'yuri', 'liam', 'ethan', 'brian', 'sean', 'lee', 'rocko', 'albert', 'jorge', 'juan',
+                'wenwen', 'yunjian'
+            ];
+
+            const isFemale = v => femaleHints.some(h => v.name.toLowerCase().includes(h));
+            const isMale = v => maleHints.some(h => v.name.toLowerCase().includes(h));
+
             const englishVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
             const pool = englishVoices.length ? englishVoices : voices;
-            return pool.find(v => femaleHints.some(h => v.name.toLowerCase().includes(h))) || pool[0] || voices[0];
+
+            // 1. Best case: a known female voice name
+            const femaleMatch = pool.find(isFemale) || voices.find(isFemale);
+            if (femaleMatch) return femaleMatch;
+
+            // 2. No confirmed female voice available — better to guess from names that are
+            //    at least NOT confirmed male than to blindly grab pool[0] and risk a male voice.
+            const unknownGenderVoice = pool.find(v => !isMale(v)) || voices.find(v => !isMale(v));
+            if (unknownGenderVoice) {
+                console.warn('No known female voice found for Lexi-Con — using best guess:', unknownGenderVoice.name);
+                return unknownGenderVoice;
+            }
+
+            // 3. Every available voice matches a known male name — nothing safe to pick.
+            console.warn('Only male-named voices are available on this device/browser for Lexi-Con.');
+            return null;
         }
 
         if ('speechSynthesis' in window) {
@@ -7427,8 +7460,12 @@
                     .replace(/\*/g, '')
                     .trim();
                 if (!clean) return;
+                if (!window.relayFemaleVoice) {
+                    console.warn('Skipping speech: no female voice resolved for Lexi-Con.');
+                    return; // never fall through to the browser's unscreened default voice
+                }
                 const utter = new SpeechSynthesisUtterance(clean);
-                if (window.relayFemaleVoice) utter.voice = window.relayFemaleVoice;
+                utter.voice = window.relayFemaleVoice;
                 utter.pitch = window.relayVoiceSettings.pitch;
                 utter.rate = window.relayVoiceSettings.rate;
                 utter.volume = 0.9;
