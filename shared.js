@@ -5930,6 +5930,45 @@
             } catch (err) { console.error('Could not load magazine:', err); }
         };
 
+        // --- Broadcast Feed slogan: rename + save, so it can be refreshed any time ---
+        window.toggleBroadcastFeedMenu = function(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu) menu.classList.toggle('hidden');
+        };
+
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) menu.classList.add('hidden');
+        });
+
+        window.renameBroadcastFeed = function() {
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu) menu.classList.add('hidden');
+            const el = document.getElementById('broadcast-feed-text');
+            if (!el) return;
+            const next = prompt('Edit the broadcast feed slogan:', el.innerText.trim());
+            if (next === null) return;
+            el.innerText = next.trim();
+        };
+
+        window.saveBroadcastFeed = function() {
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu) menu.classList.add('hidden');
+            const el = document.getElementById('broadcast-feed-text');
+            if (!el) return;
+            try { localStorage.setItem('sbn-broadcast-feed-text', el.innerText.trim()); } catch (err) { console.error('Could not save broadcast feed text:', err); }
+        };
+
+        window.loadBroadcastFeed = function() {
+            const el = document.getElementById('broadcast-feed-text');
+            if (!el) return;
+            try {
+                const saved = localStorage.getItem('sbn-broadcast-feed-text');
+                if (saved) el.innerText = saved;
+            } catch (err) { console.error('Could not load broadcast feed text:', err); }
+        };
+
         // 6.6 EPK - SOUL FORGE
         window.setEpkSourceMode = function(mode) {
             const upload = document.getElementById('epk-mode-upload');
@@ -7817,6 +7856,7 @@
             safeInit(window.loadAvatarPic, 'loadAvatarPic');
             safeInit(window.loadPlayerIcon, 'loadPlayerIcon');
             safeInit(window.loadMagazine, 'loadMagazine');
+            safeInit(window.loadBroadcastFeed, 'loadBroadcastFeed');
             // One-time migration: before CDFM existed, station data was
             // saved under flat (non-per-station) keys. Move it under the
             // WKOR-specific keys so existing cover/bio/tracks aren't lost.
