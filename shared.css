@@ -26,11 +26,11 @@
             text-shadow: 0 0 8px rgba(47,208,255,0.75), 0 0 16px rgba(47,208,255,0.4);
         }
         /* Sidebar nav menu titles (HOME, CREATE, EPK SOUL FORGE, etc.) — Ethnocentric
-           font, solid neon-blue, 12pt. Placed after .nav-active so it wins the
+           font, solid neon-blue, 10pt. Placed after .nav-active so it wins the
            color battle on the active nav item (both use !important). */
         .ethnocentric-nav {
             font-family: 'Ethnocentric', 'Orbitron', sans-serif !important;
-            font-size: 12pt;
+            font-size: 10pt;
             color: #2fd0ff !important;
             text-shadow: 0 0 6px rgba(47,208,255,0.6);
             letter-spacing: 0.12em !important;
