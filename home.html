@@ -534,80 +534,125 @@
                     </button>
                 </div>
             <!-- VOICE SETTINGS — rate/pitch for Lexi-Con's text-to-speech replies -->
-<div id="relay-voice-settings" class="hidden absolute top-full right-4 mt-1 z-50 w-56 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg shadow-2xl p-4" onclick="event.stopPropagation()">
-    <div class="neon-blue-text text-[9px] font-black uppercase tracking-widest mb-3">Voice Settings</div>
-    <label class="flex items-center justify-between text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1">
-        <span>Speed</span>
-        <span id="relay-rate-value" class="neon-blue-text">0.85x</span>
-    </label>
-    <input type="range" id="relay-rate-slider" min="0.5" max="1.5" step="0.05" value="0.85" oninput="window.updateRelayVoiceSetting('rate', this.value)" class="w-full mb-3 accent-[#2fd0ff]">
-    <label class="flex items-center justify-between text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1">
-        <span>Pitch</span>
-        <span id="relay-pitch-value" class="neon-blue-text">1.15</span>
-    </label>
-    <input type="range" id="relay-pitch-slider" min="0.5" max="2" step="0.05" value="1.15" oninput="window.updateRelayVoiceSetting('pitch', this.value)" class="w-full mb-3 accent-[#2fd0ff]">
-    <button onclick="window.testRelayVoice(event)" class="w-full py-1.5 border border-[#2fd0ff] rounded text-[9px] neon-blue-text font-black uppercase tracking-widest hover:bg-[#2fd0ff]/10 transition-colors">Test Voice</button>
-</div>
+            <div id="relay-voice-settings" class="hidden absolute top-full right-4 mt-1 z-50 w-56 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg shadow-2xl p-4" onclick="event.stopPropagation()">
+                <div class="neon-blue-text text-[9px] font-black uppercase tracking-widest mb-3">Voice Settings</div>
+                <label class="flex items-center justify-between text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1">
+                    <span>Speed</span>
+                    <span id="relay-rate-value" class="neon-blue-text">0.85x</span>
+                </label>
+                <input type="range" id="relay-rate-slider" min="0.5" max="1.5" step="0.05" value="0.85" oninput="window.updateRelayVoiceSetting('rate', this.value)" class="w-full mb-3 accent-[#2fd0ff]">
+                <label class="flex items-center justify-between text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1">
+                    <span>Pitch</span>
+                    <span id="relay-pitch-value" class="neon-blue-text">1.15</span>
+                </label>
+                <input type="range" id="relay-pitch-slider" min="0.5" max="2" step="0.05" value="1.15" oninput="window.updateRelayVoiceSetting('pitch', this.value)" class="w-full mb-3 accent-[#2fd0ff]">
+                <button onclick="window.testRelayVoice(event)" class="w-full py-1.5 border border-[#2fd0ff] rounded text-[9px] neon-blue-text font-black uppercase tracking-widest hover:bg-[#2fd0ff]/10 transition-colors">Test Voice</button>
+            </div>
+            </div>
 
-<!-- UPDATED VOICE ENGINE — NATURAL SOUND, NO ROBOTIC TONE -->
-<script>
-window.relayVoice = {
-    rate: 0.85,
-    pitch: 1.15,
-    voice: null
-};
+            <!-- UPDATED VOICE ENGINE — NATURAL SOUND, NO ROBOTIC TONE -->
+            <script>
+            (function() {
+                const VOICE_STORAGE_KEY = 'relayVoiceSettings';
 
-// Auto-select the most natural, smooth voice available
-function setBestNaturalVoice() {
-    const voices = window.speechSynthesis.getVoices();
-    // Prioritize warm, clear voices — avoid old robotic ones
-    window.relayVoice.voice = voices.find(v =>
-        v.name.includes('Zira') || 
-        v.name.includes('Siti') || 
-        v.name.includes('Google') || 
-        v.name.includes('Samantha') || 
-        v.name.includes('Aria') ||
-        v.name.includes('Ahmad')
-    ) || voices[0]; // Fallback to first available
-}
+                window.relayVoice = { rate: 0.85, pitch: 1.15, voice: null };
 
-// Load voices when browser is ready
-if (window.speechSynthesis.onvoiceschanged !== undefined) {
-    window.speechSynthesis.onvoiceschanged = setBestNaturalVoice;
-}
-setBestNaturalVoice();
+                // Restore saved rate/pitch (bounded, no runaway localStorage growth)
+                try {
+                    const saved = JSON.parse(localStorage.getItem(VOICE_STORAGE_KEY) || '{}');
+                    if (typeof saved.rate === 'number') window.relayVoice.rate = saved.rate;
+                    if (typeof saved.pitch === 'number') window.relayVoice.pitch = saved.pitch;
+                } catch (e) { /* ignore corrupt storage */ }
 
-// Update sliders live
-window.updateRelayVoiceSetting = function(type, value) {
-    window.relayVoice[type] = parseFloat(value);
-    document.getElementById(`relay-${type}-value`).textContent = `${value}x`;
-};
+                function persistRelayVoice() {
+                    try {
+                        localStorage.setItem(VOICE_STORAGE_KEY, JSON.stringify({
+                            rate: window.relayVoice.rate,
+                            pitch: window.relayVoice.pitch
+                        }));
+                    } catch (e) { /* storage full or unavailable, fail silently */ }
+                }
 
-// Test voice function
-window.testRelayVoice = function(e) {
-    e.stopPropagation();
-    const synth = window.speechSynthesis;
-    if (synth.speaking) synth.cancel();
+                // Auto-select the most natural, smooth voice available
+                function setBestNaturalVoice() {
+                    const voices = window.speechSynthesis.getVoices();
+                    if (!voices.length) return;
+                    window.relayVoice.voice = voices.find(v =>
+                        v.name.includes('Zira') ||
+                        v.name.includes('Siti') ||
+                        v.name.includes('Google') ||
+                        v.name.includes('Samantha') ||
+                        v.name.includes('Aria') ||
+                        v.name.includes('Ahmad')
+                    ) || voices[0];
+                }
 
-    const utter = new SpeechSynthesisUtterance("Hello, this is Lexi-Con. Your voice is now set to natural sound.");
-    utter.voice = window.relayVoice.voice;
-    utter.rate = window.relayVoice.rate;
-    utter.pitch = window.relayVoice.pitch;
-    synth.speak(utter);
-};
+                if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                    window.speechSynthesis.onvoiceschanged = setBestNaturalVoice;
+                }
+                setBestNaturalVoice();
 
-// Your main speak function — use this wherever you need the app to talk
-window.speakWithRelayVoice = function(text) {
-    const synth = window.speechSynthesis;
-    if (synth.speaking) synth.cancel();
+                // Open/close the voice settings panel, synced to saved slider values
+                window.toggleRelayVoiceSettings = function(e) {
+                    if (e) e.stopPropagation();
+                    const panel = document.getElementById('relay-voice-settings');
+                    if (!panel) return;
+                    const opening = panel.classList.contains('hidden');
+                    panel.classList.toggle('hidden');
 
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.voice = window.relayVoice.voice;
-    utter.rate = window.relayVoice.rate;
-    utter.pitch = window.relayVoice.pitch;
-    synth.speak(utter);
-};
-</script>
+                    if (opening) {
+                        const rateSlider = document.getElementById('relay-rate-slider');
+                        const pitchSlider = document.getElementById('relay-pitch-slider');
+                        const rateValue = document.getElementById('relay-rate-value');
+                        const pitchValue = document.getElementById('relay-pitch-value');
+                        if (rateSlider) rateSlider.value = window.relayVoice.rate;
+                        if (pitchSlider) pitchSlider.value = window.relayVoice.pitch;
+                        if (rateValue) rateValue.textContent = `${window.relayVoice.rate}x`;
+                        if (pitchValue) pitchValue.textContent = `${window.relayVoice.pitch}`;
+
+                        // Close when clicking outside the panel
+                        const closeOnOutsideClick = (evt) => {
+                            if (!panel.contains(evt.target) && evt.target.id !== 'relay-voice-settings-btn') {
+                                panel.classList.add('hidden');
+                                document.removeEventListener('click', closeOnOutsideClick);
+                            }
+                        };
+                        setTimeout(() => document.addEventListener('click', closeOnOutsideClick), 0);
+                    }
+                };
+
+                // Update sliders live + persist
+                window.updateRelayVoiceSetting = function(type, value) {
+                    window.relayVoice[type] = parseFloat(value);
+                    const label = document.getElementById(`relay-${type}-value`);
+                    if (label) label.textContent = type === 'rate' ? `${value}x` : `${value}`;
+                    persistRelayVoice();
+                };
+
+                // Test voice function
+                window.testRelayVoice = function(e) {
+                    if (e) e.stopPropagation();
+                    const synth = window.speechSynthesis;
+                    if (synth.speaking) synth.cancel();
+                    const utter = new SpeechSynthesisUtterance("Hello, this is Lexi-Con. Your voice is now set to natural sound.");
+                    utter.voice = window.relayVoice.voice;
+                    utter.rate = window.relayVoice.rate;
+                    utter.pitch = window.relayVoice.pitch;
+                    synth.speak(utter);
+                };
+
+                // Main speak function — call this wherever Lexi-Con's replies should be spoken aloud
+                window.speakWithRelayVoice = function(text) {
+                    const synth = window.speechSynthesis;
+                    if (synth.speaking) synth.cancel();
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.voice = window.relayVoice.voice;
+                    utter.rate = window.relayVoice.rate;
+                    utter.pitch = window.relayVoice.pitch;
+                    synth.speak(utter);
+                };
+            })();
+            </script>
 
             <!-- PROFILE BOX (only visible while the relay is open) -->
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-teal-900/40 bg-black/60">
