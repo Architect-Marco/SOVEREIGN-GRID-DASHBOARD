@@ -7,17 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/wavesurfer.js@7"></script>
     <link rel="stylesheet" href="shared.css">
-    <!-- TEMP: Audiowide stands in for Ethnocentric (Typodermic — not fetchable here) until the real .otf/.ttf is provided -->
-    <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
-    <style>
-        /* "The Forge" — flat neon blue outline, black fill, deliberately NO glow/blur */
-        .forge-outline-font { font-family: 'Audiowide', 'Orbitron', sans-serif; font-style: normal; }
-        .forge-outline-text {
-            color: #000000;
-            -webkit-text-stroke: 2px #2fd0ff;
-            text-shadow: none;
-        }
-    </style>
 </head>
 <body class="flex flex-col">
     <div class="scanline"></div>
@@ -60,7 +49,7 @@
             
             <div id="view-create" class="view-content w-full">
                 <div class="mb-8">
-                    <h1 class="text-4xl font-black uppercase tracking-tighter forge-outline-font"><span class="forge-outline-text">The</span> <span class="forge-outline-text">Forge</span></h1>
+                    <h1 class="text-4xl font-black uppercase italic tracking-tighter">The <span class="neon-blue-text">Forge</span></h1>
                     <p class="text-gray-500 text-[10px] uppercase font-black tracking-[0.3em]">Engine: Sovereign V6-AI Hybrid</p>
                 </div>
 
