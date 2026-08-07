@@ -11,7 +11,7 @@
            outline over a black fill, so it reads as a glowing outline rather than solid
            color. The dash between words gets its own red span, per spec. */
         .ethnocentric-title {
-            font-family: 'Ethnocentric', 'Orbitron', sans-serif;
+            font-family: 'Ethnocentric', 'Orbitron', sans-serif !important;
             font-weight: 700;
             text-transform: uppercase;
             color: #2fd0ff;
@@ -29,7 +29,7 @@
            font, solid neon-blue, 12pt. Placed after .nav-active so it wins the
            color battle on the active nav item (both use !important). */
         .ethnocentric-nav {
-            font-family: 'Ethnocentric', 'Orbitron', sans-serif;
+            font-family: 'Ethnocentric', 'Orbitron', sans-serif !important;
             font-size: 12pt;
             color: #2fd0ff !important;
             text-shadow: 0 0 6px rgba(47,208,255,0.6);
