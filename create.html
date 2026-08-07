@@ -7,6 +7,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/wavesurfer.js@7"></script>
     <link rel="stylesheet" href="shared.css">
+    <!-- TEMP: Audiowide stands in for Ethnocentric (Typodermic — not fetchable here) until the real .otf/.ttf is provided -->
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
+    <style>
+        /* "The Forge" — flat neon blue outline, black fill, deliberately NO glow/blur */
+        .forge-outline-font { font-family: 'Audiowide', 'Orbitron', sans-serif; font-style: normal; }
+        .forge-outline-text {
+            color: #000000;
+            -webkit-text-stroke: 2px #2fd0ff;
+            text-shadow: none;
+        }
+    </style>
 </head>
 <body class="flex flex-col">
     <div class="scanline"></div>
@@ -36,7 +47,7 @@
                         </div>
                     </div>
                     <div>
-                        <div class="text-[10px] font-black uppercase">MARCO</div>
+                        <div class="text-[10px] neon-blue-text font-black uppercase">MARCO</div>
                         <div class="text-[8px] text-gray-500 uppercase">Architect</div>
                     </div>
                 </div>
@@ -49,7 +60,7 @@
             
             <div id="view-create" class="view-content w-full">
                 <div class="mb-8">
-                    <h1 class="text-4xl font-black uppercase italic tracking-tighter">The <span class="neon-blue-text">Forge</span></h1>
+                    <h1 class="text-4xl font-black uppercase tracking-tighter forge-outline-font"><span class="forge-outline-text">The</span> <span class="forge-outline-text">Forge</span></h1>
                     <p class="text-gray-500 text-[10px] uppercase font-black tracking-[0.3em]">Engine: Sovereign V6-AI Hybrid</p>
                 </div>
 
@@ -367,10 +378,6 @@ Write your lyrics here..."></textarea>
 
                     <input type="text" id="relay-input" placeholder="Transmit to the Family..." class="flex-1 bg-[#080808] border border-[rgba(47,208,255,0.4)] rounded px-3 py-2 text-[11px] neon-blue-text placeholder:text-teal-900 focus:outline-none focus:border-[#2fd0ff] transition-all" onkeydown="if(event.key==='Enter') sendRelayMessage()">
 
-                    <button onclick="window.toggleRelayMic(event)" id="relay-mic-btn" class="neon-blue-text hover:opacity-70 transition-colors flex-shrink-0" title="Speak to Lexi">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4M8 23h8"/></svg>
-                    </button>
-
                     <button onclick="sendRelayMessage()" class="neon-blue-text hover:text-[#2fd0ff] transform hover:scale-110 transition-all flex-shrink-0" title="Transmit">
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
                     </button>
@@ -381,9 +388,8 @@ Write your lyrics here..."></textarea>
 
     <!-- Minimized bubble -->
     <div id="relay-bubble" class="hidden-section fixed bottom-24 right-6 z-40">
-        <button onclick="toggleRelayMinimize()" class="relative w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border-[1.8px] border-[rgba(47,208,255,0.4)] flex items-center justify-center shadow-2xl hover:scale-105 transition-transform neon-blue-text neon-blue-glow">
+        <button onclick="toggleRelayMinimize()" class="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border-[1.8px] border-[rgba(47,208,255,0.4)] flex items-center justify-center shadow-2xl hover:scale-105 transition-transform neon-blue-text neon-blue-glow">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-            <span class="notification-beacon absolute top-0.5 right-0.5 w-2.5 h-2.5"></span>
         </button>
     </div>
 
