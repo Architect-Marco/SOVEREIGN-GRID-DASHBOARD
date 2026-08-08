@@ -5969,6 +5969,33 @@
             } catch (err) { console.error('Could not load broadcast feed text:', err); }
         };
 
+        // --- Sovereign Syndicate message box: same pop-out menu pattern as Broadcast Feed ---
+        window.toggleSyndicateMessageMenu = function(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('syndicate-message-menu');
+            if (menu) menu.classList.toggle('hidden');
+        };
+
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('syndicate-message-menu');
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) menu.classList.add('hidden');
+        });
+
+        window.renameSyndicateMessage = function() {
+            const menu = document.getElementById('syndicate-message-menu');
+            if (menu) menu.classList.add('hidden');
+            const el = document.getElementById('home-magazine-caption');
+            if (!el) return;
+            el.focus();
+            el.select(); // the message is already a live textarea, so "rename" just opens it for editing
+        };
+
+        window.saveSyndicateMessage = function() {
+            const menu = document.getElementById('syndicate-message-menu');
+            if (menu) menu.classList.add('hidden');
+            if (typeof window.saveMagazine === 'function') window.saveMagazine(); // no image arg = keeps existing cover, saves caption only
+        };
+
         // 6.6 EPK - SOUL FORGE
         window.setEpkSourceMode = function(mode) {
             const upload = document.getElementById('epk-mode-upload');
