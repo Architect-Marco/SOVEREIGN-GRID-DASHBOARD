@@ -840,29 +840,82 @@
 
         window.SOVEREIGN_12_PLUGINS = [
             { id: 'sovereign-dynamics', name: 'Sovereign Dynamics', tagline: 'The Glue', category: 'DYNAMICS',
-              values: [['THRESH','-25.0d'],['RATIO','1.8:1'],['ATTACK','35ms'],['RELEASE','250ms']] },
+              values: [['THRESH','-25.0d'],['RATIO','1.8:1'],['ATTACK','35ms'],['RELEASE','250ms']],
+              presets: [
+                { name: 'sovereign: vocal glue', values: [['THRESH','-18.0d'],['RATIO','2.5:1'],['ATTACK','15ms'],['RELEASE','180ms']] },
+                { name: 'sovereign: drum bus punch', values: [['THRESH','-14.0d'],['RATIO','4.0:1'],['ATTACK','8ms'],['RELEASE','90ms']] },
+                { name: 'sovereign: master bus smooth', values: [['THRESH','-28.0d'],['RATIO','1.5:1'],['ATTACK','45ms'],['RELEASE','400ms']] },
+                { name: 'sovereign: gentle leveling', values: [['THRESH','-22.0d'],['RATIO','1.3:1'],['ATTACK','60ms'],['RELEASE','300ms']] }
+              ] },
             { id: 'master-limiter', name: 'Master Limiter', tagline: 'The Ceiling', category: 'DYNAMICS',
-              values: [['CEILING','-0.5d'],['RELEASE','80ms'],['SOFT-CLIP','15%'],['GAIN','+2.0d']] },
+              values: [['CEILING','-0.5d'],['RELEASE','80ms'],['SOFT-CLIP','15%'],['GAIN','+2.0d']],
+              presets: [
+                { name: 'sovereign: streaming safe', values: [['CEILING','-1.0d'],['RELEASE','120ms'],['SOFT-CLIP','10%'],['GAIN','+1.0d']] },
+                { name: 'sovereign: competition loud', values: [['CEILING','-0.1d'],['RELEASE','40ms'],['SOFT-CLIP','25%'],['GAIN','+4.5d']] },
+                { name: 'sovereign: transparent ceiling', values: [['CEILING','-0.5d'],['RELEASE','150ms'],['SOFT-CLIP','5%'],['GAIN','+0.5d']] }
+              ] },
             { id: 'multiband-comp', name: 'Multiband Comp', tagline: 'Spectral Control', category: 'DYNAMICS',
-              values: [['LOW-THR','-18d'],['MID-THR','-12d'],['HIGH-THR','-15d'],['XOVER','250Hz']] },
+              values: [['LOW-THR','-18d'],['MID-THR','-12d'],['HIGH-THR','-15d'],['XOVER','250Hz']],
+              presets: [
+                { name: 'sovereign: mastering 3 band', values: [['LOW-THR','-20d'],['MID-THR','-14d'],['HIGH-THR','-16d'],['XOVER','220Hz']] },
+                { name: 'sovereign: hardness remover', values: [['LOW-THR','-16d'],['MID-THR','-10d'],['HIGH-THR','-20d'],['XOVER','300Hz']] },
+                { name: 'sovereign: supersolid bass', values: [['LOW-THR','-22d'],['MID-THR','-12d'],['HIGH-THR','-14d'],['XOVER','180Hz']] }
+              ] },
             { id: 'sidechain-pulse', name: 'Sidechain Pulse', tagline: 'The Luxury Pump', category: 'DYNAMICS',
-              values: [['SOURCE','Bass/Kick'],['THRESH','-20d'],['RATIO','4.0:1'],['RELEASE','120ms']] },
+              values: [['SOURCE','Bass/Kick'],['THRESH','-20d'],['RATIO','4.0:1'],['RELEASE','120ms']],
+              presets: [
+                { name: 'sovereign: edm pump', values: [['SOURCE','Kick'],['THRESH','-16d'],['RATIO','6.0:1'],['RELEASE','80ms']] },
+                { name: 'sovereign: subtle groove', values: [['SOURCE','Bass/Kick'],['THRESH','-24d'],['RATIO','2.5:1'],['RELEASE','180ms']] }
+              ] },
             { id: 'surgical-eq8', name: 'Surgical EQ-8', tagline: 'High-End Clarity', category: 'EQ',
-              values: [['LOW-CUT','80Hz'],['MID-GAIN','-1.5d'],['HI-SHELF','8kHz'],['HI-GAIN','+2.5d']] },
+              values: [['LOW-CUT','80Hz'],['MID-GAIN','-1.5d'],['HI-SHELF','8kHz'],['HI-GAIN','+2.5d']],
+              presets: [
+                { name: 'sovereign: female de-ess', values: [['LOW-CUT','100Hz'],['MID-GAIN','-2.0d'],['HI-SHELF','7kHz'],['HI-GAIN','+1.0d']] },
+                { name: 'sovereign: male de-ess', values: [['LOW-CUT','90Hz'],['MID-GAIN','-1.5d'],['HI-SHELF','6kHz'],['HI-GAIN','+1.5d']] },
+                { name: 'sovereign: spectral control', values: [['LOW-CUT','70Hz'],['MID-GAIN','-1.0d'],['HI-SHELF','9kHz'],['HI-GAIN','+3.0d']] }
+              ] },
             { id: 'luxury-saturation', name: 'Luxury Saturation', tagline: 'Analog Warmth', category: 'COLOR',
-              values: [['DRIVE','12%'],['COLOR','Warm'],['MIX','40%'],['OUTPUT','-1.0d']] },
+              values: [['DRIVE','12%'],['COLOR','Warm'],['MIX','40%'],['OUTPUT','-1.0d']],
+              presets: [
+                { name: 'sovereign: tape warmth', values: [['DRIVE','18%'],['COLOR','Vintage'],['MIX','55%'],['OUTPUT','-1.5d']] },
+                { name: 'sovereign: subtle sheen', values: [['DRIVE','6%'],['COLOR','Clean'],['MIX','20%'],['OUTPUT','-0.5d']] }
+              ] },
             { id: 'harmonic-exciter', name: 'Harmonic Exciter', tagline: 'Vocal Sparkle', category: 'COLOR',
-              values: [['AIR','12kHz'],['AMOUNT','25%'],['TEXTURE','Silk'],['WIDTH','15%']] },
+              values: [['AIR','12kHz'],['AMOUNT','25%'],['TEXTURE','Silk'],['WIDTH','15%']],
+              presets: [
+                { name: 'sovereign: vocal sparkle', values: [['AIR','14kHz'],['AMOUNT','35%'],['TEXTURE','Airy'],['WIDTH','20%']] },
+                { name: 'sovereign: gentle air', values: [['AIR','10kHz'],['AMOUNT','15%'],['TEXTURE','Smooth'],['WIDTH','10%']] }
+              ] },
             { id: 'bass-maximizer', name: 'Bass Maximizer', tagline: 'The Sub-Engine', category: 'DYNAMICS',
-              values: [['SUB','45Hz'],['PUNCH','60%'],['GRIT','10%'],['LIMITER','-2.0d']] },
+              values: [['SUB','45Hz'],['PUNCH','60%'],['GRIT','10%'],['LIMITER','-2.0d']],
+              presets: [
+                { name: 'sovereign: trap sub', values: [['SUB','38Hz'],['PUNCH','80%'],['GRIT','20%'],['LIMITER','-1.5d']] },
+                { name: 'sovereign: clean low end', values: [['SUB','50Hz'],['PUNCH','40%'],['GRIT','5%'],['LIMITER','-3.0d']] }
+              ] },
             { id: 'stereo-imager', name: 'Stereo Imager', tagline: 'Width Expansion', category: 'SPACE',
-              values: [['WIDTH','125%'],['PAN','0'],['CTR-FOCUS','10%'],['SOFT-EDGE','20%']] },
+              values: [['WIDTH','125%'],['PAN','0'],['CTR-FOCUS','10%'],['SOFT-EDGE','20%']],
+              presets: [
+                { name: 'sovereign: wide master', values: [['WIDTH','150%'],['PAN','0'],['CTR-FOCUS','15%'],['SOFT-EDGE','25%']] },
+                { name: 'sovereign: mono-safe', values: [['WIDTH','105%'],['PAN','0'],['CTR-FOCUS','25%'],['SOFT-EDGE','10%']] }
+              ] },
             { id: 'aether-reverb', name: 'Aether-Reverb', tagline: 'Luxury Space', category: 'SPACE',
-              values: [['SIZE','65%'],['DECAY','2.4s'],['DAMP','40%'],['MIX','15%']] },
+              values: [['SIZE','65%'],['DECAY','2.4s'],['DAMP','40%'],['MIX','15%']],
+              presets: [
+                { name: 'sovereign: vocal hall', values: [['SIZE','75%'],['DECAY','3.2s'],['DAMP','35%'],['MIX','18%']] },
+                { name: 'sovereign: tight room', values: [['SIZE','30%'],['DECAY','1.1s'],['DAMP','55%'],['MIX','10%']] }
+              ] },
             { id: 'vocal-deesser', name: 'Vocal De-Esser', tagline: 'The Smoothness', category: 'DYNAMICS',
-              values: [['FREQ','7kHz'],['THRESH','-15d'],['RANGE','-6.0d'],['SPEED','Fast']] },
+              values: [['FREQ','7kHz'],['THRESH','-15d'],['RANGE','-6.0d'],['SPEED','Fast']],
+              presets: [
+                { name: 'sovereign: female de-ess', values: [['FREQ','7.5kHz'],['THRESH','-16d'],['RANGE','-7.0d'],['SPEED','Fast']] },
+                { name: 'sovereign: male de-ess', values: [['FREQ','6kHz'],['THRESH','-14d'],['RANGE','-5.0d'],['SPEED','Medium']] }
+              ] },
             { id: 'resonator-528', name: '528Hz Resonator', tagline: 'The Signature', category: 'SIGNATURE',
-              values: [['TARGET','528Hz'],['RESONANCE','85%'],['AMOUNT','50%'],['GLOW','100%']] }
+              values: [['TARGET','528Hz'],['RESONANCE','85%'],['AMOUNT','50%'],['GLOW','100%']],
+              presets: [
+                { name: 'sovereign: signature glow', values: [['TARGET','528Hz'],['RESONANCE','95%'],['AMOUNT','65%'],['GLOW','100%']] },
+                { name: 'sovereign: subtle signature', values: [['TARGET','528Hz'],['RESONANCE','70%'],['AMOUNT','30%'],['GLOW','70%']] }
+              ] }
         ];
 
         function makeEmptySlots(count) {
@@ -1324,8 +1377,10 @@
 
         // --- Plugin picker: two-box FX window — a "Chain" list (left) and a
         // detail / browse-to-add panel (right) — used for both a single mastering
-        // slot and a track/master's full DAW FX chain. ---
+        // slot and a track/master's full DAW FX chain. The detail panel also
+        // carries a "factory preset" dropdown per plugin instance. ---
         window.activePluginPickerContext = null;
+        window.dawFxPresetChoice = window.dawFxPresetChoice || {}; // { "trackId::slotIndex": {name, values} }
 
         function ppSetChrome(title, subtitle) {
             document.getElementById('plugin-picker-title').innerText = title;
@@ -1343,14 +1398,48 @@
                 </button>`;
         }
 
-        // Detail readout for a specific plugin (right box, list mode w/ a selection)
-        function ppDetailPanel(p) {
-            if (!p) return '';
+        // The black / blue-neon "factory preset" dropdown, anchored under its pill button
+        function ppPresetMenu(plugin, key, choice) {
+            const presets = plugin.presets || [];
             return `
-                <div class="neon-blue-text text-sm font-black italic">${p.name}</div>
-                <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-1">${p.tagline}</div>
-                <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-2 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${p.category}</div>
-                <div class="flex flex-wrap gap-1.5 mt-4">${renderMiniValues(p.values)}</div>`;
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:260px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawFxChoosePreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">
+                    Reset to factory default
+                </button>
+                <button onclick="window.dawFxChoosePreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!choice ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                    <span class="w-3 flex-shrink-0">${!choice ? '✓' : ''}</span> No preset
+                </button>
+                ${presets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- Factory Presets ----</div>` : ''}
+                ${presets.map((p, i) => `
+                <button onclick="window.dawFxChoosePreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${choice && choice.name === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${choice && choice.name === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        }
+
+        // Detail readout for a specific plugin (right box, list mode w/ a selection)
+        function ppDetailPanel(plugin, key, ctx) {
+            if (!plugin) return '';
+            const choice = window.dawFxPresetChoice[key];
+            const activeValues = choice ? choice.values : plugin.values;
+            const badgeLabel = choice ? choice.name : 'factory preset';
+            const menuOpen = ctx.presetMenuOpen === key;
+            return `
+                <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                        <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-1">${plugin.tagline}</div>
+                    </div>
+                    <span class="relative inline-block flex-shrink-0">
+                        <button onclick="event.stopPropagation(); window.dawFxTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                            <span class="truncate">${badgeLabel}</span>
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        ${menuOpen ? ppPresetMenu(plugin, key, choice) : ''}
+                    </span>
+                </div>
+                <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-2 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+                <div class="flex flex-wrap gap-1.5 mt-4">${renderMiniValues(activeValues)}</div>`;
         }
 
         function ppEmptyDetail(msg) {
@@ -1388,7 +1477,7 @@
         window.openDawFxPicker = function(trackId) {
             const track = window.dawTracks.find(t => t.id === trackId);
             const ownerName = trackId === 'master' ? 'Master' : (track ? track.name : 'this track');
-            window.activePluginPickerContext = { type: 'daw', trackId, mode: 'list', selectedIndex: null };
+            window.activePluginPickerContext = { type: 'daw', trackId, mode: 'list', selectedIndex: null, presetMenuOpen: null };
             ppSetChrome(`FX: ${ownerName}`, 'Select a plugin in the chain, or tap Add');
             document.getElementById('plugin-picker-chain-box').classList.remove('hidden-section');
             document.getElementById('plugin-picker-clear-wrap').classList.add('hidden-section');
@@ -1439,7 +1528,8 @@
                         ppBrowseCard(p, fxList.includes(p.name), `window.dawFxAddPluginToChain('${p.id}')`)).join('')}</div>`;
             } else if (canRemove) {
                 const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === fxList[ctx.selectedIndex]);
-                detail.innerHTML = ppDetailPanel(plugin) || ppEmptyDetail('Plugin data unavailable');
+                const key = `${ctx.trackId}::${ctx.selectedIndex}`;
+                detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
             } else {
                 detail.innerHTML = ppEmptyDetail(fxList.length ? 'Select a plugin from the chain' : 'No plugins in this chain yet — tap Add');
             }
@@ -1449,6 +1539,7 @@
             const ctx = window.activePluginPickerContext;
             if (!ctx || ctx.type !== 'daw') return;
             ctx.mode = ctx.mode === 'browse' ? 'list' : 'browse';
+            ctx.presetMenuOpen = null;
             window.renderDawFxPicker();
         };
 
@@ -1457,6 +1548,7 @@
             if (!ctx || ctx.type !== 'daw') return;
             ctx.mode = 'list';
             ctx.selectedIndex = index;
+            ctx.presetMenuOpen = null;
             window.renderDawFxPicker();
         };
 
@@ -1478,10 +1570,44 @@
             if (!ctx || ctx.type !== 'daw' || ctx.selectedIndex === null) return;
             const fxList = dawFxListFor(ctx.trackId);
             if (!fxList || fxList[ctx.selectedIndex] === undefined) return;
+            delete window.dawFxPresetChoice[`${ctx.trackId}::${ctx.selectedIndex}`];
             fxList.splice(ctx.selectedIndex, 1);
             ctx.selectedIndex = null;
+            ctx.presetMenuOpen = null;
             dawRerenderFxOwner(ctx.trackId);
             window.renderDawFxPicker();
+        };
+
+        // Factory-preset dropdown (per plugin instance, DAW chain only)
+        window.dawFxTogglePresetMenu = function(key) {
+            const ctx = window.activePluginPickerContext;
+            if (!ctx || ctx.type !== 'daw') return;
+            ctx.presetMenuOpen = ctx.presetMenuOpen === key ? null : key;
+            window.renderDawFxPicker();
+        };
+
+        window.dawFxChoosePreset = function(key, presetIndex) {
+            const ctx = window.activePluginPickerContext;
+            if (!ctx || ctx.type !== 'daw') return;
+            if (presetIndex === null || presetIndex === undefined) {
+                delete window.dawFxPresetChoice[key];
+            } else {
+                const fxList = dawFxListFor(ctx.trackId) || [];
+                const name = fxList[ctx.selectedIndex];
+                const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === name);
+                const preset = plugin && plugin.presets && plugin.presets[presetIndex];
+                if (preset) window.dawFxPresetChoice[key] = preset;
+            }
+            ctx.presetMenuOpen = null;
+            window.renderDawFxPicker();
+        };
+
+        window.dawFxClosePresetMenuIfOpen = function() {
+            const ctx = window.activePluginPickerContext;
+            if (ctx && ctx.type === 'daw' && ctx.presetMenuOpen) {
+                ctx.presetMenuOpen = null;
+                window.renderDawFxPicker();
+            }
         };
 
         window.closePluginPicker = function() {
@@ -1518,6 +1644,8 @@
             window.updatePresetCard(presetId);
             window.closePluginPicker();
         };
+
+
 
         // Upload/Download for the Mastering Suite (separate from the Wave Splitter's own upload)
         window.currentMasteringUrl = null;
