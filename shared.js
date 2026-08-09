@@ -5930,72 +5930,6 @@
             } catch (err) { console.error('Could not load magazine:', err); }
         };
 
-        // --- Broadcast Feed slogan: rename + save, so it can be refreshed any time ---
-        window.toggleBroadcastFeedMenu = function(event) {
-            if (event) event.stopPropagation();
-            const menu = document.getElementById('broadcast-feed-menu');
-            if (menu) menu.classList.toggle('hidden');
-        };
-
-        document.addEventListener('click', (e) => {
-            const menu = document.getElementById('broadcast-feed-menu');
-            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) menu.classList.add('hidden');
-        });
-
-        window.renameBroadcastFeed = function() {
-            const menu = document.getElementById('broadcast-feed-menu');
-            if (menu) menu.classList.add('hidden');
-            const el = document.getElementById('broadcast-feed-text');
-            if (!el) return;
-            const next = prompt('Edit the broadcast feed slogan:', el.innerText.trim());
-            if (next === null) return;
-            el.innerText = next.trim();
-        };
-
-        window.saveBroadcastFeed = function() {
-            const menu = document.getElementById('broadcast-feed-menu');
-            if (menu) menu.classList.add('hidden');
-            const el = document.getElementById('broadcast-feed-text');
-            if (!el) return;
-            try { localStorage.setItem('sbn-broadcast-feed-text', el.innerText.trim()); } catch (err) { console.error('Could not save broadcast feed text:', err); }
-        };
-
-        window.loadBroadcastFeed = function() {
-            const el = document.getElementById('broadcast-feed-text');
-            if (!el) return;
-            try {
-                const saved = localStorage.getItem('sbn-broadcast-feed-text');
-                if (saved) el.innerText = saved;
-            } catch (err) { console.error('Could not load broadcast feed text:', err); }
-        };
-
-        // --- Sovereign Syndicate message box: same pop-out menu pattern as Broadcast Feed ---
-        window.toggleSyndicateMessageMenu = function(event) {
-            if (event) event.stopPropagation();
-            const menu = document.getElementById('syndicate-message-menu');
-            if (menu) menu.classList.toggle('hidden');
-        };
-
-        document.addEventListener('click', (e) => {
-            const menu = document.getElementById('syndicate-message-menu');
-            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) menu.classList.add('hidden');
-        });
-
-        window.renameSyndicateMessage = function() {
-            const menu = document.getElementById('syndicate-message-menu');
-            if (menu) menu.classList.add('hidden');
-            const el = document.getElementById('home-magazine-caption');
-            if (!el) return;
-            el.focus();
-            el.select(); // the message is already a live textarea, so "rename" just opens it for editing
-        };
-
-        window.saveSyndicateMessage = function() {
-            const menu = document.getElementById('syndicate-message-menu');
-            if (menu) menu.classList.add('hidden');
-            if (typeof window.saveMagazine === 'function') window.saveMagazine(); // no image arg = keeps existing cover, saves caption only
-        };
-
         // 6.6 EPK - SOUL FORGE
         window.setEpkSourceMode = function(mode) {
             const upload = document.getElementById('epk-mode-upload');
@@ -7003,7 +6937,7 @@
             const wrap = document.getElementById('station-genres');
             if (!wrap) return;
             const genres = genresCsv.split(',').map(g => g.trim()).filter(Boolean);
-            wrap.innerHTML = genres.map(g => `<span class="bg-white/5 border border-white/10 text-gray-300 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded">${g}</span>`).join('');
+            wrap.innerHTML = genres.map(g => `<span class="bg-white/5 border border-white/10 neon-blue-text text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded">${g}</span>`).join('');
         };
 
         window.toggleStationEdit = function() {
@@ -7883,7 +7817,6 @@
             safeInit(window.loadAvatarPic, 'loadAvatarPic');
             safeInit(window.loadPlayerIcon, 'loadPlayerIcon');
             safeInit(window.loadMagazine, 'loadMagazine');
-            safeInit(window.loadBroadcastFeed, 'loadBroadcastFeed');
             // One-time migration: before CDFM existed, station data was
             // saved under flat (non-per-station) keys. Move it under the
             // WKOR-specific keys so existing cover/bio/tracks aren't lost.
