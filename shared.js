@@ -119,6 +119,45 @@
             window.closeMessageBoxSaveModal();
         };
 
+        // ============================================================
+        // EPK SOUL FORGE — CUSTOM DROPDOWNS (Generation Mode / Artist Type)
+        // Black popup, neon-blue options, checkmark on the selected one —
+        // replaces the native <select> look.
+        // ============================================================
+        window.toggleEpkDropdown = function(name) {
+            const menu = document.getElementById('epk-' + name + '-menu');
+            if (!menu) return;
+            const isOpen = !menu.classList.contains('hidden');
+            // Close any other open EPK dropdown menus first.
+            document.querySelectorAll('.epk-dropdown-menu').forEach(function(m) {
+                m.classList.add('hidden');
+            });
+            if (!isOpen) menu.classList.remove('hidden');
+        };
+
+        window.setEpkDropdownValue = function(name, value, label) {
+            const hiddenInput = document.getElementById('epk-' + name);
+            const labelEl = document.getElementById('epk-' + name + '-label');
+            const menu = document.getElementById('epk-' + name + '-menu');
+            if (hiddenInput) hiddenInput.value = value;
+            if (labelEl) labelEl.textContent = label;
+            if (menu) {
+                menu.querySelectorAll('.epk-dropdown-option').forEach(function(opt) {
+                    const check = opt.querySelector('.epk-dropdown-check');
+                    if (check) check.textContent = (opt.getAttribute('data-value') === value) ? '✓' : '';
+                });
+                menu.classList.add('hidden');
+            }
+        };
+
+        // Click anywhere outside an open EPK dropdown to close it.
+        document.addEventListener('click', function(event) {
+            if (event.target.closest('.epk-dropdown-wrap')) return;
+            document.querySelectorAll('.epk-dropdown-menu').forEach(function(m) {
+                m.classList.add('hidden');
+            });
+        });
+
         // Playback queue state
         window.playlist = [];
         window.currentTrackIndex = -1;
