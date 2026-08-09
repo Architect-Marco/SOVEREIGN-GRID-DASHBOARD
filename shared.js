@@ -840,11 +840,7 @@
 
         window.SOVEREIGN_12_PLUGINS = [
             { id: 'sovereign-dynamics', name: 'Sovereign Dynamics', tagline: 'The Glue', category: 'DYNAMICS',
-              values: [['THRESH','-25.0d'],['RATIO','1.8:1'],['ATTACK','35ms'],['RELEASE','250ms']],
-              presets: [
-                  { name: 'The Glue', values: [['THRESH','-25.0d'],['RATIO','1.8:1'],['ATTACK','35ms'],['RELEASE','250ms']] },
-                  { name: 'Industrial', values: [['THRESH','-18.0d'],['RATIO','4.0:1'],['ATTACK','8ms'],['RELEASE','60ms']] }
-              ] },
+              values: [['THRESH','-25.0d'],['RATIO','1.8:1'],['ATTACK','35ms'],['RELEASE','250ms']] },
             { id: 'master-limiter', name: 'Master Limiter', tagline: 'The Ceiling', category: 'DYNAMICS',
               values: [['CEILING','-0.5d'],['RELEASE','80ms'],['SOFT-CLIP','15%'],['GAIN','+2.0d']] },
             { id: 'multiband-comp', name: 'Multiband Comp', tagline: 'Spectral Control', category: 'DYNAMICS',
@@ -1326,25 +1322,56 @@
             window.updatePresetCard(presetId);
         };
 
-        // --- Plugin picker: choose one of the Sovereign 12 for an empty (or existing) slot ---
+        // --- Plugin picker: two-box FX window — a "Chain" list (left) and a
+        // detail / browse-to-add panel (right) — used for both a single mastering
+        // slot and a track/master's full DAW FX chain. ---
         window.activePluginPickerContext = null;
 
-        window.openPluginPicker = function(presetId, slotIndex) {
-            window.activePluginPickerContext = { type: 'mastering', presetId, slotIndex };
-            document.getElementById('plugin-picker-title').innerText = 'The Sovereign 12';
-            document.getElementById('plugin-picker-subtitle').innerText = 'Choose a plugin for this slot';
-            document.getElementById('plugin-picker-clear-btn').innerText = 'Clear This Slot';
-            const list = document.getElementById('plugin-picker-list');
-            list.innerHTML = window.SOVEREIGN_12_PLUGINS.map(p => `
-                <button onclick="choosePluginForSlot('${p.id}')" class="text-left bg-white/5 hover:bg-[#2fd0ff]/20 border border-white/10 hover:border-[#2fd0ff]/50 rounded-xl p-4 transition-colors">
-                    <div class="neon-blue-text text-[11px] font-black italic">${p.name}</div>
+        function ppSetChrome(title, subtitle) {
+            document.getElementById('plugin-picker-title').innerText = title;
+            document.getElementById('plugin-picker-subtitle').innerText = subtitle;
+        }
+
+        // A plugin "card" used inside the browse grid (right box, add mode)
+        function ppBrowseCard(p, isAdded, onclickJs) {
+            return `
+                <button ${isAdded ? 'disabled' : `onclick="${onclickJs}"`} class="relative text-left ${isAdded ? 'bg-[#2fd0ff]/10 border-[rgba(47,208,255,0.25)] opacity-50 cursor-default' : 'bg-white/5 hover:bg-[#2fd0ff]/20 border-white/10 hover:border-[#2fd0ff]/50 cursor-pointer'} border rounded-xl p-3 transition-colors">
+                    ${isAdded ? '<span class="absolute top-2 right-2 w-4 h-4 rounded-full bg-[#2fd0ff] flex items-center justify-center"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>' : ''}
+                    <div class="neon-blue-text text-[11px] font-black italic pr-4">${p.name}</div>
                     <div class="text-[8px] text-gray-500 uppercase tracking-widest mt-1">${p.tagline}</div>
                     <div class="text-[8px] neon-blue-text uppercase font-black tracking-widest mt-2">${p.category}</div>
-                </button>`).join('');
+                </button>`;
+        }
+
+        // Detail readout for a specific plugin (right box, list mode w/ a selection)
+        function ppDetailPanel(p) {
+            if (!p) return '';
+            return `
+                <div class="neon-blue-text text-sm font-black italic">${p.name}</div>
+                <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-1">${p.tagline}</div>
+                <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-2 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${p.category}</div>
+                <div class="flex flex-wrap gap-1.5 mt-4">${renderMiniValues(p.values)}</div>`;
+        }
+
+        function ppEmptyDetail(msg) {
+            return `<div class="h-full flex items-center justify-center text-center text-[9px] text-gray-600 uppercase tracking-widest px-6">${msg}</div>`;
+        }
+
+        // ---------------- Mastering (single-slot) picker ----------------
+        window.openPluginPicker = function(presetId, slotIndex) {
+            window.activePluginPickerContext = { type: 'mastering', presetId, slotIndex };
+            ppSetChrome('The Sovereign 12', 'Choose a plugin for this slot');
+            document.getElementById('plugin-picker-chain-box').classList.add('hidden-section');
+            document.getElementById('plugin-picker-clear-wrap').classList.remove('hidden-section');
+            document.getElementById('plugin-picker-clear-btn').innerText = 'Clear This Slot';
+            const detail = document.getElementById('plugin-picker-detail');
+            detail.innerHTML = `<div class="grid grid-cols-2 gap-2">${window.SOVEREIGN_12_PLUGINS.map(p =>
+                ppBrowseCard(p, false, `choosePluginForSlot('${p.id}')`)).join('')}</div>`;
             document.getElementById('plugin-picker-modal').classList.remove('hidden-section');
             document.getElementById('plugin-picker-backdrop').classList.remove('hidden-section');
         };
 
+        // ---------------- DAW track/master FX chain picker ----------------
         function dawFxListFor(trackId) {
             if (trackId === 'master') { window.dawMasterFx = window.dawMasterFx || []; return window.dawMasterFx; }
             const track = window.dawTracks.find(t => t.id === trackId);
@@ -1359,32 +1386,102 @@
         }
 
         window.openDawFxPicker = function(trackId) {
-            window.activePluginPickerContext = { type: 'daw', trackId };
             const track = window.dawTracks.find(t => t.id === trackId);
             const ownerName = trackId === 'master' ? 'Master' : (track ? track.name : 'this track');
-            document.getElementById('plugin-picker-title').innerText = 'The Sovereign 12';
-            document.getElementById('plugin-picker-subtitle').innerText = `Add up to 12 plugins to ${ownerName} — tap to add/remove`;
-            document.getElementById('plugin-picker-clear-btn').innerText = 'Clear All Plugins';
-            window.renderDawFxPickerList();
+            window.activePluginPickerContext = { type: 'daw', trackId, mode: 'list', selectedIndex: null };
+            ppSetChrome(`FX: ${ownerName}`, 'Select a plugin in the chain, or tap Add');
+            document.getElementById('plugin-picker-chain-box').classList.remove('hidden-section');
+            document.getElementById('plugin-picker-clear-wrap').classList.add('hidden-section');
+            window.renderDawFxPicker();
             document.getElementById('plugin-picker-modal').classList.remove('hidden-section');
             document.getElementById('plugin-picker-backdrop').classList.remove('hidden-section');
         };
 
-        window.renderDawFxPickerList = function() {
+        // Renders BOTH boxes for the DAW context, based on ctx.mode / ctx.selectedIndex
+        window.renderDawFxPicker = function() {
             const ctx = window.activePluginPickerContext;
             if (!ctx || ctx.type !== 'daw') return;
             const fxList = dawFxListFor(ctx.trackId) || [];
-            const list = document.getElementById('plugin-picker-list');
-            list.innerHTML = window.SOVEREIGN_12_PLUGINS.map(p => {
-                const isAdded = fxList.includes(p.name);
+
+            // LEFT — chain list
+            const chainEl = document.getElementById('plugin-picker-chain-list');
+            chainEl.innerHTML = fxList.length ? fxList.map((name, i) => {
+                const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === name);
+                const selected = ctx.mode === 'list' && ctx.selectedIndex === i;
                 return `
-                <button onclick="choosePluginForSlot('${p.id}')" class="relative text-left ${isAdded ? 'bg-[#2fd0ff]/15 border-[#2fd0ff]' : 'bg-white/5 hover:bg-[#2fd0ff]/20 border-white/10 hover:border-[#2fd0ff]/50'} border rounded-xl p-4 transition-colors">
-                    ${isAdded ? '<span class="absolute top-2 right-2 w-4 h-4 rounded-full bg-[#2fd0ff] flex items-center justify-center"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>' : ''}
-                    <div class="neon-blue-text text-[11px] font-black italic pr-4">${p.name}</div>
-                    <div class="text-[8px] text-gray-500 uppercase tracking-widest mt-1">${p.tagline}</div>
-                    <div class="text-[8px] neon-blue-text uppercase font-black tracking-widest mt-2">${p.category}</div>
+                <button onclick="window.dawFxSelectChainItem(${i})" class="w-full text-left px-2.5 py-2 rounded-md mb-1 border transition-colors ${selected ? 'bg-[#2fd0ff]/15 border-[#2fd0ff]' : 'bg-transparent border-transparent hover:bg-white/5'}">
+                    <div class="neon-blue-text text-[10px] font-black italic truncate">${name}</div>
+                    ${plugin ? `<div class="text-[7px] text-gray-500 uppercase tracking-widest mt-0.5 truncate">${plugin.category}</div>` : ''}
                 </button>`;
-            }).join('');
+            }).join('') : `<div class="text-[8px] text-gray-600 uppercase tracking-widest text-center px-2 py-6">No plugins yet</div>`;
+
+            // Add button active state
+            const addBtn = document.getElementById('plugin-picker-add-btn');
+            addBtn.classList.toggle('bg-[#2fd0ff]/20', ctx.mode === 'browse');
+
+            // Remove button enabled state
+            const removeBtn = document.getElementById('plugin-picker-remove-btn');
+            const canRemove = ctx.mode === 'list' && ctx.selectedIndex !== null && fxList[ctx.selectedIndex] !== undefined;
+            removeBtn.disabled = !canRemove;
+            removeBtn.classList.toggle('opacity-40', !canRemove);
+            removeBtn.classList.toggle('pointer-events-none', !canRemove);
+            removeBtn.classList.toggle('text-gray-600', !canRemove);
+            removeBtn.classList.toggle('text-red-400', canRemove);
+            removeBtn.classList.toggle('border-red-500/40', canRemove);
+            removeBtn.classList.toggle('hover:bg-red-500/15', canRemove);
+
+            // RIGHT — detail or browse-to-add
+            const detail = document.getElementById('plugin-picker-detail');
+            if (ctx.mode === 'browse') {
+                detail.innerHTML = `
+                    <div class="text-[8px] text-gray-500 uppercase tracking-widest mb-3">Tap a plugin to add it to the chain</div>
+                    <div class="grid grid-cols-2 gap-2">${window.SOVEREIGN_12_PLUGINS.map(p =>
+                        ppBrowseCard(p, fxList.includes(p.name), `window.dawFxAddPluginToChain('${p.id}')`)).join('')}</div>`;
+            } else if (canRemove) {
+                const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === fxList[ctx.selectedIndex]);
+                detail.innerHTML = ppDetailPanel(plugin) || ppEmptyDetail('Plugin data unavailable');
+            } else {
+                detail.innerHTML = ppEmptyDetail(fxList.length ? 'Select a plugin from the chain' : 'No plugins in this chain yet — tap Add');
+            }
+        };
+
+        window.dawFxToggleAddMode = function() {
+            const ctx = window.activePluginPickerContext;
+            if (!ctx || ctx.type !== 'daw') return;
+            ctx.mode = ctx.mode === 'browse' ? 'list' : 'browse';
+            window.renderDawFxPicker();
+        };
+
+        window.dawFxSelectChainItem = function(index) {
+            const ctx = window.activePluginPickerContext;
+            if (!ctx || ctx.type !== 'daw') return;
+            ctx.mode = 'list';
+            ctx.selectedIndex = index;
+            window.renderDawFxPicker();
+        };
+
+        window.dawFxAddPluginToChain = function(pluginId) {
+            const ctx = window.activePluginPickerContext;
+            if (!ctx || ctx.type !== 'daw') return;
+            const fxList = dawFxListFor(ctx.trackId);
+            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.id === pluginId);
+            if (!fxList || !plugin || fxList.includes(plugin.name) || fxList.length >= 12) return;
+            fxList.push(plugin.name);
+            ctx.mode = 'list';
+            ctx.selectedIndex = fxList.length - 1;
+            dawRerenderFxOwner(ctx.trackId);
+            window.renderDawFxPicker();
+        };
+
+        window.dawFxRemoveSelected = function() {
+            const ctx = window.activePluginPickerContext;
+            if (!ctx || ctx.type !== 'daw' || ctx.selectedIndex === null) return;
+            const fxList = dawFxListFor(ctx.trackId);
+            if (!fxList || fxList[ctx.selectedIndex] === undefined) return;
+            fxList.splice(ctx.selectedIndex, 1);
+            ctx.selectedIndex = null;
+            dawRerenderFxOwner(ctx.trackId);
+            window.renderDawFxPicker();
         };
 
         window.closePluginPicker = function() {
@@ -1393,25 +1490,12 @@
             window.activePluginPickerContext = null;
         };
 
+        // Used by the mastering (single-slot) picker only — the DAW chain uses
+        // dawFxAddPluginToChain / dawFxRemoveSelected / dawFxSelectChainItem instead.
         window.choosePluginForSlot = function(pluginId) {
             if (!window.activePluginPickerContext) return;
             const ctx = window.activePluginPickerContext;
-
-            if (ctx.type === 'daw') {
-                const fxList = dawFxListFor(ctx.trackId);
-                const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.id === pluginId);
-                if (fxList && plugin) {
-                    const idx = fxList.indexOf(plugin.name);
-                    if (idx >= 0) {
-                        fxList.splice(idx, 1); // tap again to remove
-                    } else if (fxList.length < 12) {
-                        fxList.push(plugin.name);
-                    }
-                    dawRerenderFxOwner(ctx.trackId);
-                    window.renderDawFxPickerList();
-                }
-                return; // stays open for multi-select
-            }
+            if (ctx.type !== 'mastering') return;
 
             const { presetId, slotIndex } = ctx;
             const preset = window.masteringPresets.find(p => p.id === presetId);
@@ -1425,17 +1509,7 @@
         window.clearPluginSlotChoice = function() {
             if (!window.activePluginPickerContext) return;
             const ctx = window.activePluginPickerContext;
-
-            if (ctx.type === 'daw') {
-                if (ctx.trackId === 'master') window.dawMasterFx = [];
-                else {
-                    const track = window.dawTracks.find(t => t.id === ctx.trackId);
-                    if (track) track.fx = [];
-                }
-                dawRerenderFxOwner(ctx.trackId);
-                window.renderDawFxPickerList();
-                return;
-            }
+            if (ctx.type !== 'mastering') return;
 
             const { presetId, slotIndex } = ctx;
             const preset = window.masteringPresets.find(p => p.id === presetId);
@@ -3964,75 +4038,31 @@
         // ============================================================
         // DAW PLUGIN DETAIL — click a plugin in the FX chain to tweak it
         // ============================================================
-        window.dawFxPresetSelection = window.dawFxPresetSelection || {}; // { trackId: { pluginName: presetName } }
+        window.openDawPluginDetail = function(trackId, pluginName) {
+            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === pluginName);
+            if (!plugin) return;
 
-        function dpdApplyPresetValues(trackId, pluginName, values) {
-            const initial = {};
-            values.forEach(([label, defaultStr]) => {
-                const parsed = dawParseParamValue(defaultStr);
-                initial[label] = parsed ? parsed.value : defaultStr;
-            });
-            window.dawFxParams[trackId][pluginName] = initial;
-        }
+            window.dawFxParams[trackId] = window.dawFxParams[trackId] || {};
+            if (!window.dawFxParams[trackId][pluginName]) {
+                const initial = {};
+                plugin.values.forEach(([label, defaultStr]) => {
+                    const parsed = dawParseParamValue(defaultStr);
+                    initial[label] = parsed ? parsed.value : defaultStr;
+                });
+                window.dawFxParams[trackId][pluginName] = initial;
+            }
 
-        function dpdRenderPresetWrap() {
-            const wrap = document.getElementById('dpd-preset-wrap');
-            const ctx = window.dpdContext;
-            if (!wrap || !ctx) return;
-            const plugin = ctx.plugin;
-            if (!plugin.presets || !plugin.presets.length) { wrap.innerHTML = ''; return; }
-            const options = plugin.presets.map(p => {
-                const isActive = p.name === ctx.activePreset;
-                return `<button type="button" onclick="window.dpdSelectPreset('${p.name.replace(/'/g, "\\'")}')" class="w-full text-left px-3 py-2 text-[9px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors flex items-center gap-2 whitespace-nowrap">
-                    <span class="w-3 flex-shrink-0">${isActive ? '✓' : ''}</span><span>${p.name}</span>
-                </button>`;
-            }).join('');
-            wrap.innerHTML = `
-                <button type="button" onclick="window.dpdTogglePresetMenu()" class="flex items-center gap-1 text-[7px] font-black uppercase tracking-widest text-gray-500 hover:text-[#2fd0ff] transition-colors whitespace-nowrap" title="Choose a factory preset">
-                    The Factory Preset
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
-                </button>
-                <div id="dpd-preset-menu" class="hidden absolute left-0 top-full mt-1 min-w-[150px] z-30 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg shadow-2xl overflow-hidden">
-                    ${options}
-                </div>`;
-        }
+            const paramMeta = {};
+            plugin.values.forEach(([label, defaultStr]) => { paramMeta[label] = dawParseParamValue(defaultStr); });
+            window.dpdContext = { trackId, pluginName, paramMeta, plugin };
 
-        window.dpdTogglePresetMenu = function() {
-            const menu = document.getElementById('dpd-preset-menu');
-            if (!menu) return;
-            menu.classList.toggle('hidden');
-        };
+            document.getElementById('dpd-title').innerText = plugin.name;
+            document.getElementById('dpd-subtitle').innerText = plugin.category + ' · ' + plugin.tagline;
 
-        window.dpdSelectPreset = function(presetName) {
-            const ctx = window.dpdContext;
-            if (!ctx) return;
-            const preset = ctx.plugin.presets.find(p => p.name === presetName);
-            if (!preset) return;
-            ctx.activePreset = presetName;
-            window.dawFxPresetSelection[ctx.trackId] = window.dawFxPresetSelection[ctx.trackId] || {};
-            window.dawFxPresetSelection[ctx.trackId][ctx.pluginName] = presetName;
-            dpdApplyPresetValues(ctx.trackId, ctx.pluginName, preset.values);
-            ctx.paramMeta = {};
-            preset.values.forEach(([label, defaultStr]) => { ctx.paramMeta[label] = dawParseParamValue(defaultStr); });
-            document.getElementById('dpd-subtitle').innerText = ctx.plugin.category + ' · ' + presetName;
-            dpdRenderKnobs(preset.values);
-            dpdRenderPresetWrap();
-        };
-
-        // Click anywhere outside the preset menu to close it.
-        document.addEventListener('click', function(event) {
-            const wrap = document.getElementById('dpd-preset-wrap');
-            if (wrap && wrap.contains(event.target)) return;
-            const menu = document.getElementById('dpd-preset-menu');
-            if (menu) menu.classList.add('hidden');
-        });
-
-        function dpdRenderKnobs(values) {
-            const ctx = window.dpdContext;
             const knobsContainer = document.getElementById('dpd-knobs');
-            const state = window.dawFxParams[ctx.trackId][ctx.pluginName];
-            knobsContainer.innerHTML = values.map(([label, defaultStr]) => {
-                const parsed = ctx.paramMeta[label];
+            const state = window.dawFxParams[trackId][pluginName];
+            knobsContainer.innerHTML = plugin.values.map(([label, defaultStr]) => {
+                const parsed = paramMeta[label];
                 if (!parsed) {
                     return `
                     <div class="flex flex-col items-center gap-1.5 opacity-60 flex-shrink-0">
@@ -4052,37 +4082,6 @@
                     <div id="dpd-val-${label}" class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:1px 6px; color:#2fd0ff; text-shadow:0 0 6px rgba(47,208,255,0.7); border-color:rgba(47,208,255,0.35);">${parsed.format(currentVal)}</div>
                 </div>`;
             }).join('');
-        }
-
-        window.openDawPluginDetail = function(trackId, pluginName) {
-            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === pluginName);
-            if (!plugin) return;
-
-            window.dawFxParams[trackId] = window.dawFxParams[trackId] || {};
-            if (!window.dawFxParams[trackId][pluginName]) {
-                dpdApplyPresetValues(trackId, pluginName, plugin.values);
-            }
-
-            // Which preset is currently active for this track+plugin (defaults to the first one).
-            window.dawFxPresetSelection[trackId] = window.dawFxPresetSelection[trackId] || {};
-            let activePreset = window.dawFxPresetSelection[trackId][pluginName];
-            if (!activePreset && plugin.presets && plugin.presets.length) {
-                activePreset = plugin.presets[0].name;
-                window.dawFxPresetSelection[trackId][pluginName] = activePreset;
-            }
-            const activeValues = (plugin.presets && plugin.presets.length)
-                ? (plugin.presets.find(p => p.name === activePreset) || plugin.presets[0]).values
-                : plugin.values;
-
-            const paramMeta = {};
-            activeValues.forEach(([label, defaultStr]) => { paramMeta[label] = dawParseParamValue(defaultStr); });
-            window.dpdContext = { trackId, pluginName, paramMeta, plugin, activePreset };
-
-            document.getElementById('dpd-title').innerText = plugin.name;
-            document.getElementById('dpd-subtitle').innerText = plugin.category + ' · ' + (activePreset || plugin.tagline);
-
-            dpdRenderKnobs(activeValues);
-            dpdRenderPresetWrap();
 
             document.getElementById('daw-plugin-detail-modal').classList.remove('hidden');
         };
