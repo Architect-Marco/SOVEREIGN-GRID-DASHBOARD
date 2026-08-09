@@ -50,6 +50,88 @@
         window.waves = {};
         window.currentMasterUrl = null;
 
+        // ============================================================
+        // BROADCAST FEED — 3-dot options menu, rename, and message editing
+        // (custom in-app modals, not the browser's native prompt())
+        // ============================================================
+        window.toggleBroadcastFeedMenu = function(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu) menu.classList.toggle('hidden');
+        };
+
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !e.target.closest('[onclick*="toggleBroadcastFeedMenu"]')) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        window.loadBroadcastFeed = function() {
+            let saved = {};
+            try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed') || '{}'); } catch (e) { saved = {}; }
+            if (saved.title) {
+                const titleEl = document.getElementById('broadcast-feed-title');
+                if (titleEl) titleEl.innerText = saved.title;
+            }
+            if (saved.message) {
+                const textEl = document.getElementById('broadcast-feed-text');
+                if (textEl) textEl.innerText = saved.message;
+            }
+        };
+
+        window.renameBroadcastFeed = function() {
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu) menu.classList.add('hidden');
+            const titleEl = document.getElementById('broadcast-feed-title');
+            const input = document.getElementById('broadcast-feed-rename-input');
+            if (input) input.value = titleEl ? titleEl.innerText.trim() : 'Broadcast Feed';
+            document.getElementById('broadcast-feed-rename-modal').classList.remove('hidden');
+        };
+
+        window.closeBroadcastFeedRenameModal = function() {
+            document.getElementById('broadcast-feed-rename-modal').classList.add('hidden');
+        };
+
+        window.confirmRenameBroadcastFeed = function() {
+            const input = document.getElementById('broadcast-feed-rename-input');
+            const name = input ? input.value.trim() : '';
+            if (!name) { window.closeBroadcastFeedRenameModal(); return; }
+            const titleEl = document.getElementById('broadcast-feed-title');
+            if (titleEl) titleEl.innerText = name;
+            let saved = {};
+            try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed') || '{}'); } catch (e) { saved = {}; }
+            saved.title = name;
+            try { localStorage.setItem('sbn-broadcast-feed', JSON.stringify(saved)); } catch (e) { console.error('Could not save broadcast feed title:', e); }
+            window.closeBroadcastFeedRenameModal();
+        };
+
+        window.saveBroadcastFeed = function() {
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu) menu.classList.add('hidden');
+            const textEl = document.getElementById('broadcast-feed-text');
+            const input = document.getElementById('broadcast-feed-save-input');
+            if (input) input.value = textEl ? textEl.innerText.trim() : '';
+            document.getElementById('broadcast-feed-save-modal').classList.remove('hidden');
+        };
+
+        window.closeBroadcastFeedSaveModal = function() {
+            document.getElementById('broadcast-feed-save-modal').classList.add('hidden');
+        };
+
+        window.confirmSaveBroadcastFeed = function() {
+            const input = document.getElementById('broadcast-feed-save-input');
+            const message = input ? input.value.trim() : '';
+            if (!message) { window.closeBroadcastFeedSaveModal(); return; }
+            const textEl = document.getElementById('broadcast-feed-text');
+            if (textEl) textEl.innerText = message;
+            let saved = {};
+            try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed') || '{}'); } catch (e) { saved = {}; }
+            saved.message = message;
+            try { localStorage.setItem('sbn-broadcast-feed', JSON.stringify(saved)); } catch (e) { console.error('Could not save broadcast feed message:', e); }
+            window.closeBroadcastFeedSaveModal();
+        };
+
         // Playback queue state
         window.playlist = [];
         window.currentTrackIndex = -1;
@@ -7808,6 +7890,7 @@
             safeInit(window.renderGallery, 'renderGallery');
             safeInit(window.renderCoverArtSlots, 'renderCoverArtSlots');
             safeInit(window.loadSocialLinks, 'loadSocialLinks');
+            safeInit(window.loadBroadcastFeed, 'loadBroadcastFeed');
             safeInit(window.loadRelayPreferences, 'loadRelayPreferences');
             safeInit(window.loadRelayHistory, 'loadRelayHistory');
             safeInit(window.loadRelayProfilePhoto, 'loadRelayProfilePhoto');
