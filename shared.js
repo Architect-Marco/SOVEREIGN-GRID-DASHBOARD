@@ -97,20 +97,26 @@
 
         // ============================================================
         // SOVEREIGN SYNDICATE — MESSAGE BOX
-        // The textarea itself is directly editable — the 3-dot button just persists it.
+        // Same edit-modal pattern as the Broadcast Feed 3-dot.
         // ============================================================
         window.saveMessageBox = function() {
+            const caption = document.getElementById('home-magazine-caption');
+            const input = document.getElementById('message-box-save-input');
+            if (input) input.value = caption ? caption.value.trim() : '';
+            document.getElementById('message-box-save-modal').classList.remove('hidden');
+        };
+
+        window.closeMessageBoxSaveModal = function() {
+            document.getElementById('message-box-save-modal').classList.add('hidden');
+        };
+
+        window.confirmSaveMessageBox = function() {
+            const input = document.getElementById('message-box-save-input');
+            const message = input ? input.value.trim() : '';
+            const caption = document.getElementById('home-magazine-caption');
+            if (caption) caption.value = message;
             window.saveMagazine();
-            const btn = document.getElementById('message-box-save-btn');
-            if (btn) {
-                const original = btn.innerHTML;
-                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>';
-                btn.classList.add('neon-blue-text');
-                setTimeout(function() {
-                    btn.innerHTML = original;
-                    btn.classList.remove('neon-blue-text');
-                }, 1200);
-            }
+            window.closeMessageBoxSaveModal();
         };
 
         // Playback queue state
