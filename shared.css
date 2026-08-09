@@ -230,6 +230,8 @@
         .neon-blue-border { border-color: #2fd0ff !important; }
         .neon-blue-glow { box-shadow: 0 0 16px rgba(47,208,255,0.35); }
         .neon-blue-text-glow { text-shadow: 0 0 10px rgba(47,208,255,0.55); }
+        .neon-blue-btn-bg { background-color: #2fd0ff !important; color: #000 !important; }
+        .neon-blue-btn-bg:hover { background-color: #5ddcff !important; }
         .slick-scroll::-webkit-scrollbar { height: 6px !important; width: 6px !important; }
         .slick-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.04) !important; }
         .slick-scroll::-webkit-scrollbar-thumb { background: #2fd0ff !important; border-radius: 0 !important; }
