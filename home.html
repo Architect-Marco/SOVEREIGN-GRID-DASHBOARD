@@ -120,18 +120,12 @@
                     <!-- BROADCAST FEED (FULL WIDTH) -->
                     <div class="bg-[#0a0a0a] noir-bezel p-8 rounded-2xl">
                         <div class="flex items-center justify-between mb-4">
-                            <h4 id="broadcast-feed-title" class="neon-blue-text text-[10px] font-black uppercase italic">Broadcast Feed</h4>
-                            <div class="relative">
-                                <button onclick="window.toggleBroadcastFeedMenu(event)" class="text-gray-500 hover:text-[#2fd0ff] transition-colors" title="Options">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
-                                </button>
-                                <div id="broadcast-feed-menu" class="hidden absolute right-0 top-full mt-1 z-20 w-28 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg shadow-2xl overflow-hidden" onclick="event.stopPropagation()">
-                                    <button onclick="window.renameBroadcastFeed()" class="w-full text-left px-3 py-2 text-[10px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Rename</button>
-                                    <button onclick="window.saveBroadcastFeed()" class="w-full text-left px-3 py-2 text-[10px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Save</button>
-                                </div>
-                            </div>
+                            <h4 class="neon-blue-text text-[10px] font-black uppercase italic">Broadcast Feed</h4>
+                            <button onclick="window.saveBroadcastFeed()" class="text-gray-500 hover:text-[#2fd0ff] transition-colors" title="Edit message">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                            </button>
                         </div>
-                        <div id="broadcast-feed-text" class="bg-black/40 p-6 rounded-lg border border-white/5 text-sm italic neon-blue-text leading-relaxed">
+                        <div id="broadcast-feed-text" onclick="window.saveBroadcastFeed()" class="bg-black/40 p-6 rounded-lg border border-white/5 text-sm italic neon-blue-text leading-relaxed cursor-pointer hover:border-[rgba(47,208,255,0.3)] transition-colors" title="Click to edit message">
                             "Phase 6 execution active. Sovereign Grid has overridden Sector 87 airwaves. Lex-03 kinetic sync locked at 100%. Sapphire-cored archive extraction primed for the 12-second EMP window. 528Hz Luxury standard enforced across all global outputs."
                         </div>
                     </div>
@@ -935,21 +929,6 @@
         </div>
     </div>
 
-
-    <!-- BROADCAST FEED — RENAME MODAL -->
-    <div id="broadcast-feed-rename-modal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onclick="if(event.target===this) window.closeBroadcastFeedRenameModal()">
-        <div class="w-full max-w-sm bg-[#0a0a0a] border-[1.8px] border-[rgba(47,208,255,0.25)] rounded-3xl p-7 shadow-2xl">
-            <div class="flex items-center justify-between mb-5">
-                <h3 class="neon-blue-text text-lg font-black uppercase italic tracking-tight">Rename Feed</h3>
-                <button onclick="window.closeBroadcastFeedRenameModal()" class="text-gray-500 hover:text-white transition-colors">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                </button>
-            </div>
-            <label class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1 block">Feed Title</label>
-            <textarea id="broadcast-feed-rename-input" rows="1" class="w-full bg-black border border-white/10 rounded-lg px-3 py-4 text-xs neon-blue-text outline-none focus:border-[#2fd0ff] resize-y"></textarea>
-            <button onclick="window.confirmRenameBroadcastFeed()" class="w-full mt-6 py-3 bg-white/5 border border-[rgba(47,208,255,0.4)] rounded-xl text-sm font-black uppercase italic tracking-widest neon-blue-text hover:bg-white/10 transition-all">Save</button>
-        </div>
-    </div>
 
     <!-- BROADCAST FEED — EDIT MESSAGE MODAL -->
     <div id="broadcast-feed-save-modal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onclick="if(event.target===this) window.closeBroadcastFeedSaveModal()">
