@@ -840,7 +840,11 @@
 
         window.SOVEREIGN_12_PLUGINS = [
             { id: 'sovereign-dynamics', name: 'Sovereign Dynamics', tagline: 'The Glue', category: 'DYNAMICS',
-              values: [['THRESH','-25.0d'],['RATIO','1.8:1'],['ATTACK','35ms'],['RELEASE','250ms']] },
+              values: [['THRESH','-25.0d'],['RATIO','1.8:1'],['ATTACK','35ms'],['RELEASE','250ms']],
+              presets: [
+                  { name: 'The Glue', values: [['THRESH','-25.0d'],['RATIO','1.8:1'],['ATTACK','35ms'],['RELEASE','250ms']] },
+                  { name: 'Industrial', values: [['THRESH','-18.0d'],['RATIO','4.0:1'],['ATTACK','8ms'],['RELEASE','60ms']] }
+              ] },
             { id: 'master-limiter', name: 'Master Limiter', tagline: 'The Ceiling', category: 'DYNAMICS',
               values: [['CEILING','-0.5d'],['RELEASE','80ms'],['SOFT-CLIP','15%'],['GAIN','+2.0d']] },
             { id: 'multiband-comp', name: 'Multiband Comp', tagline: 'Spectral Control', category: 'DYNAMICS',
@@ -3960,31 +3964,75 @@
         // ============================================================
         // DAW PLUGIN DETAIL — click a plugin in the FX chain to tweak it
         // ============================================================
-        window.openDawPluginDetail = function(trackId, pluginName) {
-            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === pluginName);
-            if (!plugin) return;
+        window.dawFxPresetSelection = window.dawFxPresetSelection || {}; // { trackId: { pluginName: presetName } }
 
-            window.dawFxParams[trackId] = window.dawFxParams[trackId] || {};
-            if (!window.dawFxParams[trackId][pluginName]) {
-                const initial = {};
-                plugin.values.forEach(([label, defaultStr]) => {
-                    const parsed = dawParseParamValue(defaultStr);
-                    initial[label] = parsed ? parsed.value : defaultStr;
-                });
-                window.dawFxParams[trackId][pluginName] = initial;
-            }
+        function dpdApplyPresetValues(trackId, pluginName, values) {
+            const initial = {};
+            values.forEach(([label, defaultStr]) => {
+                const parsed = dawParseParamValue(defaultStr);
+                initial[label] = parsed ? parsed.value : defaultStr;
+            });
+            window.dawFxParams[trackId][pluginName] = initial;
+        }
 
-            const paramMeta = {};
-            plugin.values.forEach(([label, defaultStr]) => { paramMeta[label] = dawParseParamValue(defaultStr); });
-            window.dpdContext = { trackId, pluginName, paramMeta, plugin };
+        function dpdRenderPresetWrap() {
+            const wrap = document.getElementById('dpd-preset-wrap');
+            const ctx = window.dpdContext;
+            if (!wrap || !ctx) return;
+            const plugin = ctx.plugin;
+            if (!plugin.presets || !plugin.presets.length) { wrap.innerHTML = ''; return; }
+            const options = plugin.presets.map(p => {
+                const isActive = p.name === ctx.activePreset;
+                return `<button type="button" onclick="window.dpdSelectPreset('${p.name.replace(/'/g, "\\'")}')" class="w-full text-left px-3 py-2 text-[9px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors flex items-center gap-2 whitespace-nowrap">
+                    <span class="w-3 flex-shrink-0">${isActive ? '✓' : ''}</span><span>${p.name}</span>
+                </button>`;
+            }).join('');
+            wrap.innerHTML = `
+                <button type="button" onclick="window.dpdTogglePresetMenu()" class="flex items-center gap-1 text-[7px] font-black uppercase tracking-widest text-gray-500 hover:text-[#2fd0ff] transition-colors whitespace-nowrap" title="Choose a factory preset">
+                    The Factory Preset
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div id="dpd-preset-menu" class="hidden absolute left-0 top-full mt-1 min-w-[150px] z-30 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg shadow-2xl overflow-hidden">
+                    ${options}
+                </div>`;
+        }
 
-            document.getElementById('dpd-title').innerText = plugin.name;
-            document.getElementById('dpd-subtitle').innerText = plugin.category + ' · ' + plugin.tagline;
+        window.dpdTogglePresetMenu = function() {
+            const menu = document.getElementById('dpd-preset-menu');
+            if (!menu) return;
+            menu.classList.toggle('hidden');
+        };
 
+        window.dpdSelectPreset = function(presetName) {
+            const ctx = window.dpdContext;
+            if (!ctx) return;
+            const preset = ctx.plugin.presets.find(p => p.name === presetName);
+            if (!preset) return;
+            ctx.activePreset = presetName;
+            window.dawFxPresetSelection[ctx.trackId] = window.dawFxPresetSelection[ctx.trackId] || {};
+            window.dawFxPresetSelection[ctx.trackId][ctx.pluginName] = presetName;
+            dpdApplyPresetValues(ctx.trackId, ctx.pluginName, preset.values);
+            ctx.paramMeta = {};
+            preset.values.forEach(([label, defaultStr]) => { ctx.paramMeta[label] = dawParseParamValue(defaultStr); });
+            document.getElementById('dpd-subtitle').innerText = ctx.plugin.category + ' · ' + presetName;
+            dpdRenderKnobs(preset.values);
+            dpdRenderPresetWrap();
+        };
+
+        // Click anywhere outside the preset menu to close it.
+        document.addEventListener('click', function(event) {
+            const wrap = document.getElementById('dpd-preset-wrap');
+            if (wrap && wrap.contains(event.target)) return;
+            const menu = document.getElementById('dpd-preset-menu');
+            if (menu) menu.classList.add('hidden');
+        });
+
+        function dpdRenderKnobs(values) {
+            const ctx = window.dpdContext;
             const knobsContainer = document.getElementById('dpd-knobs');
-            const state = window.dawFxParams[trackId][pluginName];
-            knobsContainer.innerHTML = plugin.values.map(([label, defaultStr]) => {
-                const parsed = paramMeta[label];
+            const state = window.dawFxParams[ctx.trackId][ctx.pluginName];
+            knobsContainer.innerHTML = values.map(([label, defaultStr]) => {
+                const parsed = ctx.paramMeta[label];
                 if (!parsed) {
                     return `
                     <div class="flex flex-col items-center gap-1.5 opacity-60 flex-shrink-0">
@@ -4004,6 +4052,37 @@
                     <div id="dpd-val-${label}" class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:1px 6px; color:#2fd0ff; text-shadow:0 0 6px rgba(47,208,255,0.7); border-color:rgba(47,208,255,0.35);">${parsed.format(currentVal)}</div>
                 </div>`;
             }).join('');
+        }
+
+        window.openDawPluginDetail = function(trackId, pluginName) {
+            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === pluginName);
+            if (!plugin) return;
+
+            window.dawFxParams[trackId] = window.dawFxParams[trackId] || {};
+            if (!window.dawFxParams[trackId][pluginName]) {
+                dpdApplyPresetValues(trackId, pluginName, plugin.values);
+            }
+
+            // Which preset is currently active for this track+plugin (defaults to the first one).
+            window.dawFxPresetSelection[trackId] = window.dawFxPresetSelection[trackId] || {};
+            let activePreset = window.dawFxPresetSelection[trackId][pluginName];
+            if (!activePreset && plugin.presets && plugin.presets.length) {
+                activePreset = plugin.presets[0].name;
+                window.dawFxPresetSelection[trackId][pluginName] = activePreset;
+            }
+            const activeValues = (plugin.presets && plugin.presets.length)
+                ? (plugin.presets.find(p => p.name === activePreset) || plugin.presets[0]).values
+                : plugin.values;
+
+            const paramMeta = {};
+            activeValues.forEach(([label, defaultStr]) => { paramMeta[label] = dawParseParamValue(defaultStr); });
+            window.dpdContext = { trackId, pluginName, paramMeta, plugin, activePreset };
+
+            document.getElementById('dpd-title').innerText = plugin.name;
+            document.getElementById('dpd-subtitle').innerText = plugin.category + ' · ' + (activePreset || plugin.tagline);
+
+            dpdRenderKnobs(activeValues);
+            dpdRenderPresetWrap();
 
             document.getElementById('daw-plugin-detail-modal').classList.remove('hidden');
         };
