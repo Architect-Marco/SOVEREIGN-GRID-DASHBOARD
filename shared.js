@@ -101,6 +101,16 @@
         // ============================================================
         window.saveMessageBox = function() {
             window.saveMagazine();
+            const btn = document.getElementById('message-box-save-btn');
+            if (btn) {
+                const original = btn.innerHTML;
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>';
+                btn.classList.add('neon-blue-text');
+                setTimeout(function() {
+                    btn.innerHTML = original;
+                    btn.classList.remove('neon-blue-text');
+                }, 1200);
+            }
         };
 
         // Playback queue state
