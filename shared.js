@@ -65,7 +65,7 @@
                 delete saved.title;
                 try { localStorage.setItem('sbn-broadcast-feed', JSON.stringify(saved)); } catch (e) { /* ignore */ }
             }
-            if (saved.message) {
+            if (typeof saved.message === 'string') {
                 const textEl = document.getElementById('broadcast-feed-text');
                 if (textEl) textEl.innerText = saved.message;
             }
@@ -85,7 +85,6 @@
         window.confirmSaveBroadcastFeed = function() {
             const input = document.getElementById('broadcast-feed-save-input');
             const message = input ? input.value.trim() : '';
-            if (!message) { window.closeBroadcastFeedSaveModal(); return; }
             const textEl = document.getElementById('broadcast-feed-text');
             if (textEl) textEl.innerText = message;
             let saved = {};
