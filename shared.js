@@ -96,76 +96,11 @@
         };
 
         // ============================================================
-        // SOVEREIGN SYNDICATE — MESSAGE BOX — 3-dot options menu, rename, and message editing
-        // (same custom in-app modal pattern as the Broadcast Feed, not the browser's native prompt())
+        // SOVEREIGN SYNDICATE — MESSAGE BOX
+        // The textarea itself is directly editable — the 3-dot button just persists it.
         // ============================================================
-        window.toggleMessageBoxMenu = function(event) {
-            if (event) event.stopPropagation();
-            const menu = document.getElementById('message-box-menu');
-            if (menu) menu.classList.toggle('hidden');
-        };
-
-        document.addEventListener('click', function(e) {
-            const menu = document.getElementById('message-box-menu');
-            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !e.target.closest('[onclick*="toggleMessageBoxMenu"]')) {
-                menu.classList.add('hidden');
-            }
-        });
-
-        window.loadMessageBoxTitle = function() {
-            try {
-                const title = localStorage.getItem('sbn-message-box-title');
-                if (title) {
-                    const titleEl = document.getElementById('message-box-title');
-                    if (titleEl) titleEl.innerText = title;
-                }
-            } catch (e) { /* ignore */ }
-        };
-
-        window.renameMessageBox = function() {
-            const menu = document.getElementById('message-box-menu');
-            if (menu) menu.classList.add('hidden');
-            const titleEl = document.getElementById('message-box-title');
-            const input = document.getElementById('message-box-rename-input');
-            if (input) input.value = titleEl ? titleEl.innerText.trim() : 'Message';
-            document.getElementById('message-box-rename-modal').classList.remove('hidden');
-        };
-
-        window.closeMessageBoxRenameModal = function() {
-            document.getElementById('message-box-rename-modal').classList.add('hidden');
-        };
-
-        window.confirmRenameMessageBox = function() {
-            const input = document.getElementById('message-box-rename-input');
-            const name = input ? input.value.trim() : '';
-            if (!name) { window.closeMessageBoxRenameModal(); return; }
-            const titleEl = document.getElementById('message-box-title');
-            if (titleEl) titleEl.innerText = name;
-            try { localStorage.setItem('sbn-message-box-title', name); } catch (e) { console.error('Could not save message box title:', e); }
-            window.closeMessageBoxRenameModal();
-        };
-
         window.saveMessageBox = function() {
-            const menu = document.getElementById('message-box-menu');
-            if (menu) menu.classList.add('hidden');
-            const textEl = document.getElementById('home-magazine-caption');
-            const input = document.getElementById('message-box-save-input');
-            if (input) input.value = textEl ? textEl.value.trim() : '';
-            document.getElementById('message-box-save-modal').classList.remove('hidden');
-        };
-
-        window.closeMessageBoxSaveModal = function() {
-            document.getElementById('message-box-save-modal').classList.add('hidden');
-        };
-
-        window.confirmSaveMessageBox = function() {
-            const input = document.getElementById('message-box-save-input');
-            const message = input ? input.value.trim() : '';
-            if (!message) { window.closeMessageBoxSaveModal(); return; }
-            const textEl = document.getElementById('home-magazine-caption');
-            if (textEl) textEl.value = message;
             window.saveMagazine();
-            window.closeMessageBoxSaveModal();
         };
 
         // Playback queue state
@@ -6038,13 +5973,14 @@
         };
 
         window.loadMagazine = function() {
+            try { localStorage.removeItem('sbn-message-box-title'); } catch (e) { /* ignore */ }
             try {
                 const saved = JSON.parse(localStorage.getItem('sbn-magazine') || 'null');
                 if (!saved) return;
                 const frame = document.getElementById('home-magazine-frame');
                 const caption = document.getElementById('home-magazine-caption');
                 if (saved.image && frame) frame.style.backgroundImage = `url(${saved.image})`;
-                if (saved.caption && caption) caption.value = saved.caption;
+                if (typeof saved.caption === 'string' && caption) caption.value = saved.caption;
             } catch (err) { console.error('Could not load magazine:', err); }
         };
 
@@ -7927,7 +7863,6 @@
             safeInit(window.renderCoverArtSlots, 'renderCoverArtSlots');
             safeInit(window.loadSocialLinks, 'loadSocialLinks');
             safeInit(window.loadBroadcastFeed, 'loadBroadcastFeed');
-            safeInit(window.loadMessageBoxTitle, 'loadMessageBoxTitle');
             safeInit(window.loadRelayPreferences, 'loadRelayPreferences');
             safeInit(window.loadRelayHistory, 'loadRelayHistory');
             safeInit(window.loadRelayProfilePhoto, 'loadRelayProfilePhoto');
