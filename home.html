@@ -17,7 +17,7 @@
         <aside class="w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col flex-shrink-0 h-full">
             <div class="px-2 py-8 border-b border-white/5 mb-4">
                 <div class="ethnocentric-title" style="font-size:8pt; letter-spacing:-0.02em; white-space:nowrap;">THE SICK TEAM <span class="dash-red">-</span> LAB</div>
-                <div class="text-[9px] uppercase font-black tracking-[0.4em] mt-1" style="color:#2fd0ff;">Human. Machine. United.</div>
+                <div class="text-[9px] text-gray-600 uppercase font-black tracking-[0.4em] mt-1">Human. Machine. United.</div>
             </div>
             <nav class="flex-1 px-4 space-y-2">
                 <div onclick="switchView('home')" id="nav-home" class="nav-item nav-active ethnocentric-nav flex items-center px-4 py-3 text-gray-500 hover:text-white rounded-lg cursor-pointer uppercase tracking-[0.3em]">HOME</div>
@@ -297,18 +297,7 @@
                 <div id="content-syndicate" class="hidden-section space-y-10">
                     <!-- MESSAGE BOX (moved here from Overview, now sits above the team roster) -->
                     <div class="bg-[#0a0a0a] noir-bezel p-6 rounded-2xl flex flex-col">
-                        <div class="flex items-center justify-between mb-3 flex-shrink-0">
-                            <h4 class="neon-blue-text text-[10px] font-black uppercase italic">Message</h4>
-                            <div class="relative">
-                                <button onclick="window.toggleSyndicateMessageMenu(event)" class="text-gray-500 hover:text-[#2fd0ff] transition-colors" title="Options">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
-                                </button>
-                                <div id="syndicate-message-menu" class="hidden absolute right-0 top-full mt-1 z-20 w-28 bg-black border border-[rgba(47,208,255,0.3)] rounded-lg shadow-2xl overflow-hidden" onclick="event.stopPropagation()">
-                                    <button onclick="window.renameSyndicateMessage()" class="w-full text-left px-3 py-2 text-[10px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Rename</button>
-                                    <button onclick="window.saveSyndicateMessage()" class="w-full text-left px-3 py-2 text-[10px] font-bold neon-blue-text hover:bg-[rgba(47,208,255,0.15)] transition-colors">Save</button>
-                                </div>
-                            </div>
-                        </div>
+                        <h4 class="neon-blue-text text-[10px] font-black uppercase mb-3 italic flex-shrink-0">Message</h4>
                         <textarea id="home-magazine-caption" class="w-full h-40 bg-black/40 border border-white/5 rounded-lg p-4 neon-blue-text text-sm italic leading-relaxed resize-none" placeholder="Write your magazine caption...">The Architect of the Sovereign Broadcast Network and founder of The Sick Team AI Project Lab.</textarea>
                     </div>
                     <div id="syndicate-roster" class="space-y-10"></div>
