@@ -50,117 +50,167 @@
         window.waves = {};
         window.currentMasterUrl = null;
 
-        // =============================================================================
-// BROADCAST FEED — 3-dot options menu, rename, and message editing
-// (custom in-app modals, not the browser's native prompt())
-// =============================================================================
-window.toggleBroadcastFeedMenu = function(event) {
-    if (event) event.stopPropagation();
-    const menu = document.getElementById('broadcast-feed-menu');
-    if (menu) menu.classList.toggle('hidden');
-};
+        // ============================================================
+        // BROADCAST FEED — 3-dot options menu, rename, and message editing
+        // (custom in-app modals, not the browser's native prompt())
+        // ============================================================
+        window.toggleBroadcastFeedMenu = function(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu) menu.classList.toggle('hidden');
+        };
 
-document.addEventListener('click', function(e) {
-    const menu = document.getElementById('broadcast-feed-menu');
-    if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)
-    && !e.target.closest('[onclick*="toggleBroadcastFeedMenu"]')) {
-        menu.classList.add('hidden');
-    }
-});
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !e.target.closest('[onclick*="toggleBroadcastFeedMenu"]')) {
+                menu.classList.add('hidden');
+            }
+        });
 
-window.loadBroadcastFeed = function() {
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed')) || {}; } catch (e) { saved = {}; }
-    
-    if (saved.title) {
-        const titleEl = document.getElementById('broadcast-feed-title');
-        if (titleEl) titleEl.innerText = saved.title;
-    }
-    if (saved.message) {
-        const textEl = document.getElementById('broadcast-feed-text');
-        if (textEl) textEl.innerText = saved.message;
-    }
-};
+        window.loadBroadcastFeed = function() {
+            let saved = {};
+            try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed') || '{}'); } catch (e) { saved = {}; }
+            // Self-heal: a long paragraph accidentally saved as the title (e.g. typed into
+            // Rename instead of Save) belongs in the message, not the title.
+            if (saved.title && saved.title.length > 40) {
+                if (!saved.message) saved.message = saved.title;
+                delete saved.title;
+                try { localStorage.setItem('sbn-broadcast-feed', JSON.stringify(saved)); } catch (e) { /* ignore */ }
+            }
+            if (saved.title) {
+                const titleEl = document.getElementById('broadcast-feed-title');
+                if (titleEl) titleEl.innerText = saved.title;
+            }
+            if (saved.message) {
+                const textEl = document.getElementById('broadcast-feed-text');
+                if (textEl) textEl.innerText = saved.message;
+            }
+        };
 
-window.renameBroadcastFeed = function() {
-    const menu = document.getElementById('broadcast-feed-menu');
-    if (menu) menu.classList.add('hidden');
-    
-    const titleEl = document.getElementById('broadcast-feed-title');
-    const input = document.getElementById('broadcast-feed-rename-input');
-    
-    // LOGIC SENSE: Populates the input box with the current title
-    if (input) input.value = titleEl ? titleEl.innerText.trim() : 'Broadcast Feed';
-    
-    document.getElementById('broadcast-feed-rename-modal').classList.remove('hidden');
-};
+        window.renameBroadcastFeed = function() {
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu) menu.classList.add('hidden');
+            const titleEl = document.getElementById('broadcast-feed-title');
+            const input = document.getElementById('broadcast-feed-rename-input');
+            if (input) input.value = titleEl ? titleEl.innerText.trim() : 'Broadcast Feed';
+            document.getElementById('broadcast-feed-rename-modal').classList.remove('hidden');
+        };
 
-window.closeBroadcastFeedRenameModal = function() {
-    document.getElementById('broadcast-feed-rename-modal').classList.add('hidden');
-};
+        window.closeBroadcastFeedRenameModal = function() {
+            document.getElementById('broadcast-feed-rename-modal').classList.add('hidden');
+        };
 
-window.confirmRenameBroadcastFeed = function() {
-    const input = document.getElementById('broadcast-feed-rename-input');
-    const titleEl = document.getElementById('broadcast-feed-title');
-    const name = input ? input.value.trim() : '';
-    
-    if (!name) { window.closeBroadcastFeedRenameModal(); return; }
+        window.confirmRenameBroadcastFeed = function() {
+            const input = document.getElementById('broadcast-feed-rename-input');
+            const name = input ? input.value.trim() : '';
+            if (!name) { window.closeBroadcastFeedRenameModal(); return; }
+            const titleEl = document.getElementById('broadcast-feed-title');
+            if (titleEl) titleEl.innerText = name;
+            let saved = {};
+            try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed') || '{}'); } catch (e) { saved = {}; }
+            saved.title = name;
+            try { localStorage.setItem('sbn-broadcast-feed', JSON.stringify(saved)); } catch (e) { console.error('Could not save broadcast feed title:', e); }
+            window.closeBroadcastFeedRenameModal();
+        };
 
-    if (titleEl) {
-        // HARD PURGE: Replaces old title with new Sharp-Logic text
-        titleEl.innerText = name.toUpperCase();
-    }
+        window.saveBroadcastFeed = function() {
+            const menu = document.getElementById('broadcast-feed-menu');
+            if (menu) menu.classList.add('hidden');
+            const textEl = document.getElementById('broadcast-feed-text');
+            const input = document.getElementById('broadcast-feed-save-input');
+            if (input) input.value = textEl ? textEl.innerText.trim() : '';
+            document.getElementById('broadcast-feed-save-modal').classList.remove('hidden');
+        };
 
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed')) || {}; } catch (e) { saved = {}; }
-    saved.title = name.toUpperCase();
-    localStorage.setItem('sbn-broadcast-feed', JSON.stringify(saved));
+        window.closeBroadcastFeedSaveModal = function() {
+            document.getElementById('broadcast-feed-save-modal').classList.add('hidden');
+        };
 
-    window.closeBroadcastFeedRenameModal();
-};
+        window.confirmSaveBroadcastFeed = function() {
+            const input = document.getElementById('broadcast-feed-save-input');
+            const message = input ? input.value.trim() : '';
+            if (!message) { window.closeBroadcastFeedSaveModal(); return; }
+            const textEl = document.getElementById('broadcast-feed-text');
+            if (textEl) textEl.innerText = message;
+            let saved = {};
+            try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed') || '{}'); } catch (e) { saved = {}; }
+            saved.message = message;
+            try { localStorage.setItem('sbn-broadcast-feed', JSON.stringify(saved)); } catch (e) { console.error('Could not save broadcast feed message:', e); }
+            window.closeBroadcastFeedSaveModal();
+        };
 
-window.saveBroadcastFeed = function() {
-    const menu = document.getElementById('broadcast-feed-menu');
-    if (menu) menu.classList.add('hidden');
-    
-    const textEl = document.getElementById('broadcast-feed-text');
-    const input = document.getElementById('broadcast-feed-save-input');
-    
-    // LOGIC SENSE: Populates the input box with the current message
-    if (input) input.value = textEl ? textEl.innerText.trim().replace(/"/g, '') : '';
-    
-    document.getElementById('broadcast-feed-save-modal').classList.remove('hidden');
-};
+        // ============================================================
+        // SOVEREIGN SYNDICATE — MESSAGE BOX — 3-dot options menu, rename, and message editing
+        // (same custom in-app modal pattern as the Broadcast Feed, not the browser's native prompt())
+        // ============================================================
+        window.toggleMessageBoxMenu = function(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('message-box-menu');
+            if (menu) menu.classList.toggle('hidden');
+        };
 
-window.closeBroadcastFeedSaveModal = function() {
-    document.getElementById('broadcast-feed-save-modal').classList.add('hidden');
-};
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('message-box-menu');
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !e.target.closest('[onclick*="toggleMessageBoxMenu"]')) {
+                menu.classList.add('hidden');
+            }
+        });
 
-window.confirmSaveBroadcastFeed = function() {
-    const input = document.getElementById('broadcast-feed-save-input');
-    const message = input ? input.value.trim() : '';
-    
-    if (!message) { window.closeBroadcastFeedSaveModal(); return; }
-    
-    const textEl = document.getElementById('broadcast-feed-text');
-    if (textEl) {
-        // HARD PURGE: Overwrites entire box to kill "Stupid Node" doubling
-        textEl.innerText = `"${message.toUpperCase()}"`;
-    }
+        window.loadMessageBoxTitle = function() {
+            try {
+                const title = localStorage.getItem('sbn-message-box-title');
+                if (title) {
+                    const titleEl = document.getElementById('message-box-title');
+                    if (titleEl) titleEl.innerText = title;
+                }
+            } catch (e) { /* ignore */ }
+        };
 
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed')) || {}; } catch (e) { saved = {}; }
-    saved.message = `"${message.toUpperCase()}"`;
-    
-    try {
-        localStorage.setItem('sbn-broadcast-feed', JSON.stringify(saved));
-    } catch (e) {
-        console.error('Could not save broadcast feed message:', e);
-    }
-    
-    window.closeBroadcastFeedSaveModal();
-    console.log("TELEMETRY HARDENED. STUPID NODE PURGED.");
-};
+        window.renameMessageBox = function() {
+            const menu = document.getElementById('message-box-menu');
+            if (menu) menu.classList.add('hidden');
+            const titleEl = document.getElementById('message-box-title');
+            const input = document.getElementById('message-box-rename-input');
+            if (input) input.value = titleEl ? titleEl.innerText.trim() : 'Message';
+            document.getElementById('message-box-rename-modal').classList.remove('hidden');
+        };
+
+        window.closeMessageBoxRenameModal = function() {
+            document.getElementById('message-box-rename-modal').classList.add('hidden');
+        };
+
+        window.confirmRenameMessageBox = function() {
+            const input = document.getElementById('message-box-rename-input');
+            const name = input ? input.value.trim() : '';
+            if (!name) { window.closeMessageBoxRenameModal(); return; }
+            const titleEl = document.getElementById('message-box-title');
+            if (titleEl) titleEl.innerText = name;
+            try { localStorage.setItem('sbn-message-box-title', name); } catch (e) { console.error('Could not save message box title:', e); }
+            window.closeMessageBoxRenameModal();
+        };
+
+        window.saveMessageBox = function() {
+            const menu = document.getElementById('message-box-menu');
+            if (menu) menu.classList.add('hidden');
+            const textEl = document.getElementById('home-magazine-caption');
+            const input = document.getElementById('message-box-save-input');
+            if (input) input.value = textEl ? textEl.value.trim() : '';
+            document.getElementById('message-box-save-modal').classList.remove('hidden');
+        };
+
+        window.closeMessageBoxSaveModal = function() {
+            document.getElementById('message-box-save-modal').classList.add('hidden');
+        };
+
+        window.confirmSaveMessageBox = function() {
+            const input = document.getElementById('message-box-save-input');
+            const message = input ? input.value.trim() : '';
+            if (!message) { window.closeMessageBoxSaveModal(); return; }
+            const textEl = document.getElementById('home-magazine-caption');
+            if (textEl) textEl.value = message;
+            window.saveMagazine();
+            window.closeMessageBoxSaveModal();
+        };
 
         // Playback queue state
         window.playlist = [];
@@ -7921,6 +7971,7 @@ window.confirmSaveBroadcastFeed = function() {
             safeInit(window.renderCoverArtSlots, 'renderCoverArtSlots');
             safeInit(window.loadSocialLinks, 'loadSocialLinks');
             safeInit(window.loadBroadcastFeed, 'loadBroadcastFeed');
+            safeInit(window.loadMessageBoxTitle, 'loadMessageBoxTitle');
             safeInit(window.loadRelayPreferences, 'loadRelayPreferences');
             safeInit(window.loadRelayHistory, 'loadRelayHistory');
             safeInit(window.loadRelayProfilePhoto, 'loadRelayProfilePhoto');
