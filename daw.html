@@ -7,6 +7,28 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/wavesurfer.js@7"></script>
     <link rel="stylesheet" href="shared.css">
+    <style>
+        /* EQ-8 controls — styled to match the DAW mixer's neon fader look */
+        .eq8-hslider { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px;
+            background: linear-gradient(90deg, rgba(47,208,255,0.15), rgba(47,208,255,0.35)); outline: none; cursor: pointer; }
+        .eq8-hslider::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: transparent; }
+        .eq8-hslider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 18px; margin-top: -7px;
+            border-radius: 3px; background: #0a0a0a; border: 2px solid #2fd0ff; box-shadow: 0 0 6px rgba(47,208,255,0.7); cursor: ew-resize; }
+        .eq8-hslider::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(47,208,255,0.2); }
+        .eq8-hslider::-moz-range-thumb { width: 10px; height: 18px; border-radius: 3px; background: #0a0a0a; border: 2px solid #2fd0ff;
+            box-shadow: 0 0 6px rgba(47,208,255,0.7); cursor: ew-resize; }
+        .eq8-vslider { -webkit-appearance: none; appearance: none; width: 4px; height: 100px; border-radius: 2px;
+            background: linear-gradient(180deg, rgba(47,208,255,0.35), rgba(47,208,255,0.15)); outline: none; cursor: pointer;
+            writing-mode: vertical-lr; direction: rtl; }
+        .eq8-vslider::-webkit-slider-runnable-track { width: 4px; border-radius: 2px; background: transparent; }
+        .eq8-vslider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 12px;
+            border-radius: 3px; background: #0a0a0a; border: 2px solid #2fd0ff; box-shadow: 0 0 6px rgba(47,208,255,0.7); cursor: ns-resize; }
+        .eq8-vslider::-moz-range-track { width: 4px; border-radius: 2px; background: rgba(47,208,255,0.2); }
+        .eq8-vslider::-moz-range-thumb { width: 18px; height: 12px; border-radius: 3px; background: #0a0a0a; border: 2px solid #2fd0ff;
+            box-shadow: 0 0 6px rgba(47,208,255,0.7); cursor: ns-resize; }
+        .eq8-node { cursor: grab; }
+        .eq8-node:active { cursor: grabbing; }
+    </style>
 </head>
 </head>
 <body class="flex flex-col">
