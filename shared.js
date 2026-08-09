@@ -54,32 +54,16 @@
         // BROADCAST FEED — 3-dot options menu, rename, and message editing
         // (custom in-app modals, not the browser's native prompt())
         // ============================================================
-        window.toggleBroadcastFeedMenu = function(event) {
-            if (event) event.stopPropagation();
-            const menu = document.getElementById('broadcast-feed-menu');
-            if (menu) menu.classList.toggle('hidden');
-        };
-
-        document.addEventListener('click', function(e) {
-            const menu = document.getElementById('broadcast-feed-menu');
-            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !e.target.closest('[onclick*="toggleBroadcastFeedMenu"]')) {
-                menu.classList.add('hidden');
-            }
-        });
-
         window.loadBroadcastFeed = function() {
             let saved = {};
             try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed') || '{}'); } catch (e) { saved = {}; }
-            // Self-heal: a long paragraph accidentally saved as the title (e.g. typed into
-            // Rename instead of Save) belongs in the message, not the title.
-            if (saved.title && saved.title.length > 40) {
+            // The feed title is a fixed label now (no more Rename option, which used to get
+            // confused with editing the message) — fold any old saved title into the message
+            // instead of losing it, then drop it for good.
+            if (saved.title) {
                 if (!saved.message) saved.message = saved.title;
                 delete saved.title;
                 try { localStorage.setItem('sbn-broadcast-feed', JSON.stringify(saved)); } catch (e) { /* ignore */ }
-            }
-            if (saved.title) {
-                const titleEl = document.getElementById('broadcast-feed-title');
-                if (titleEl) titleEl.innerText = saved.title;
             }
             if (saved.message) {
                 const textEl = document.getElementById('broadcast-feed-text');
@@ -87,35 +71,7 @@
             }
         };
 
-        window.renameBroadcastFeed = function() {
-            const menu = document.getElementById('broadcast-feed-menu');
-            if (menu) menu.classList.add('hidden');
-            const titleEl = document.getElementById('broadcast-feed-title');
-            const input = document.getElementById('broadcast-feed-rename-input');
-            if (input) input.value = titleEl ? titleEl.innerText.trim() : 'Broadcast Feed';
-            document.getElementById('broadcast-feed-rename-modal').classList.remove('hidden');
-        };
-
-        window.closeBroadcastFeedRenameModal = function() {
-            document.getElementById('broadcast-feed-rename-modal').classList.add('hidden');
-        };
-
-        window.confirmRenameBroadcastFeed = function() {
-            const input = document.getElementById('broadcast-feed-rename-input');
-            const name = input ? input.value.trim() : '';
-            if (!name) { window.closeBroadcastFeedRenameModal(); return; }
-            const titleEl = document.getElementById('broadcast-feed-title');
-            if (titleEl) titleEl.innerText = name;
-            let saved = {};
-            try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed') || '{}'); } catch (e) { saved = {}; }
-            saved.title = name;
-            try { localStorage.setItem('sbn-broadcast-feed', JSON.stringify(saved)); } catch (e) { console.error('Could not save broadcast feed title:', e); }
-            window.closeBroadcastFeedRenameModal();
-        };
-
         window.saveBroadcastFeed = function() {
-            const menu = document.getElementById('broadcast-feed-menu');
-            if (menu) menu.classList.add('hidden');
             const textEl = document.getElementById('broadcast-feed-text');
             const input = document.getElementById('broadcast-feed-save-input');
             if (input) input.value = textEl ? textEl.innerText.trim() : '';
@@ -135,6 +91,7 @@
             let saved = {};
             try { saved = JSON.parse(localStorage.getItem('sbn-broadcast-feed') || '{}'); } catch (e) { saved = {}; }
             saved.message = message;
+            delete saved.title;
             try { localStorage.setItem('sbn-broadcast-feed', JSON.stringify(saved)); } catch (e) { console.error('Could not save broadcast feed message:', e); }
             window.closeBroadcastFeedSaveModal();
         };
