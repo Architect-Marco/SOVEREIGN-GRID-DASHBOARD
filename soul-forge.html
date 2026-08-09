@@ -101,14 +101,14 @@
                             </div>
                             <input type="file" id="epk-photo-input" accept="image/*" class="hidden" onchange="window.handleEpkPhotoUpload(event)">
                             <div class="flex-1 space-y-2.5 self-stretch flex flex-col justify-center">
-                                <input type="text" id="epk-band-name" autocomplete="off" placeholder="Artist / Band Name" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3.5 text-white text-base font-bold outline-none focus:border-[#2fd0ff]" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
-                                <input type="text" id="epk-song-title" autocomplete="off" placeholder="Song Title" class="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#2fd0ff]" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
+                                <input type="text" id="epk-band-name" autocomplete="off" placeholder="Artist / Band Name" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3.5 neon-blue-text text-base font-bold outline-none focus:border-[#2fd0ff]" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
+                                <input type="text" id="epk-song-title" autocomplete="off" placeholder="Song Title" class="w-full bg-black border border-white/10 rounded-lg px-3 py-2 neon-blue-text text-xs outline-none focus:border-[#2fd0ff]" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
                             </div>
                         </div>
 
                         <!-- MEMBERS + LEAD VOCALS -->
                         <div class="mb-2">
-                            <input type="text" id="epk-members" autocomplete="off" placeholder="# Members" class="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#2fd0ff] mb-4" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
+                            <input type="text" id="epk-members" autocomplete="off" placeholder="# Members" class="w-full bg-black border border-white/10 rounded-lg px-3 py-2 neon-blue-text text-xs outline-none focus:border-[#2fd0ff] mb-4" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
                             <div class="text-gray-500 text-[9px] font-black uppercase tracking-widest mb-2">Lead Vocals</div>
                             <div class="flex gap-2">
                                 <button onclick="setEpkVocals('ai', this)" class="epk-vocal-btn flex-1 py-2 rounded-lg bg-transparent border neon-blue-border neon-blue-text text-[10px] font-black uppercase tracking-widest transition-all">AI Picks</button>
@@ -169,19 +169,19 @@
                             <p class="text-gray-600 text-[9px] uppercase font-black tracking-widest mb-4">Fill in what you know — the Forge fills in the rest.</p>
 
                             <label class="neon-blue-text text-[9px] font-black uppercase tracking-widest block mb-2">Genre</label>
-                            <input type="text" id="epk-genre" autocomplete="off" placeholder="Auto-detected from audio..." class="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 text-white text-xs outline-none focus:border-[#2fd0ff] mb-4" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
+                            <input type="text" id="epk-genre" autocomplete="off" placeholder="Auto-detected from audio..." class="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 neon-blue-text text-xs outline-none focus:border-[#2fd0ff] mb-4" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
 
                             <label class="neon-blue-text text-[9px] font-black uppercase tracking-widest block mb-2">Member Names</label>
-                            <input type="text" id="epk-member-names" autocomplete="off" placeholder="Kai, Luna, Rex..." class="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 text-white text-xs outline-none focus:border-[#2fd0ff] mb-4" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
+                            <input type="text" id="epk-member-names" autocomplete="off" placeholder="Kai, Luna, Rex..." class="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 neon-blue-text text-xs outline-none focus:border-[#2fd0ff] mb-4" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
 
                             <label class="neon-blue-text text-[9px] font-black uppercase tracking-widest block mb-2">Band Concept / Vibe</label>
-                            <input type="text" id="epk-concept" autocomplete="off" placeholder="Cyberpunk rebels from 2087..." class="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 text-white text-xs outline-none focus:border-[#2fd0ff] mb-4" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
+                            <input type="text" id="epk-concept" autocomplete="off" placeholder="Cyberpunk rebels from 2087..." class="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 neon-blue-text text-xs outline-none focus:border-[#2fd0ff] mb-4" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
 
                             <label class="neon-blue-text text-[9px] font-black uppercase tracking-widest block mb-2">Lyrical Themes</label>
-                            <input type="text" id="epk-themes" autocomplete="off" placeholder="Heartbreak, rebellion, space..." class="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 text-white text-xs outline-none focus:border-[#2fd0ff] mb-4" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
+                            <input type="text" id="epk-themes" autocomplete="off" placeholder="Heartbreak, rebellion, space..." class="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 neon-blue-text text-xs outline-none focus:border-[#2fd0ff] mb-4" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
 
                             <label class="neon-blue-text text-[9px] font-black uppercase tracking-widest block mb-2">Influences</label>
-                            <input type="text" id="epk-influences" autocomplete="off" placeholder="Radiohead, Bjork, Daft Punk..." class="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 text-white text-xs outline-none focus:border-[#2fd0ff]" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
+                            <input type="text" id="epk-influences" autocomplete="off" placeholder="Radiohead, Bjork, Daft Punk..." class="w-full bg-black border border-white/10 rounded-lg px-3 py-2.5 neon-blue-text text-xs outline-none focus:border-[#2fd0ff]" onfocus="this.style.boxShadow='0 0 0 1px rgba(47,208,255,0.4)'" onblur="this.style.boxShadow='none'">
                         </div>
 
                         <button onclick="window.forgeMyArtist()" class="w-full py-3.5 bg-transparent border-2 neon-blue-border neon-blue-text font-black uppercase italic tracking-widest rounded-xl text-sm hover:bg-[#2fd0ff] hover:text-black transition-all">Forge My Artist</button>
