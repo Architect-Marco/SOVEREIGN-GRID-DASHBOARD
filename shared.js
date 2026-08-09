@@ -1446,6 +1446,315 @@
             return `<div class="h-full flex items-center justify-center text-center text-[9px] text-gray-600 uppercase tracking-widest px-6">${msg}</div>`;
         }
 
+        // ============================================================
+        // SURGICAL EQ-8 — a REAPER ReaEQ-style graphical band editor.
+        // Draggable nodes on a log-frequency graph, band tabs, and
+        // Frequency/Gain/Bandwidth sliders styled like the DAW mixer
+        // fader. Node dragging is throttled with window.requestAnimationFrame
+        // so the graph redraws at most once per frame instead of on every
+        // raw mousemove event.
+        // ============================================================
+        window.dawEqState = window.dawEqState || {}; // key -> { bands:[{freq,gain,bw,type,enabled}], selectedBand, outputGain }
+        window.dawEqDrag = null; // { key, index, rafId, pending }
+
+        const EQ8_GRAPH_W = 700, EQ8_GRAPH_H = 180;
+        const EQ8_FREQ_MIN = 20, EQ8_FREQ_MAX = 20000;
+        const EQ8_GAIN_MIN = -12, EQ8_GAIN_MAX = 12;
+        const EQ8_FREQ_GRID = [50, 100, 200, 300, 500, 1000, 2000, 3000, 5000, 10000, 20000];
+        const EQ8_TYPES = ['Band', 'Low Shelf', 'High Shelf', 'Low Pass', 'High Pass', 'Notch'];
+
+        function eq8SafeKey(key) { return key.replace(/[^a-zA-Z0-9]/g, '_'); }
+        function eq8FreqToX(f) { return ((Math.log10(f) - Math.log10(EQ8_FREQ_MIN)) / (Math.log10(EQ8_FREQ_MAX) - Math.log10(EQ8_FREQ_MIN))) * EQ8_GRAPH_W; }
+        function eq8XToFreq(x) {
+            const t = Math.max(0, Math.min(EQ8_GRAPH_W, x)) / EQ8_GRAPH_W;
+            return Math.pow(10, t * (Math.log10(EQ8_FREQ_MAX) - Math.log10(EQ8_FREQ_MIN)) + Math.log10(EQ8_FREQ_MIN));
+        }
+        function eq8GainToY(g) { return (EQ8_GRAPH_H / 2) - (g / EQ8_GAIN_MAX) * (EQ8_GRAPH_H / 2); }
+        function eq8YToGain(y) {
+            const clamped = Math.max(0, Math.min(EQ8_GRAPH_H, y));
+            return Math.max(EQ8_GAIN_MIN, Math.min(EQ8_GAIN_MAX, ((EQ8_GRAPH_H / 2 - clamped) / (EQ8_GRAPH_H / 2)) * EQ8_GAIN_MAX));
+        }
+        function eq8FmtFreq(f) { return f >= 1000 ? (f / 1000).toFixed(f >= 10000 ? 1 : 2) + 'k' : Math.round(f) + ''; }
+
+        function dawEqDefaultBands() {
+            return [
+                { freq: 60, gain: 0, bw: 2.0, type: 'High Pass', enabled: true },
+                { freq: 150, gain: 0, bw: 1.5, type: 'Band', enabled: true },
+                { freq: 400, gain: 0, bw: 1.5, type: 'Band', enabled: true },
+                { freq: 900, gain: 0, bw: 1.2, type: 'Band', enabled: true },
+                { freq: 2200, gain: 0, bw: 1.2, type: 'Band', enabled: true },
+                { freq: 5000, gain: 0, bw: 1.5, type: 'Band', enabled: true },
+                { freq: 9000, gain: 0, bw: 1.5, type: 'Band', enabled: true },
+                { freq: 700, gain: 0, bw: 2.0, type: 'Band', enabled: true }
+            ];
+        }
+
+        function dawEqGetState(key) {
+            if (!window.dawEqState[key]) {
+                window.dawEqState[key] = { bands: dawEqDefaultBands(), selectedBand: 0, outputGain: 0 };
+            }
+            return window.dawEqState[key];
+        }
+
+        // Full panel (graph + tabs + controls + output gain). Rendered once per
+        // selection change; drag-time updates use the lighter partial redraws below.
+        window.dawEqPanel = function(key, plugin) {
+            const state = dawEqGetState(key);
+            const sk = eq8SafeKey(key);
+            const band = state.bands[state.selectedBand] || state.bands[0];
+            return `
+            <div class="flex items-center justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5 flex-shrink-0">${plugin.category}</div>
+            </div>
+
+            <div class="flex gap-3 mt-3">
+                <div class="flex-1 min-w-0">
+                    <div id="eq8-graph-wrap-${sk}" class="relative rounded-lg overflow-hidden" style="background:#000; border:1px solid rgba(47,208,255,0.4); height:${EQ8_GRAPH_H}px; box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
+                        ${window.dawEqBuildSvg(key)}
+                    </div>
+
+                    <div id="eq8-tabs-${sk}" class="flex gap-1 mt-2">${window.dawEqBuildTabs(key)}</div>
+
+                    <div id="eq8-controls-${sk}" class="mt-3 space-y-2.5">${window.dawEqBuildControls(key)}</div>
+
+                    <div class="flex gap-1.5 mt-3">
+                        <button onclick="window.dawEqAddBand('${key}')" class="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md border border-[rgba(47,208,255,0.45)] bg-black/40 hover:bg-[#2fd0ff]/15 text-[9px] font-black uppercase tracking-widest neon-blue-text transition-colors">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
+                            Add band
+                        </button>
+                        <button onclick="window.dawEqRemoveBand('${key}')" class="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md border border-white/10 bg-black/40 hover:bg-red-500/15 hover:border-red-500/40 hover:text-red-400 text-[9px] font-black uppercase tracking-widest text-gray-500 transition-colors">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14"/></svg>
+                            Remove band
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col items-center gap-1.5 flex-shrink-0 pt-1">
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Gain</span>
+                    <div style="height:${EQ8_GRAPH_H - 30}px; display:flex; align-items:center;">
+                        <input type="range" class="eq8-vslider" min="${EQ8_GAIN_MIN}" max="${EQ8_GAIN_MAX}" step="0.1" value="${state.outputGain}"
+                            oninput="window.dawEqSetOutputGain('${key}', this.value)">
+                    </div>
+                    <span id="eq8-outgain-${sk}" class="text-[8px] neon-blue-text font-bold">${state.outputGain.toFixed(1)}</span>
+                </div>
+            </div>`;
+        };
+
+        // --- Partial builders (also used for lightweight re-renders during drag) ---
+
+        window.dawEqBuildSvg = function(key) {
+            const state = dawEqGetState(key);
+            const sk = eq8SafeKey(key);
+            const sorted = state.bands.map((b, i) => ({ ...b, i })).sort((a, b) => a.freq - b.freq);
+
+            let pathPts = sorted.map(b => `${eq8FreqToX(b.freq).toFixed(1)},${eq8GainToY(b.gain).toFixed(1)}`);
+            if (sorted.length) {
+                pathPts = [`0,${eq8GainToY(sorted[0].gain).toFixed(1)}`, ...pathPts, `${EQ8_GRAPH_W},${eq8GainToY(sorted[sorted.length - 1].gain).toFixed(1)}`];
+            }
+            const curve = pathPts.length ? `<polyline points="${pathPts.join(' ')}" fill="none" stroke="#2fd0ff" stroke-width="2" opacity="0.9"/>` : '';
+
+            const freqLines = EQ8_FREQ_GRID.map(f => {
+                const x = eq8FreqToX(f).toFixed(1);
+                return `<line x1="${x}" y1="0" x2="${x}" y2="${EQ8_GRAPH_H}" stroke="rgba(47,208,255,0.12)" stroke-width="1"/>
+                        <text x="${x}" y="${EQ8_GRAPH_H - 4}" font-size="8" fill="#4a5568" text-anchor="middle">${eq8FmtFreq(f)}</text>`;
+            }).join('');
+
+            const gainLines = [6, 0, -6].map(g => {
+                const y = eq8GainToY(g).toFixed(1);
+                return `<line x1="0" y1="${y}" x2="${EQ8_GRAPH_W}" y2="${y}" stroke="${g === 0 ? 'rgba(47,208,255,0.3)' : 'rgba(47,208,255,0.1)'}" stroke-width="1"/>
+                        <text x="4" y="${Number(y) - 3}" font-size="8" fill="#4a5568">${g > 0 ? '+' + g : g}</text>`;
+            }).join('');
+
+            const nodes = state.bands.map((b, i) => {
+                const x = eq8FreqToX(b.freq).toFixed(1);
+                const y = eq8GainToY(b.gain).toFixed(1);
+                const selected = i === state.selectedBand;
+                return `
+                <circle class="eq8-node" cx="${x}" cy="${y}" r="9" fill="${selected ? '#ff4d4d' : '#0a0a0a'}" stroke="${selected ? '#ffffff' : '#2fd0ff'}" stroke-width="2"
+                    onmousedown="window.dawEqNodeDown(event,'${key}',${i})" ontouchstart="window.dawEqNodeDown(event,'${key}',${i})"/>
+                <text x="${x}" y="${Number(y) + 3.5}" font-size="9" font-weight="900" fill="${selected ? '#ffffff' : '#2fd0ff'}" text-anchor="middle" style="pointer-events:none;">${i + 1}</text>`;
+            }).join('');
+
+            return `<svg id="eq8-svg-${sk}" viewBox="0 0 ${EQ8_GRAPH_W} ${EQ8_GRAPH_H}" style="width:100%; height:100%; display:block;">
+                ${gainLines}${freqLines}${curve}${nodes}
+            </svg>`;
+        };
+
+        window.dawEqBuildTabs = function(key) {
+            const state = dawEqGetState(key);
+            return state.bands.map((b, i) => `
+                <button onclick="window.dawEqSelectBand('${key}', ${i})" class="flex-1 py-1.5 rounded-md text-[9px] font-black transition-colors ${i === state.selectedBand ? 'bg-[#2fd0ff] text-black' : 'bg-black/40 border border-[rgba(47,208,255,0.3)] neon-blue-text hover:bg-[#2fd0ff]/15'}">${i + 1}</button>`
+            ).join('');
+        };
+
+        window.dawEqBuildControls = function(key) {
+            const state = dawEqGetState(key);
+            const sk = eq8SafeKey(key);
+            const b = state.bands[state.selectedBand];
+            if (!b) return `<div class="text-[8px] text-gray-600 uppercase tracking-widest text-center py-4">No band selected</div>`;
+            return `
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1.5 text-[9px] font-bold neon-blue-text uppercase tracking-widest">
+                    <input type="checkbox" ${b.enabled ? 'checked' : ''} onchange="window.dawEqSetBandField('${key}','enabled', this.checked)"> Enabled
+                </label>
+                <select onchange="window.dawEqSetBandField('${key}','type', this.value)" class="flex-1 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-2 py-1 text-[9px] font-bold neon-blue-text outline-none">
+                    ${EQ8_TYPES.map(t => `<option value="${t}" ${b.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                </select>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest w-14 flex-shrink-0">Freq</span>
+                <input id="eq8-freq-slider-${sk}" type="range" min="${EQ8_FREQ_MIN}" max="${EQ8_FREQ_MAX}" step="1" value="${b.freq}" class="eq8-hslider"
+                    oninput="window.dawEqSetBandField('${key}','freq', this.value)">
+                <input id="eq8-freq-input-${sk}" type="text" value="${eq8FmtFreq(b.freq)}Hz" onchange="window.dawEqSetBandFieldFromText('${key}','freq', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold flex-shrink-0 outline-none">
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest w-14 flex-shrink-0">Gain</span>
+                <input id="eq8-gain-slider-${sk}" type="range" min="${EQ8_GAIN_MIN}" max="${EQ8_GAIN_MAX}" step="0.1" value="${b.gain}" class="eq8-hslider"
+                    oninput="window.dawEqSetBandField('${key}','gain', this.value)">
+                <input id="eq8-gain-input-${sk}" type="text" value="${b.gain.toFixed(1)}" onchange="window.dawEqSetBandFieldFromText('${key}','gain', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold flex-shrink-0 outline-none">
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest w-14 flex-shrink-0">BW/Q</span>
+                <input id="eq8-bw-slider-${sk}" type="range" min="0.1" max="8" step="0.05" value="${b.bw}" class="eq8-hslider"
+                    oninput="window.dawEqSetBandField('${key}','bw', this.value)">
+                <input id="eq8-bw-input-${sk}" type="text" value="${b.bw.toFixed(2)}" onchange="window.dawEqSetBandFieldFromText('${key}','bw', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold flex-shrink-0 outline-none">
+            </div>`;
+        };
+
+        // Lightweight partial redraws — used during drag so we don't rebuild the
+        // whole detail panel (and lose focus/scroll) every animation frame.
+        window.dawEqRenderGraphOnly = function(key) {
+            const wrap = document.getElementById(`eq8-graph-wrap-${eq8SafeKey(key)}`);
+            if (wrap) wrap.innerHTML = window.dawEqBuildSvg(key);
+        };
+
+        window.dawEqSyncControls = function(key) {
+            const state = dawEqGetState(key);
+            const b = state.bands[state.selectedBand];
+            const sk = eq8SafeKey(key);
+            if (!b) return;
+            const freqSlider = document.getElementById(`eq8-freq-slider-${sk}`);
+            const freqInput = document.getElementById(`eq8-freq-input-${sk}`);
+            const gainSlider = document.getElementById(`eq8-gain-slider-${sk}`);
+            const gainInput = document.getElementById(`eq8-gain-input-${sk}`);
+            if (freqSlider) freqSlider.value = b.freq;
+            if (freqInput) freqInput.value = eq8FmtFreq(b.freq) + 'Hz';
+            if (gainSlider) gainSlider.value = b.gain;
+            if (gainInput) gainInput.value = b.gain.toFixed(1);
+        };
+
+        // --- Interaction handlers ---
+
+        window.dawEqSelectBand = function(key, index) {
+            const state = dawEqGetState(key);
+            state.selectedBand = index;
+            const sk = eq8SafeKey(key);
+            window.dawEqRenderGraphOnly(key);
+            const tabs = document.getElementById(`eq8-tabs-${sk}`);
+            if (tabs) tabs.innerHTML = window.dawEqBuildTabs(key);
+            const controls = document.getElementById(`eq8-controls-${sk}`);
+            if (controls) controls.innerHTML = window.dawEqBuildControls(key);
+        };
+
+        window.dawEqSetBandField = function(key, field, value) {
+            const state = dawEqGetState(key);
+            const b = state.bands[state.selectedBand];
+            if (!b) return;
+            b[field] = (field === 'freq' || field === 'gain' || field === 'bw') ? parseFloat(value) : (field === 'enabled' ? value : value);
+            window.dawEqRenderGraphOnly(key);
+            window.dawEqSyncControls(key);
+        };
+
+        window.dawEqSetBandFieldFromText = function(key, field, text) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            window.dawEqSetBandField(key, field, num);
+        };
+
+        window.dawEqSetOutputGain = function(key, value) {
+            const state = dawEqGetState(key);
+            state.outputGain = parseFloat(value);
+            const el = document.getElementById(`eq8-outgain-${eq8SafeKey(key)}`);
+            if (el) el.innerText = state.outputGain.toFixed(1);
+        };
+
+        window.dawEqAddBand = function(key) {
+            const state = dawEqGetState(key);
+            if (state.bands.length >= 8) return;
+            state.bands.push({ freq: 1000, gain: 0, bw: 1.5, type: 'Band', enabled: true });
+            state.selectedBand = state.bands.length - 1;
+            window.renderDawFxPicker();
+        };
+
+        window.dawEqRemoveBand = function(key) {
+            const state = dawEqGetState(key);
+            if (state.bands.length <= 1) return;
+            state.bands.splice(state.selectedBand, 1);
+            state.selectedBand = Math.max(0, state.selectedBand - 1);
+            window.renderDawFxPicker();
+        };
+
+        // Node dragging on the graph — throttled to one redraw per animation
+        // frame via window.requestAnimationFrame, instead of redrawing on
+        // every raw mousemove event.
+        window.dawEqNodeDown = function(event, key, index) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.dawEqSelectBand(key, index);
+
+            const svg = document.getElementById(`eq8-svg-${eq8SafeKey(key)}`);
+            if (!svg) return;
+            const rect = svg.getBoundingClientRect();
+            const drag = { key, index, rafId: null, pending: null };
+            window.dawEqDrag = drag;
+
+            function pointFromEvent(e) {
+                const pt = e.touches ? e.touches[0] : e;
+                const x = ((pt.clientX - rect.left) / rect.width) * EQ8_GRAPH_W;
+                const y = ((pt.clientY - rect.top) / rect.height) * EQ8_GRAPH_H;
+                return { freq: eq8XToFreq(x), gain: eq8YToGain(y) };
+            }
+
+            function onMove(e) {
+                if (e.cancelable) e.preventDefault();
+                drag.pending = pointFromEvent(e);
+                if (drag.rafId) return; // already scheduled — the queued frame will pick up the latest "pending" value
+                drag.rafId = window.requestAnimationFrame(() => {
+                    drag.rafId = null;
+                    if (!drag.pending) return;
+                    const state = dawEqGetState(drag.key);
+                    const band = state.bands[drag.index];
+                    if (band) {
+                        band.freq = drag.pending.freq;
+                        band.gain = drag.pending.gain;
+                        window.dawEqRenderGraphOnly(drag.key);
+                        window.dawEqSyncControls(drag.key);
+                    }
+                });
+            }
+
+            function onUp() {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onUp);
+                if (drag.rafId) { window.cancelAnimationFrame(drag.rafId); drag.rafId = null; }
+                window.dawEqDrag = null;
+            }
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend', onUp);
+        };
+
         // ---------------- Mastering (single-slot) picker ----------------
         window.openPluginPicker = function(presetId, slotIndex) {
             window.activePluginPickerContext = { type: 'mastering', presetId, slotIndex };
@@ -1529,7 +1838,9 @@
             } else if (canRemove) {
                 const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === fxList[ctx.selectedIndex]);
                 const key = `${ctx.trackId}::${ctx.selectedIndex}`;
-                detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
+                detail.innerHTML = plugin && plugin.id === 'surgical-eq8'
+                    ? window.dawEqPanel(key, plugin)
+                    : (ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable'));
             } else {
                 detail.innerHTML = ppEmptyDetail(fxList.length ? 'Select a plugin from the chain' : 'No plugins in this chain yet — tap Add');
             }
