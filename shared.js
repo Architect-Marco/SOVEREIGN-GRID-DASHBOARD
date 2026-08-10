@@ -1542,11 +1542,15 @@
 
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0 pt-1">
                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Gain</span>
-                    <div style="height:${EQ8_GRAPH_H - 30}px; display:flex; align-items:center;">
-                        <input type="range" class="eq8-vslider" min="${EQ8_GAIN_MIN}" max="${EQ8_GAIN_MAX}" step="0.1" value="${state.outputGain}"
-                            oninput="window.dawEqSetOutputGain('${key}', this.value)">
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                        <div class="daw-fader-track" style="height:${EQ8_GRAPH_H - 30}px;">
+                            <input id="eq8-outgain-slider-${sk}" type="range" min="${EQ8_GAIN_MIN}" max="${EQ8_GAIN_MAX}" step="0.1" value="${state.outputGain}" class="daw-fader-input"
+                                oninput="window.dawEqSetOutputGain('${key}', this.value)">
+                        </div>
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
-                    <span id="eq8-outgain-${sk}" class="text-[8px] neon-blue-text font-bold">${state.outputGain.toFixed(1)}</span>
+                    <input id="eq8-outgain-${sk}" type="text" value="${state.outputGain.toFixed(1)}" onchange="window.dawEqSetOutputGainFromText('${key}', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
             </div>`;
         };
@@ -1700,8 +1704,17 @@
             const state = dawEqGetState(key);
             state.outputGain = parseFloat(value);
             eq8ClearPresetBadge(key);
-            const el = document.getElementById(`eq8-outgain-${eq8SafeKey(key)}`);
-            if (el) el.innerText = state.outputGain.toFixed(1);
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`eq8-outgain-${sk}`);
+            if (el) el.value = state.outputGain.toFixed(1);
+            const slider = document.getElementById(`eq8-outgain-slider-${sk}`);
+            if (slider) slider.value = state.outputGain;
+        };
+
+        window.dawEqSetOutputGainFromText = function(key, text) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            window.dawEqSetOutputGain(key, Math.max(EQ8_GAIN_MIN, Math.min(EQ8_GAIN_MAX, num)));
         };
 
         window.dawEqAddBand = function(key) {
@@ -2025,6 +2038,7 @@
         window.dawLimiterPanel = function(key, plugin) {
             const s = dawLimiterGetState(key);
             const sk = eq8SafeKey(key);
+            try { window.dawStartMeterLoop(); } catch (e) {}
             return `
             <div class="flex items-start justify-between gap-2 mb-1">
                 <div class="min-w-0">
@@ -2044,9 +2058,13 @@
             <div class="flex gap-4 mt-4">
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Threshold</span>
-                    <div style="height:130px; display:flex; align-items:center;">
-                        <input id="dawlim-thresh-slider-${sk}" type="range" class="eq8-vslider" min="-24" max="0" step="0.01" value="${s.threshold}"
-                            oninput="window.dawLimiterSetField('${key}','threshold', this.value)">
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                        <div class="daw-fader-track" style="height:130px;">
+                            <input id="dawlim-thresh-slider-${sk}" type="range" min="-24" max="0" step="0.01" value="${s.threshold}" class="daw-fader-input"
+                                oninput="window.dawLimiterSetField('${key}','threshold', this.value)">
+                        </div>
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
                     <input id="dawlim-thresh-input-${sk}" type="text" value="${dawFmtDb(s.threshold)}" onchange="window.dawLimiterSetFieldFromText('${key}','threshold', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
@@ -2063,15 +2081,28 @@
 
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Brickwall<br>Ceiling</span>
-                    <div style="height:130px; display:flex; align-items:center;">
-                        <input id="dawlim-ceil-slider-${sk}" type="range" class="eq8-vslider" min="-12" max="0" step="0.01" value="${s.ceiling}"
-                            oninput="window.dawLimiterSetField('${key}','ceiling', this.value)">
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                        <div class="daw-fader-track" style="height:130px;">
+                            <input id="dawlim-ceil-slider-${sk}" type="range" min="-12" max="0" step="0.01" value="${s.ceiling}" class="daw-fader-input"
+                                oninput="window.dawLimiterSetField('${key}','ceiling', this.value)">
+                        </div>
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
                     <input id="dawlim-ceil-input-${sk}" type="text" value="${dawFmtDb(s.ceiling)}" onchange="window.dawLimiterSetFieldFromText('${key}','ceiling', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
 
-                <div class="flex-1 min-w-0 rounded-lg overflow-hidden relative" style="background:linear-gradient(180deg, #1a1a1a 0%, #1a1a1a 35%, #6b7a78 35%, #6b7a78 100%); border:1px solid rgba(47,208,255,0.3); min-height:150px;">
-                    <div class="absolute top-1 left-1.5 text-[6px] text-gray-500 font-bold leading-tight">0.2<br>0.4<br>0.6<br>0.8</div>
+                <div class="flex-1 min-w-0 rounded-lg flex items-stretch justify-center gap-6 py-3" style="background:#000; border:1px solid rgba(47,208,255,0.35); min-height:180px; box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
+                    <div class="flex flex-col items-center gap-1.5">
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">L</span>
+                        <div class="daw-led-meter-single" id="dawlim-led-L-${sk}" style="height:130px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                        <span id="dawlim-peak-L-${sk}" class="text-[8px] neon-blue-text font-bold">-Inf</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1.5">
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">R</span>
+                        <div class="daw-led-meter-single" id="dawlim-led-R-${sk}" style="height:130px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                        <span id="dawlim-peak-R-${sk}" class="text-[8px] neon-blue-text font-bold">-Inf</span>
+                    </div>
                 </div>
             </div>
 
@@ -3115,6 +3146,27 @@
                 window.dawUpdateLed('daw-led-master', Math.min(100, masterNext));
                 const masterPeakEl = document.getElementById('daw-mixer-peak-master');
                 if (masterPeakEl) masterPeakEl.innerText = masterNext > 0.5 ? (Math.round(20 * Math.log10(masterNext / 100) * 10) / 10) : '-Inf';
+
+                // If a Master Limiter plugin panel is currently open, drive its L/R
+                // stereo meters off the same level data as that track's channel meter.
+                const pCtx = window.activePluginPickerContext;
+                if (pCtx && pCtx.type === 'daw' && pCtx.selectedIndex !== null) {
+                    const pFxList = dawFxListFor(pCtx.trackId) || [];
+                    const pName = pFxList[pCtx.selectedIndex];
+                    const pPlugin = pName && window.SOVEREIGN_12_PLUGINS.find(p => p.name === pName);
+                    if (pPlugin && pPlugin.id === 'master-limiter') {
+                        const psk = eq8SafeKey(`${pCtx.trackId}::${pCtx.selectedIndex}`);
+                        const base = window.dawMeterPeaks[pCtx.trackId === 'master' ? 'master' : ('t-' + pCtx.trackId)] || 0;
+                        const lVal = base;
+                        const rVal = Math.max(0, Math.min(100, base * (0.88 + Math.random() * 0.18)));
+                        window.dawUpdateLed('dawlim-led-L-' + psk, lVal);
+                        window.dawUpdateLed('dawlim-led-R-' + psk, rVal);
+                        const lText = document.getElementById('dawlim-peak-L-' + psk);
+                        const rText = document.getElementById('dawlim-peak-R-' + psk);
+                        if (lText) lText.innerText = lVal > 0.5 ? (Math.round(20 * Math.log10(lVal / 100) * 10) / 10) : '-Inf';
+                        if (rText) rText.innerText = rVal > 0.5 ? (Math.round(20 * Math.log10(rVal / 100) * 10) / 10) : '-Inf';
+                    }
+                }
 
                 requestAnimationFrame(tick);
             };
