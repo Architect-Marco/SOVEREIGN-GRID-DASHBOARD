@@ -227,7 +227,7 @@
                 <!-- PLUGIN PICKER MODAL — "The Sovereign 12" FX window, used by the FX chip on each track/master to add or remove plugins -->
                 <div id="plugin-picker-backdrop" class="hidden-section fixed inset-0 z-50" style="background:rgba(0,0,0,0.75);" onclick="window.closePluginPicker()"></div>
                 <div id="plugin-picker-modal" class="hidden-section fixed inset-0 z-50 flex items-center justify-center p-6" style="pointer-events:none;">
-                    <div class="w-full max-w-3xl overflow-hidden flex flex-col" style="pointer-events:auto; max-height:85vh; background:#0a0a0a; border:1px solid rgba(47,208,255,0.55); box-shadow: 0 0 28px rgba(47,208,255,0.18), inset 0 0 4px rgba(47,208,255,0.35); border-radius:14px;" onclick="event.stopPropagation()">
+                    <div class="w-full max-w-3xl overflow-hidden flex flex-col" style="pointer-events:auto; max-height:85vh; background:#0a0a0a; border:1px solid rgba(47,208,255,0.55); box-shadow: 0 0 28px rgba(47,208,255,0.18), inset 0 0 4px rgba(47,208,255,0.35); border-radius:14px;" onclick="event.stopPropagation(); window.dawFxCloseTopMenu()">
 
                         <!-- Title bar, macOS-style chrome -->
                         <div class="flex items-center justify-between px-4 py-2.5 border-b border-[rgba(47,208,255,0.22)] flex-shrink-0" style="background:linear-gradient(180deg, rgba(47,208,255,0.07), rgba(47,208,255,0));">
@@ -239,9 +239,12 @@
                                 </div>
                                 <h3 id="plugin-picker-title" class="text-[11px] font-black uppercase tracking-[0.15em] neon-blue-text truncate">FX: Track 1</h3>
                             </div>
-                            <button onclick="window.closePluginPicker()" class="text-gray-500 hover:text-white flex-shrink-0 ml-3" title="Close">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
-                            </button>
+                            <span class="relative inline-block flex-shrink-0 ml-3">
+                                <button onclick="window.dawFxToggleTopMenu(event)" class="text-gray-500 hover:text-white" title="Menu">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+                                </button>
+                                <div id="plugin-picker-top-menu" class="hidden-section absolute top-full right-0 mt-1.5 w-44 z-30 bg-black rounded-lg overflow-hidden" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45);"></div>
+                            </span>
                         </div>
                         <p id="plugin-picker-subtitle" class="text-gray-500 text-[8px] uppercase tracking-widest px-4 pt-2 truncate flex-shrink-0">Choose a plugin</p>
 
