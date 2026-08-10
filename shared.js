@@ -1545,7 +1545,7 @@
                     <div class="flex items-end gap-1">
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                         <div class="daw-fader-track" style="height:${EQ8_GRAPH_H - 30}px;">
-                            <input id="eq8-outgain-slider-${sk}" type="range" min="${EQ8_GAIN_MIN}" max="${EQ8_GAIN_MAX}" step="0.1" value="${state.outputGain}" class="daw-fader-input"
+                            <input id="eq8-outgain-slider-${sk}" type="range" min="${EQ8_GAIN_MIN}" max="${EQ8_GAIN_MAX}" step="0.1" value="${state.outputGain}" class="daw-fader-input eq8-fader-thumb"
                                 oninput="window.dawEqSetOutputGain('${key}', this.value)">
                         </div>
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
@@ -2091,7 +2091,7 @@
                     <div class="flex items-end gap-1">
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                         <div class="daw-fader-track" style="height:130px;">
-                            <input id="dawlim-thresh-slider-${sk}" type="range" min="-24" max="0" step="0.01" value="${s.threshold}" class="daw-fader-input"
+                            <input id="dawlim-thresh-slider-${sk}" type="range" min="-24" max="0" step="0.01" value="${s.threshold}" class="daw-fader-input eq8-fader-thumb"
                                 oninput="window.dawLimiterSetField('${key}','threshold', this.value)">
                         </div>
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
@@ -2114,7 +2114,7 @@
                     <div class="flex items-end gap-1">
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                         <div class="daw-fader-track" style="height:130px;">
-                            <input id="dawlim-ceil-slider-${sk}" type="range" min="-12" max="0" step="0.01" value="${s.ceiling}" class="daw-fader-input"
+                            <input id="dawlim-ceil-slider-${sk}" type="range" min="-12" max="0" step="0.01" value="${s.ceiling}" class="daw-fader-input eq8-fader-thumb"
                                 oninput="window.dawLimiterSetField('${key}','ceiling', this.value)">
                         </div>
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
