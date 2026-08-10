@@ -2090,36 +2090,35 @@
                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Threshold</span>
                     <div class="flex items-end gap-1">
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
-                        <div class="daw-fader-track" style="height:130px;">
-                            <input id="dawlim-thresh-slider-${sk}" type="range" min="-24" max="0" step="0.01" value="${s.threshold}" class="daw-fader-input eq8-fader-thumb"
-                                oninput="window.dawLimiterSetField('${key}','threshold', this.value)">
+                        <div class="flex flex-col items-center gap-1.5">
+                            <div class="daw-fader-track" style="height:130px;">
+                                <input id="dawlim-thresh-slider-${sk}" type="range" min="-24" max="0" step="0.01" value="${s.threshold}" class="daw-fader-input eq8-fader-thumb"
+                                    oninput="window.dawLimiterSetField('${key}','threshold', this.value)">
+                            </div>
+                            <input id="dawlim-thresh-input-${sk}" type="text" value="${dawFmtDb(s.threshold)}" onchange="window.dawLimiterSetFieldFromText('${key}','threshold', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                         </div>
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
-                    <input id="dawlim-thresh-input-${sk}" type="text" value="${dawFmtDb(s.threshold)}" onchange="window.dawLimiterSetFieldFromText('${key}','threshold', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
 
-                <div class="flex flex-col items-center justify-center gap-1 flex-shrink-0 bg-black rounded-md px-2" style="border:1px solid rgba(47,208,255,0.25); padding-top:8px; padding-bottom:8px;">
-                    <div class="flex flex-col gap-3 text-[7px] text-gray-600 font-bold">
-                        <span>0.2</span><span>0.4</span><span>0.6</span><span>0.8</span>
-                    </div>
-                    <div class="flex gap-0.5 mt-2">
-                        <span class="w-1.5 h-1.5 rounded-sm" style="background:#22c55e;"></span>
-                        <span class="w-1.5 h-1.5 rounded-sm" style="background:#22c55e;"></span>
-                    </div>
+                <div class="flex flex-col items-center gap-1.5 flex-shrink-0 bg-black rounded-md px-2 py-2" style="border:1px solid rgba(47,208,255,0.25);">
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">GR</span>
+                    <div class="daw-led-meter-single" id="dawlim-led-GR-${sk}" style="height:130px;"><div class="daw-led-mask" style="height:100%;"></div></div>
                 </div>
 
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Brickwall<br>Ceiling</span>
                     <div class="flex items-end gap-1">
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
-                        <div class="daw-fader-track" style="height:130px;">
-                            <input id="dawlim-ceil-slider-${sk}" type="range" min="-12" max="0" step="0.01" value="${s.ceiling}" class="daw-fader-input eq8-fader-thumb"
-                                oninput="window.dawLimiterSetField('${key}','ceiling', this.value)">
+                        <div class="flex flex-col items-center gap-1.5">
+                            <div class="daw-fader-track" style="height:130px;">
+                                <input id="dawlim-ceil-slider-${sk}" type="range" min="-12" max="0" step="0.01" value="${s.ceiling}" class="daw-fader-input eq8-fader-thumb"
+                                    oninput="window.dawLimiterSetField('${key}','ceiling', this.value)">
+                            </div>
+                            <input id="dawlim-ceil-input-${sk}" type="text" value="${dawFmtDb(s.ceiling)}" onchange="window.dawLimiterSetFieldFromText('${key}','ceiling', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                         </div>
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
-                    <input id="dawlim-ceil-input-${sk}" type="text" value="${dawFmtDb(s.ceiling)}" onchange="window.dawLimiterSetFieldFromText('${key}','ceiling', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
 
                 <div class="flex-1 min-w-0 rounded-lg flex items-stretch justify-center gap-6 py-3" style="background:#000; border:1px solid rgba(47,208,255,0.35); min-height:180px; box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
@@ -3195,6 +3194,12 @@
                         const rText = document.getElementById('dawlim-peak-R-' + psk);
                         if (lText) lText.innerText = lVal > 0.5 ? (Math.round(20 * Math.log10(lVal / 100) * 10) / 10) : '-Inf';
                         if (rText) rText.innerText = rVal > 0.5 ? (Math.round(20 * Math.log10(rVal / 100) * 10) / 10) : '-Inf';
+
+                        // Gain-reduction meter — how far the incoming level pokes above threshold
+                        const limState = dawLimiterGetState(`${pCtx.trackId}::${pCtx.selectedIndex}`);
+                        const threshNorm = ((limState.threshold + 24) / 24) * 100;
+                        const grVal = Math.max(0, Math.min(100, (base - threshNorm) * 1.6));
+                        window.dawUpdateLed('dawlim-led-GR-' + psk, grVal);
                     }
                 }
 
