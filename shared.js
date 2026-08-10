@@ -2087,7 +2087,9 @@
 
             <div class="flex gap-4 mt-4">
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
-                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Threshold</span>
+                    <div class="h-4 flex items-end justify-center">
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Threshold</span>
+                    </div>
                     <div class="flex items-end gap-1">
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                         <div class="flex flex-col items-center gap-1.5">
@@ -2102,12 +2104,16 @@
                 </div>
 
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0 bg-black rounded-md px-2 py-2" style="border:1px solid rgba(47,208,255,0.25);">
-                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">GR</span>
+                    <div class="h-4 flex items-end justify-center">
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">GR</span>
+                    </div>
                     <div class="daw-led-meter-single" id="dawlim-led-GR-${sk}" style="height:130px;"><div class="daw-led-mask" style="height:100%;"></div></div>
                 </div>
 
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
-                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Brickwall<br>Ceiling</span>
+                    <div class="h-4 flex items-end justify-center">
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Brickwall Ceiling</span>
+                    </div>
                     <div class="flex items-end gap-1">
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                         <div class="flex flex-col items-center gap-1.5">
