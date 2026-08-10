@@ -1858,6 +1858,16 @@
             document.getElementById('plugin-picker-backdrop').classList.remove('hidden-section');
         };
 
+        // Opens the same rich FX picker as above, but jumps straight to a specific
+        // plugin already in the chain (used by Device Rack cards / FX drop-downs,
+        // which used to open the separate knobs-only "plugin detail" popup).
+        window.openDawFxPickerAtItem = function(trackId, pluginName) {
+            window.openDawFxPicker(trackId);
+            const fxList = dawFxListFor(trackId) || [];
+            const idx = fxList.indexOf(pluginName);
+            if (idx >= 0) window.dawFxSelectChainItem(idx);
+        };
+
         // Renders BOTH boxes for the DAW context, based on ctx.mode / ctx.selectedIndex
         window.renderDawFxPicker = function() {
             const ctx = window.activePluginPickerContext;
@@ -3043,8 +3053,6 @@
         ];
         window.dawMixerFxExpanded = {};
         window.dawHeaderFxExpanded = {};
-        window.dawFxParams = {}; // { trackId: { pluginName: { paramLabel: numericValue } } }
-        window.dpdContext = null;
         window.dawSelectedTrackId = 'master'; // drives which track's chain the Device Rack shows
 
         // Meter loop: LEDs only move while a track is actually playing (mirrors a
@@ -3249,7 +3257,7 @@
                     </div>
                     ${isExpanded ? `
                     <div class="ml-6 mr-1 bg-black/50 border border-white/5 rounded-lg p-2 space-y-1 overflow-y-auto slick-scroll" style="max-height:124px;">
-                        ${fxList.map(name => `<button onclick="window.openDawPluginDetail('${t.id}','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[9px] font-bold neon-blue-text hover:text-white truncate transition-colors block" title="Adjust ${name}">• ${name}</button>`).join('')}
+                        ${fxList.map(name => `<button onclick="window.openDawFxPickerAtItem('${t.id}','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[9px] font-bold neon-blue-text hover:text-white truncate transition-colors block" title="Adjust ${name}">• ${name}</button>`).join('')}
                     </div>` : ''}
                 </div>`;
             }).join('');
@@ -3415,7 +3423,7 @@
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0 transition-transform" style="${masterExpanded ? 'transform:rotate(180deg);' : ''}"><path d="m6 9 6 6 6-6"/></svg>
                     </button>
                     <div class="w-full ${masterExpanded ? '' : 'hidden'} bg-black/60 border border-white/5 rounded-lg p-2 space-y-1">
-                        ${masterFxList.length ? masterFxList.map(name => `<button onclick="window.openDawPluginDetail('master','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[7.5px] font-bold neon-blue-text hover:text-white truncate transition-colors">• ${name}</button>`).join('') : '<div class="text-[7.5px] font-bold text-gray-600 italic">No plugins</div>'}
+                        ${masterFxList.length ? masterFxList.map(name => `<button onclick="window.openDawFxPickerAtItem('master','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[7.5px] font-bold neon-blue-text hover:text-white truncate transition-colors">• ${name}</button>`).join('') : '<div class="text-[7.5px] font-bold text-gray-600 italic">No plugins</div>'}
                     </div>
 
                     <div class="daw-mixer-io-row">
@@ -3466,7 +3474,7 @@
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0 transition-transform" style="${isExpanded ? 'transform:rotate(180deg);' : ''}"><path d="m6 9 6 6 6-6"/></svg>
                     </button>
                     <div class="w-full ${isExpanded ? '' : 'hidden'} bg-black/60 border border-white/5 rounded-lg p-2 space-y-1">
-                        ${fxList.length ? fxList.map(name => `<button onclick="window.openDawPluginDetail('${t.id}','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[7.5px] font-bold neon-blue-text hover:text-white truncate transition-colors">• ${name}</button>`).join('') : '<div class="text-[7.5px] font-bold text-gray-600 italic">No plugins</div>'}
+                        ${fxList.length ? fxList.map(name => `<button onclick="window.openDawFxPickerAtItem('${t.id}','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[7.5px] font-bold neon-blue-text hover:text-white truncate transition-colors">• ${name}</button>`).join('') : '<div class="text-[7.5px] font-bold text-gray-600 italic">No plugins</div>'}
                     </div>
 
                     <div class="daw-mixer-io-row">
@@ -3637,7 +3645,7 @@
                             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                         </button>
                     </div>
-                    <div onclick="window.openDawPluginDetail('${trackId}','${name.replace(/'/g, "\\'")}')" class="px-2 py-1.5 cursor-pointer">
+                    <div onclick="window.openDawFxPickerAtItem('${trackId}','${name.replace(/'/g, "\\'")}')" class="px-2 py-1.5 cursor-pointer">
                         <div class="flex flex-wrap gap-1">${chips}</div>
                         <div class="text-[7px] text-gray-600 uppercase font-black tracking-widest mt-1">Tap to edit</div>
                     </div>
@@ -4761,179 +4769,6 @@
         window.toggleDawMixerFxBox = function(trackId) {
             window.dawMixerFxExpanded[trackId] = !window.dawMixerFxExpanded[trackId];
             window.renderDawMixer();
-        };
-
-        // ============================================================
-        // DAW KNOB ARC HELPERS — 270° gapped-arc knob geometry (gap centered at bottom)
-        // ============================================================
-        function dawPolarPoint(cx, cy, r, angleDeg) {
-            const rad = (angleDeg * Math.PI) / 180;
-            return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
-        }
-        function dawArcPath(cx, cy, r, startDeg, endDeg) {
-            if (endDeg <= startDeg) endDeg = startDeg + 0.001;
-            const start = dawPolarPoint(cx, cy, r, startDeg);
-            const end = dawPolarPoint(cx, cy, r, endDeg);
-            const delta = endDeg - startDeg;
-            const largeArc = delta > 180 ? 1 : 0;
-            return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
-        }
-        function dawKnobSvg(label, pct) {
-            const cx = 22, cy = 22, r = 17;
-            const startDeg = -135, endDeg = 135;
-            const valDeg = startDeg + pct * (endDeg - startDeg);
-            const trackPath = dawArcPath(cx, cy, r, startDeg, endDeg);
-            const progressPath = dawArcPath(cx, cy, r, startDeg, valDeg);
-            const tip = dawPolarPoint(cx, cy, r, valDeg);
-            const tipInner = dawPolarPoint(cx, cy, r - 5, valDeg);
-            return `
-            <svg width="44" height="44" viewBox="0 0 44 44" style="overflow:visible;">
-                <path d="${trackPath}" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="3" stroke-linecap="round"/>
-                <path id="dpd-knob-arc-${label}" d="${progressPath}" fill="none" stroke="#2fd0ff" stroke-width="3" stroke-linecap="round" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.85));"/>
-                <line id="dpd-knob-tick-${label}" x1="${tipInner.x.toFixed(2)}" y1="${tipInner.y.toFixed(2)}" x2="${tip.x.toFixed(2)}" y2="${tip.y.toFixed(2)}" stroke="#e8fbff" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 3px rgba(232,251,255,0.9));"/>
-            </svg>`;
-        }
-
-        // ============================================================
-        // DAW PLUGIN DETAIL — click a plugin in the FX chain to tweak it
-        // ============================================================
-        window.openDawPluginDetail = function(trackId, pluginName) {
-            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === pluginName);
-            if (!plugin) return;
-
-            window.dawFxParams[trackId] = window.dawFxParams[trackId] || {};
-            if (!window.dawFxParams[trackId][pluginName]) {
-                const initial = {};
-                plugin.values.forEach(([label, defaultStr]) => {
-                    const parsed = dawParseParamValue(defaultStr);
-                    initial[label] = parsed ? parsed.value : defaultStr;
-                });
-                window.dawFxParams[trackId][pluginName] = initial;
-            }
-
-            const paramMeta = {};
-            plugin.values.forEach(([label, defaultStr]) => { paramMeta[label] = dawParseParamValue(defaultStr); });
-            window.dpdContext = { trackId, pluginName, paramMeta, plugin };
-
-            document.getElementById('dpd-title').innerText = plugin.name;
-            document.getElementById('dpd-subtitle').innerText = plugin.category + ' · ' + plugin.tagline;
-
-            const knobsContainer = document.getElementById('dpd-knobs');
-            const state = window.dawFxParams[trackId][pluginName];
-            knobsContainer.innerHTML = plugin.values.map(([label, defaultStr]) => {
-                const parsed = paramMeta[label];
-                if (!parsed) {
-                    return `
-                    <div class="flex flex-col items-center gap-1.5 opacity-60 flex-shrink-0">
-                        <div class="w-11 h-11 rounded-full border border-white/10 flex items-center justify-center text-gray-600 text-[6.5px] font-black uppercase text-center px-1">Fixed</div>
-                        <div class="text-[7.5px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
-                        <div class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:2px 6px; color:#9ca3af;">${defaultStr}</div>
-                    </div>`;
-                }
-                const currentVal = state[label];
-                const pct = (currentVal - parsed.min) / (parsed.max - parsed.min);
-                return `
-                <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
-                    <div class="dpd-knob relative w-11 h-11 flex items-center justify-center cursor-ns-resize select-none" onmousedown="window.dpdKnobDrag(event,'${label}')" ontouchstart="window.dpdKnobDrag(event,'${label}')">
-                        ${dawKnobSvg(label, pct)}
-                    </div>
-                    <div class="text-[7.5px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
-                    <div id="dpd-val-${label}" class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:1px 6px; color:#2fd0ff; text-shadow:0 0 6px rgba(47,208,255,0.7); border-color:rgba(47,208,255,0.35);">${parsed.format(currentVal)}</div>
-                </div>`;
-            }).join('');
-
-            document.getElementById('daw-plugin-detail-modal').classList.remove('hidden');
-        };
-
-        window.closeDawPluginDetail = function() {
-            document.getElementById('daw-plugin-detail-modal').classList.add('hidden');
-            window.dpdContext = null;
-        };
-
-        window.dpdUpdateKnobVisual = function(label, value, parsed) {
-            const pct = (value - parsed.min) / (parsed.max - parsed.min);
-            const cx = 22, cy = 22, r = 17;
-            const startDeg = -135, endDeg = 135;
-            const valDeg = startDeg + pct * (endDeg - startDeg);
-            const arcEl = document.getElementById('dpd-knob-arc-' + label);
-            if (arcEl) arcEl.setAttribute('d', dawArcPath(cx, cy, r, startDeg, valDeg));
-            const tickEl = document.getElementById('dpd-knob-tick-' + label);
-            if (tickEl) {
-                const tip = dawPolarPoint(cx, cy, r, valDeg);
-                const tipInner = dawPolarPoint(cx, cy, r - 5, valDeg);
-                tickEl.setAttribute('x1', tipInner.x.toFixed(2));
-                tickEl.setAttribute('y1', tipInner.y.toFixed(2));
-                tickEl.setAttribute('x2', tip.x.toFixed(2));
-                tickEl.setAttribute('y2', tip.y.toFixed(2));
-            }
-            const valEl = document.getElementById('dpd-val-' + label);
-            if (valEl) valEl.innerText = parsed.format(value);
-        };
-
-        window.dpdKnobDrag = function(e, label) {
-            e.preventDefault();
-            const ctx = window.dpdContext;
-            if (!ctx) return;
-            const parsed = ctx.paramMeta[label];
-            if (!parsed) return;
-            const startY = e.touches ? e.touches[0].clientY : e.clientY;
-            const startVal = window.dawFxParams[ctx.trackId][ctx.pluginName][label];
-            const range = parsed.max - parsed.min;
-            let pendingVal = null;
-            let rafScheduled = false;
-            const applyFrame = () => {
-                rafScheduled = false;
-                if (pendingVal === null) return;
-                window.dawFxParams[ctx.trackId][ctx.pluginName][label] = pendingVal;
-                window.dpdUpdateKnobVisual(label, pendingVal, parsed);
-            };
-            const move = (ev) => {
-                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
-                const deltaY = startY - clientY;
-                const sensitivity = range / 150;
-                let newVal = startVal + deltaY * sensitivity;
-                newVal = Math.max(parsed.min, Math.min(parsed.max, newVal));
-                pendingVal = newVal;
-                if (!rafScheduled) { rafScheduled = true; requestAnimationFrame(applyFrame); }
-            };
-            const up = () => {
-                document.removeEventListener('mousemove', move);
-                document.removeEventListener('mouseup', up);
-                document.removeEventListener('touchmove', move);
-                document.removeEventListener('touchend', up);
-            };
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', up);
-            document.addEventListener('touchmove', move);
-            document.addEventListener('touchend', up);
-        };
-
-        window.dpdResetDefaults = function() {
-            const ctx = window.dpdContext;
-            if (!ctx) return;
-            const initial = {};
-            ctx.plugin.values.forEach(([label, defaultStr]) => {
-                const parsed = ctx.paramMeta[label];
-                initial[label] = parsed ? parsed.min : defaultStr; // reset = fully counter-clockwise (7 o'clock / zero position)
-            });
-            window.dawFxParams[ctx.trackId][ctx.pluginName] = initial;
-            ctx.plugin.values.forEach(([label]) => {
-                const parsed = ctx.paramMeta[label];
-                if (parsed) window.dpdUpdateKnobVisual(label, initial[label], parsed);
-            });
-        };
-
-        window.dpdRemoveFromChain = function() {
-            const ctx = window.dpdContext;
-            if (!ctx) return;
-            const fxList = dawFxListFor(ctx.trackId);
-            if (fxList) {
-                const idx = fxList.indexOf(ctx.pluginName);
-                if (idx >= 0) fxList.splice(idx, 1);
-                if (window.dawFxParams[ctx.trackId]) delete window.dawFxParams[ctx.trackId][ctx.pluginName];
-                dawRerenderFxOwner(ctx.trackId);
-            }
-            window.closeDawPluginDetail();
         };
 
         window.initDawWaves = function() {
