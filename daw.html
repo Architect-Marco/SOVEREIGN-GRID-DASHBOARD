@@ -28,6 +28,11 @@
             box-shadow: 0 0 6px rgba(47,208,255,0.7); cursor: ns-resize; }
         .eq8-node { cursor: grab; }
         .eq8-node:active { cursor: grabbing; }
+        /* Override just for the EQ-8 / Master Limiter vertical faders — same
+           working slider as the DAW mixer's .daw-fader-input, but with a
+           black-and-neon thumb instead of the mixer's default light thumb. */
+        .eq8-fader-thumb::-webkit-slider-thumb { background: #0a0a0a !important; border: 2px solid #2fd0ff !important; box-shadow: 0 0 6px rgba(47,208,255,0.7) !important; }
+        .eq8-fader-thumb::-moz-range-thumb { background: #0a0a0a !important; border: 2px solid #2fd0ff !important; box-shadow: 0 0 6px rgba(47,208,255,0.7) !important; }
     </style>
 </head>
 </head>
