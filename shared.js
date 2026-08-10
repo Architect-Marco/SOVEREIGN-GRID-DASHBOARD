@@ -1651,10 +1651,14 @@
             const freqInput = document.getElementById(`eq8-freq-input-${sk}`);
             const gainSlider = document.getElementById(`eq8-gain-slider-${sk}`);
             const gainInput = document.getElementById(`eq8-gain-input-${sk}`);
+            const bwSlider = document.getElementById(`eq8-bw-slider-${sk}`);
+            const bwInput = document.getElementById(`eq8-bw-input-${sk}`);
             if (freqSlider) freqSlider.value = b.freq;
             if (freqInput) freqInput.value = eq8FmtFreq(b.freq) + 'Hz';
             if (gainSlider) gainSlider.value = b.gain;
             if (gainInput) gainInput.value = b.gain.toFixed(1);
+            if (bwSlider) bwSlider.value = b.bw;
+            if (bwInput) bwInput.value = b.bw.toFixed(2);
         };
 
         // --- Interaction handlers ---
