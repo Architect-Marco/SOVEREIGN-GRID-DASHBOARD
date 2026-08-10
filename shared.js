@@ -1503,13 +1503,20 @@
             const sk = eq8SafeKey(key);
             const band = state.bands[state.selectedBand] || state.bands[0];
             return `
-            <div class="flex items-center justify-between gap-2 mb-1">
+            <div class="flex items-start justify-between gap-2 mb-1">
                 <div class="min-w-0">
                     <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
                     <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
                 </div>
-                <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5 flex-shrink-0">${plugin.category}</div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button onclick="event.stopPropagation(); window.dawEqTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                        <span id="eq8-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div id="eq8-preset-menu-${sk}" class="hidden-section"></div>
+                </span>
             </div>
+            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5 flex-shrink-0">${plugin.category}</div>
 
             <div class="flex gap-3 mt-3">
                 <div class="flex-1 min-w-0">
@@ -1663,11 +1670,18 @@
             if (controls) controls.innerHTML = window.dawEqBuildControls(key);
         };
 
+        function eq8ClearPresetBadge(key) {
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`eq8-badge-${eq8SafeKey(key)}`);
+            if (badge) badge.innerText = 'factory preset';
+        }
+
         window.dawEqSetBandField = function(key, field, value) {
             const state = dawEqGetState(key);
             const b = state.bands[state.selectedBand];
             if (!b) return;
             b[field] = (field === 'freq' || field === 'gain' || field === 'bw') ? parseFloat(value) : (field === 'enabled' ? value : value);
+            eq8ClearPresetBadge(key);
             window.dawEqRenderGraphOnly(key);
             window.dawEqSyncControls(key);
         };
@@ -1681,6 +1695,7 @@
         window.dawEqSetOutputGain = function(key, value) {
             const state = dawEqGetState(key);
             state.outputGain = parseFloat(value);
+            eq8ClearPresetBadge(key);
             const el = document.getElementById(`eq8-outgain-${eq8SafeKey(key)}`);
             if (el) el.innerText = state.outputGain.toFixed(1);
         };
@@ -1698,6 +1713,49 @@
             if (state.bands.length <= 1) return;
             state.bands.splice(state.selectedBand, 1);
             state.selectedBand = Math.max(0, state.selectedBand - 1);
+            window.renderDawFxPicker();
+        };
+
+        window.dawEqTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`eq8-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawEqRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawEqRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`eq8-preset-menu-${sk}`);
+            if (!el) return;
+            const userPresets = (window.dawFxUserPresets['surgical-eq8'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawEqApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                <button onclick="window.dawEqApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
+                </button>
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawEqApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+
+        window.dawEqApplyPreset = function(key, presetIndex) {
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawEqState[key] = { bands: dawEqDefaultBands(), selectedBand: 0, outputGain: 0 };
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = (window.dawFxUserPresets['surgical-eq8'] || [])[presetIndex];
+                if (preset) {
+                    window.dawEqState[key] = { bands: JSON.parse(JSON.stringify(preset.data.bands)), selectedBand: 0, outputGain: preset.data.outputGain || 0 };
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
             window.renderDawFxPicker();
         };
 
@@ -1734,6 +1792,7 @@
                     if (band) {
                         band.freq = drag.pending.freq;
                         band.gain = drag.pending.gain;
+                        eq8ClearPresetBadge(drag.key);
                         window.dawEqRenderGraphOnly(drag.key);
                         window.dawEqSyncControls(drag.key);
                     }
@@ -1838,9 +1897,13 @@
             } else if (canRemove) {
                 const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === fxList[ctx.selectedIndex]);
                 const key = `${ctx.trackId}::${ctx.selectedIndex}`;
-                detail.innerHTML = plugin && plugin.id === 'surgical-eq8'
-                    ? window.dawEqPanel(key, plugin)
-                    : (ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable'));
+                if (plugin && plugin.id === 'surgical-eq8') {
+                    detail.innerHTML = window.dawEqPanel(key, plugin);
+                } else if (plugin && plugin.id === 'master-limiter') {
+                    detail.innerHTML = window.dawLimiterPanel(key, plugin);
+                } else {
+                    detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
+                }
             } else {
                 detail.innerHTML = ppEmptyDetail(fxList.length ? 'Select a plugin from the chain' : 'No plugins in this chain yet — tap Add');
             }
@@ -1925,6 +1988,259 @@
             document.getElementById('plugin-picker-modal').classList.add('hidden-section');
             document.getElementById('plugin-picker-backdrop').classList.add('hidden-section');
             window.activePluginPickerContext = null;
+        };
+
+        // ============================================================
+        // MASTER LIMITER — a REAPER ReaLimit-style panel: Threshold &
+        // Brickwall Ceiling vertical faders (styled like the DAW mixer
+        // fader), a metering readout, Release, and Constant Gain / True
+        // Peak toggles.
+        // ============================================================
+        window.dawLimiterState = window.dawLimiterState || {}; // key -> {threshold,ceiling,release,constantGain,truePeak,performance}
+        const DAW_LIMITER_PERF_MODES = ['High quality', 'Low latency', 'Fast'];
+
+        function dawLimiterDefaultState() {
+            return { threshold: 0, ceiling: 0, release: 15.0, constantGain: false, truePeak: false, performance: 'High quality' };
+        }
+        function dawLimiterGetState(key) {
+            if (!window.dawLimiterState[key]) window.dawLimiterState[key] = dawLimiterDefaultState();
+            return window.dawLimiterState[key];
+        }
+        function dawFmtDb(v) { return (v >= 0 ? '+' : '') + v.toFixed(2); }
+
+        window.dawLimiterPanel = function(key, plugin) {
+            const s = dawLimiterGetState(key);
+            const sk = eq8SafeKey(key);
+            return `
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button onclick="event.stopPropagation(); window.dawLimiterTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                        <span id="dawlim-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div id="dawlim-preset-menu-${sk}" class="hidden-section"></div>
+                </span>
+            </div>
+            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+
+            <div class="flex gap-4 mt-4">
+                <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Threshold</span>
+                    <div style="height:130px; display:flex; align-items:center;">
+                        <input id="dawlim-thresh-slider-${sk}" type="range" class="eq8-vslider" min="-24" max="0" step="0.01" value="${s.threshold}"
+                            oninput="window.dawLimiterSetField('${key}','threshold', this.value)">
+                    </div>
+                    <input id="dawlim-thresh-input-${sk}" type="text" value="${dawFmtDb(s.threshold)}" onchange="window.dawLimiterSetFieldFromText('${key}','threshold', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
+                </div>
+
+                <div class="flex flex-col items-center justify-center gap-1 flex-shrink-0 bg-black rounded-md px-2" style="border:1px solid rgba(47,208,255,0.25); padding-top:8px; padding-bottom:8px;">
+                    <div class="flex flex-col gap-3 text-[7px] text-gray-600 font-bold">
+                        <span>0.2</span><span>0.4</span><span>0.6</span><span>0.8</span>
+                    </div>
+                    <div class="flex gap-0.5 mt-2">
+                        <span class="w-1.5 h-1.5 rounded-sm" style="background:#22c55e;"></span>
+                        <span class="w-1.5 h-1.5 rounded-sm" style="background:#22c55e;"></span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Brickwall<br>Ceiling</span>
+                    <div style="height:130px; display:flex; align-items:center;">
+                        <input id="dawlim-ceil-slider-${sk}" type="range" class="eq8-vslider" min="-12" max="0" step="0.01" value="${s.ceiling}"
+                            oninput="window.dawLimiterSetField('${key}','ceiling', this.value)">
+                    </div>
+                    <input id="dawlim-ceil-input-${sk}" type="text" value="${dawFmtDb(s.ceiling)}" onchange="window.dawLimiterSetFieldFromText('${key}','ceiling', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
+                </div>
+
+                <div class="flex-1 min-w-0 rounded-lg overflow-hidden relative" style="background:linear-gradient(180deg, #1a1a1a 0%, #1a1a1a 35%, #6b7a78 35%, #6b7a78 100%); border:1px solid rgba(47,208,255,0.3); min-height:150px;">
+                    <div class="absolute top-1 left-1.5 text-[6px] text-gray-500 font-bold leading-tight">0.2<br>0.4<br>0.6<br>0.8</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 mt-3">
+                <label class="flex items-center gap-1.5 text-[9px] font-bold neon-blue-text uppercase tracking-widest">
+                    <input type="checkbox" ${s.constantGain ? 'checked' : ''} onchange="window.dawLimiterSetField('${key}','constantGain', this.checked)"> Constant Gain
+                </label>
+                <label class="flex items-center gap-1.5 text-[9px] font-bold neon-blue-text uppercase tracking-widest">
+                    <input type="checkbox" ${s.truePeak ? 'checked' : ''} onchange="window.dawLimiterSetField('${key}','truePeak', this.checked)"> True Peak
+                </label>
+            </div>
+
+            <div class="flex items-center gap-2 mt-3">
+                <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest w-14 flex-shrink-0">Release</span>
+                <input id="dawlim-release-slider-${sk}" type="range" min="1" max="500" step="0.5" value="${s.release}" class="eq8-hslider"
+                    oninput="window.dawLimiterSetField('${key}','release', this.value)">
+                <input id="dawlim-release-input-${sk}" type="text" value="${s.release.toFixed(1)}" onchange="window.dawLimiterSetFieldFromText('${key}','release', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold flex-shrink-0 outline-none">
+                <span class="text-[7px] text-gray-500 uppercase font-black flex-shrink-0">dB/sec</span>
+            </div>
+
+            <div class="flex items-center gap-2 mt-2.5">
+                <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest w-14 flex-shrink-0">Perf</span>
+                <select onchange="window.dawLimiterSetField('${key}','performance', this.value)" class="flex-1 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-2 py-1 text-[9px] font-bold neon-blue-text outline-none">
+                    ${DAW_LIMITER_PERF_MODES.map(m => `<option value="${m}" ${s.performance === m ? 'selected' : ''}>${m}</option>`).join('')}
+                </select>
+            </div>`;
+        };
+
+        window.dawLimiterSetField = function(key, field, value) {
+            const s = dawLimiterGetState(key);
+            if (field === 'threshold' || field === 'ceiling' || field === 'release') s[field] = parseFloat(value);
+            else s[field] = (field === 'constantGain' || field === 'truePeak') ? !!value : value;
+            delete window.dawFxActivePresetLabel[key]; // manual tweak — no longer matches a named preset
+            const sk = eq8SafeKey(key);
+            const badge = document.getElementById(`dawlim-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            if (field === 'threshold') {
+                const inp = document.getElementById(`dawlim-thresh-input-${sk}`); if (inp) inp.value = dawFmtDb(s.threshold);
+            } else if (field === 'ceiling') {
+                const inp = document.getElementById(`dawlim-ceil-input-${sk}`); if (inp) inp.value = dawFmtDb(s.ceiling);
+            } else if (field === 'release') {
+                const inp = document.getElementById(`dawlim-release-input-${sk}`); if (inp) inp.value = s.release.toFixed(1);
+            }
+        };
+
+        window.dawLimiterSetFieldFromText = function(key, field, text) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            window.dawLimiterSetField(key, field, num);
+            const sk = eq8SafeKey(key);
+            const s = dawLimiterGetState(key);
+            if (field === 'threshold') { const sl = document.getElementById(`dawlim-thresh-slider-${sk}`); if (sl) sl.value = s.threshold; }
+            if (field === 'ceiling') { const sl = document.getElementById(`dawlim-ceil-slider-${sk}`); if (sl) sl.value = s.ceiling; }
+            if (field === 'release') { const sl = document.getElementById(`dawlim-release-slider-${sk}`); if (sl) sl.value = s.release; }
+        };
+
+        window.dawLimiterTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawlim-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawLimiterRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawLimiterRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawlim-preset-menu-${sk}`);
+            if (!el) return;
+            const userPresets = (window.dawFxUserPresets['master-limiter'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawLimiterApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                <button onclick="window.dawLimiterApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
+                </button>
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawLimiterApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+
+        window.dawLimiterApplyPreset = function(key, presetIndex) {
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawLimiterState[key] = dawLimiterDefaultState();
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = (window.dawFxUserPresets['master-limiter'] || [])[presetIndex];
+                if (preset) {
+                    window.dawLimiterState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
+            window.renderDawFxPicker();
+        };
+
+        // ============================================================
+        // Unified top-menu (the "⋮" in the FX window title bar):
+        // Remove from Chain / Preset / Save Preset — dispatches to
+        // whichever plugin panel is currently open (generic, EQ-8, or
+        // Master Limiter all share this).
+        // ============================================================
+        window.dawFxUserPresets = window.dawFxUserPresets || {}; // pluginId -> [{name, data}]
+        window.dawFxActivePresetLabel = window.dawFxActivePresetLabel || {}; // key -> label string (EQ-8 / Limiter)
+
+        function dawFxCurrentSelection() {
+            const ctx = window.activePluginPickerContext;
+            if (!ctx || ctx.type !== 'daw' || ctx.selectedIndex === null) return null;
+            const fxList = dawFxListFor(ctx.trackId);
+            const name = fxList && fxList[ctx.selectedIndex];
+            const plugin = name && window.SOVEREIGN_12_PLUGINS.find(p => p.name === name);
+            if (!plugin) return null;
+            return { ctx, plugin, key: `${ctx.trackId}::${ctx.selectedIndex}` };
+        }
+
+        window.dawFxToggleTopMenu = function(event) {
+            event.stopPropagation();
+            const el = document.getElementById('plugin-picker-top-menu');
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawFxRenderTopMenu(); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawFxCloseTopMenu = function() {
+            const el = document.getElementById('plugin-picker-top-menu');
+            if (el) el.classList.add('hidden-section');
+        };
+
+        window.dawFxRenderTopMenu = function() {
+            const el = document.getElementById('plugin-picker-top-menu');
+            if (!el) return;
+            const sel = dawFxCurrentSelection();
+            const on = !!sel;
+            const itemCls = (extra) => `w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.2)] ${on ? extra : 'text-gray-700 cursor-not-allowed'}`;
+            el.innerHTML = `
+                <button ${on ? `onclick="window.dawFxTopMenuRemove()"` : 'disabled'} class="${itemCls('text-red-400 hover:bg-red-500/15')}">Remove from Chain</button>
+                <button ${on ? `onclick="window.dawFxTopMenuChoosePreset()"` : 'disabled'} class="${itemCls('neon-blue-text hover:bg-[#2fd0ff]/15')}">Preset...</button>
+                <button ${on ? `onclick="window.dawFxTopMenuSavePreset()"` : 'disabled'} class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors ${on ? 'neon-blue-text hover:bg-[#2fd0ff]/15' : 'text-gray-700 cursor-not-allowed'}">Save Preset...</button>`;
+        };
+
+        window.dawFxTopMenuRemove = function() {
+            window.dawFxCloseTopMenu();
+            window.dawFxRemoveSelected();
+        };
+
+        window.dawFxTopMenuChoosePreset = function() {
+            const sel = dawFxCurrentSelection();
+            window.dawFxCloseTopMenu();
+            if (!sel) return;
+            if (sel.plugin.id === 'surgical-eq8') window.dawEqTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'master-limiter') window.dawLimiterTogglePresetMenu(sel.key);
+            else window.dawFxTogglePresetMenu(sel.key);
+        };
+
+        window.dawFxTopMenuSavePreset = function() {
+            const sel = dawFxCurrentSelection();
+            window.dawFxCloseTopMenu();
+            if (!sel) return;
+            const label = window.prompt('Save preset as:', '');
+            if (!label) return;
+
+            let data;
+            if (sel.plugin.id === 'surgical-eq8') {
+                const st = dawEqGetState(sel.key);
+                data = { bands: JSON.parse(JSON.stringify(st.bands)), outputGain: st.outputGain };
+            } else if (sel.plugin.id === 'master-limiter') {
+                data = JSON.parse(JSON.stringify(dawLimiterGetState(sel.key)));
+            } else {
+                const choice = window.dawFxPresetChoice[sel.key];
+                data = { values: choice ? choice.values : sel.plugin.values };
+            }
+
+            window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
+            window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
+            window.dawFxActivePresetLabel[sel.key] = label;
+            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter') {
+                window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
+            }
+            window.renderDawFxPicker();
         };
 
         // Used by the mastering (single-slot) picker only — the DAW chain uses
