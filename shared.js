@@ -1640,7 +1640,7 @@
             return `
             <div class="flex items-center gap-3">
                 <label class="flex items-center gap-1.5 text-[9px] font-bold neon-blue-text uppercase tracking-widest">
-                    <input type="checkbox" ${b.enabled ? 'checked' : ''} onchange="window.dawEqSetBandField('${key}','enabled', this.checked)"> Enabled
+                    <input type="checkbox" class="daw-checkbox" ${b.enabled ? 'checked' : ''} onchange="window.dawEqSetBandField('${key}','enabled', this.checked)"> Enabled
                 </label>
                 <select onchange="window.dawEqSetBandField('${key}','type', this.value)" class="flex-1 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-2 py-1 text-[9px] font-bold neon-blue-text outline-none">
                     ${EQ8_TYPES.map(t => `<option value="${t}" ${b.type === t ? 'selected' : ''}>${t}</option>`).join('')}
@@ -2138,10 +2138,10 @@
 
             <div class="flex items-center gap-4 mt-3">
                 <label class="flex items-center gap-1.5 text-[9px] font-bold neon-blue-text uppercase tracking-widest">
-                    <input type="checkbox" ${s.constantGain ? 'checked' : ''} onchange="window.dawLimiterSetField('${key}','constantGain', this.checked)"> Constant Gain
+                    <input type="checkbox" class="daw-checkbox" ${s.constantGain ? 'checked' : ''} onchange="window.dawLimiterSetField('${key}','constantGain', this.checked)"> Constant Gain
                 </label>
                 <label class="flex items-center gap-1.5 text-[9px] font-bold neon-blue-text uppercase tracking-widest">
-                    <input type="checkbox" ${s.truePeak ? 'checked' : ''} onchange="window.dawLimiterSetField('${key}','truePeak', this.checked)"> True Peak
+                    <input type="checkbox" class="daw-checkbox" ${s.truePeak ? 'checked' : ''} onchange="window.dawLimiterSetField('${key}','truePeak', this.checked)"> True Peak
                 </label>
             </div>
 
