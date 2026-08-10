@@ -1557,16 +1557,46 @@
 
         // --- Partial builders (also used for lightweight re-renders during drag) ---
 
+        // Approximate per-band gain contribution (in dB) at a given frequency,
+        // shaped by that band's bandwidth/Q — this is what makes BW/Q visibly
+        // widen or narrow the bump/shelf on the curve, instead of only moving
+        // the freq/gain node.
+        function eq8BandGainAt(band, freqHz) {
+            if (!band.enabled || !band.gain) return 0;
+            const octDist = Math.log2(Math.max(1e-6, freqHz / band.freq));
+            const sigma = Math.max(0.05, band.bw) / 2; // wider BW/Q -> wider affected region
+            switch (band.type) {
+                case 'Low Shelf':
+                    return band.gain / (1 + Math.exp(octDist / sigma));
+                case 'High Shelf':
+                    return band.gain / (1 + Math.exp(-octDist / sigma));
+                case 'Low Pass':
+                    return band.gain / (1 + Math.exp(octDist / (sigma * 0.6)));
+                case 'High Pass':
+                    return band.gain / (1 + Math.exp(-octDist / (sigma * 0.6)));
+                default: // Band, Notch — symmetric bell centered on freq
+                    return band.gain * Math.exp(-(octDist * octDist) / (2 * sigma * sigma));
+            }
+        }
+
         window.dawEqBuildSvg = function(key) {
             const state = dawEqGetState(key);
             const sk = eq8SafeKey(key);
-            const sorted = state.bands.map((b, i) => ({ ...b, i })).sort((a, b) => a.freq - b.freq);
 
-            let pathPts = sorted.map(b => `${eq8FreqToX(b.freq).toFixed(1)},${eq8GainToY(b.gain).toFixed(1)}`);
-            if (sorted.length) {
-                pathPts = [`0,${eq8GainToY(sorted[0].gain).toFixed(1)}`, ...pathPts, `${EQ8_GRAPH_W},${eq8GainToY(sorted[sorted.length - 1].gain).toFixed(1)}`];
+            // Sample the summed response across the graph width so the curve
+            // reflects every band's actual gain + bandwidth, not just straight
+            // lines between the node points.
+            const SAMPLES = 140;
+            const curvePts = [];
+            for (let i = 0; i <= SAMPLES; i++) {
+                const x = (i / SAMPLES) * EQ8_GRAPH_W;
+                const freqAtX = eq8XToFreq(x);
+                let total = 0;
+                for (const b of state.bands) total += eq8BandGainAt(b, freqAtX);
+                total = Math.max(EQ8_GAIN_MIN, Math.min(EQ8_GAIN_MAX, total));
+                curvePts.push(`${x.toFixed(1)},${eq8GainToY(total).toFixed(1)}`);
             }
-            const curve = pathPts.length ? `<polyline points="${pathPts.join(' ')}" fill="none" stroke="#2fd0ff" stroke-width="2" opacity="0.9"/>` : '';
+            const curve = `<polyline points="${curvePts.join(' ')}" fill="none" stroke="#2fd0ff" stroke-width="2" opacity="0.9"/>`;
 
             const freqLines = EQ8_FREQ_GRID.map(f => {
                 const x = eq8FreqToX(f).toFixed(1);
