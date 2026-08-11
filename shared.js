@@ -2274,26 +2274,40 @@
                             ${dawReverbParamBox('Density', s.density.toFixed(3), 'density', key, sk)}
                         </div>
 
-                        <div class="flex items-center gap-3 mt-2.5 flex-wrap">
-                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest w-14 flex-shrink-0">ER Lowcut</span>
-                            <button onclick="window.dawReverbSetField('${key}','erLowcutOn', ${!s.erLowcutOn})" class="w-4 h-4 rounded flex-shrink-0 border ${s.erLowcutOn ? 'bg-[#2fd0ff] border-[#2fd0ff]' : 'bg-black/50 border-white/20'}"></button>
-                            ${dawReverbParamBox('Freq', s.erLowcutFreq, 'erLowcutFreq', key, sk, 46)}
-                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0 ml-2">Rev Shelf</span>
-                            ${dawReverbParamBox('', s.revShelf.toFixed(1), 'revShelf', key, sk, 46)}
-                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0">ER Absorb</span>
-                            ${dawReverbParamBox('', s.erAbsorb.toFixed(1), 'erAbsorb', key, sk, 46)}
-                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0">Hi Freq</span>
-                            ${dawReverbParamBox('', s.hiFreq, 'hiFreq', key, sk, 46)}
+                        <div class="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
+                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest w-14 flex-shrink-0">ER Lowcut</span>
+                                <button onclick="window.dawReverbSetField('${key}','erLowcutOn', ${!s.erLowcutOn})" class="w-4 h-4 rounded flex-shrink-0 border ${s.erLowcutOn ? 'bg-[#2fd0ff] border-[#2fd0ff]' : 'bg-black/50 border-white/20'}"></button>
+                                ${dawReverbParamBox('Freq', s.erLowcutFreq, 'erLowcutFreq', key, sk, 46)}
+                            </div>
+                            <div class="flex items-center gap-2.5 flex-shrink-0">
+                                <div class="flex flex-col items-center gap-1" style="width:46px;">
+                                    <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Rev Shelf</span>
+                                    <input id="dawrev-box-revShelf-${sk}" type="text" value="${s.revShelf.toFixed(1)}" onchange="window.dawReverbSetFieldFromText('${key}','revShelf', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
+                                </div>
+                                <div class="flex flex-col items-center gap-1" style="width:46px;">
+                                    <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">ER Absorb</span>
+                                    <input id="dawrev-box-erAbsorb-${sk}" type="text" value="${s.erAbsorb.toFixed(1)}" onchange="window.dawReverbSetFieldFromText('${key}','erAbsorb', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
+                                </div>
+                                <div class="flex flex-col items-center gap-1" style="width:46px;">
+                                    <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Hi Freq</span>
+                                    <input id="dawrev-box-hiFreq-${sk}" type="text" value="${s.hiFreq}" onchange="window.dawReverbSetFieldFromText('${key}','hiFreq', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="flex items-center gap-2 mt-2.5">
-                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest w-20 flex-shrink-0">Reverb Damping</span>
-                            <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0">Low</span>
-                            ${dawReverbParamBox('', s.dampLowFreq, 'dampLowFreq', key, sk, 44)}
-                            ${dawReverbParamBox('', s.dampLowRatio.toFixed(2) + 'x', 'dampLowRatio', key, sk, 44)}
-                            <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0 ml-2">High</span>
-                            ${dawReverbParamBox('', s.dampHighRatio.toFixed(2) + 'x', 'dampHighRatio', key, sk, 44)}
-                            ${dawReverbParamBox('', s.dampHighFreq, 'dampHighFreq', key, sk, 44)}
+                        <div class="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0">Reverb Damping</span>
+                                <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0">Low</span>
+                                ${dawReverbParamBox('', s.dampLowFreq, 'dampLowFreq', key, sk, 44)}
+                                ${dawReverbParamBox('', s.dampLowRatio.toFixed(2) + 'x', 'dampLowRatio', key, sk, 44)}
+                            </div>
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0">High</span>
+                                ${dawReverbParamBox('', s.dampHighRatio.toFixed(2) + 'x', 'dampHighRatio', key, sk, 44)}
+                                ${dawReverbParamBox('', s.dampHighFreq, 'dampHighFreq', key, sk, 44)}
+                            </div>
                         </div>
                     </div>
 
