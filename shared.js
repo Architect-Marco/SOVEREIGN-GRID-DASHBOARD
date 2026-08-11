@@ -1542,15 +1542,15 @@
 
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0 pt-1">
                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Gain</span>
-                    <div class="grid" style="grid-template-columns:auto auto auto; column-gap:4px; align-items:end;">
-                        <div class="daw-fader-scale" style="grid-column:1; grid-row:1; height:${EQ8_GRAPH_H - 30}px;">${dawFaderScaleHtml()}</div>
-                        <div class="daw-fader-track" style="grid-column:2; grid-row:1; height:${EQ8_GRAPH_H - 30}px; justify-self:center;">
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                        <div class="daw-fader-track" style="height:${EQ8_GRAPH_H - 30}px;">
                             <input id="eq8-outgain-slider-${sk}" type="range" min="${EQ8_GAIN_MIN}" max="${EQ8_GAIN_MAX}" step="0.1" value="${state.outputGain}" class="daw-fader-input eq8-fader-thumb"
                                 oninput="window.dawEqSetOutputGain('${key}', this.value)">
                         </div>
-                        <div class="daw-fader-scale" style="grid-column:3; grid-row:1; height:${EQ8_GRAPH_H - 30}px;">${dawFaderScaleHtml()}</div>
-                        <input id="eq8-outgain-${sk}" type="text" value="${state.outputGain.toFixed(1)}" onchange="window.dawEqSetOutputGainFromText('${key}', this.value)" style="grid-column:2; grid-row:2; justify-self:center; margin-top:6px;" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
+                    <input id="eq8-outgain-${sk}" type="text" value="${state.outputGain.toFixed(1)}" onchange="window.dawEqSetOutputGainFromText('${key}', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
             </div>`;
         };
@@ -2087,43 +2087,39 @@
 
             <div class="flex gap-4 mt-4">
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
-                    <div class="h-4 flex items-end justify-center">
-                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Threshold</span>
-                    </div>
-                    <div class="grid" style="grid-template-columns:auto auto auto; column-gap:4px; align-items:end;">
-                        <div class="daw-fader-scale" style="grid-column:1; grid-row:1; height:130px;">${dawFaderScaleHtml()}</div>
-                        <div class="daw-fader-track" style="grid-column:2; grid-row:1; height:130px; justify-self:center;">
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Threshold</span>
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                        <div class="daw-fader-track" style="height:130px;">
                             <input id="dawlim-thresh-slider-${sk}" type="range" min="-24" max="0" step="0.01" value="${s.threshold}" class="daw-fader-input eq8-fader-thumb"
                                 oninput="window.dawLimiterSetField('${key}','threshold', this.value)">
                         </div>
-                        <div class="daw-fader-scale" style="grid-column:3; grid-row:1; height:130px;">${dawFaderScaleHtml()}</div>
-                        <input id="dawlim-thresh-input-${sk}" type="text" value="${dawFmtDb(s.threshold)}" onchange="window.dawLimiterSetFieldFromText('${key}','threshold', this.value)" style="grid-column:2; grid-row:2; justify-self:center; margin-top:6px;" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
+                    <input id="dawlim-thresh-input-${sk}" type="text" value="${dawFmtDb(s.threshold)}" onchange="window.dawLimiterSetFieldFromText('${key}','threshold', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
 
-                <div class="flex flex-col items-center gap-1.5 flex-shrink-0 bg-black rounded-md px-2 py-2" style="border:1px solid rgba(47,208,255,0.25);">
-                    <div class="h-4 flex items-end justify-center">
-                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">GR</span>
+                <div class="flex flex-col items-center justify-center gap-1 flex-shrink-0 bg-black rounded-md px-2" style="border:1px solid rgba(47,208,255,0.25); padding-top:8px; padding-bottom:8px;">
+                    <div class="flex flex-col gap-3 text-[7px] text-gray-600 font-bold">
+                        <span>0.2</span><span>0.4</span><span>0.6</span><span>0.8</span>
                     </div>
-                    <div class="daw-led-meter-single" id="dawlim-led-GR-${sk}" style="height:130px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                    <div class="flex gap-0.5 mt-2">
+                        <span class="w-1.5 h-1.5 rounded-sm" style="background:#22c55e;"></span>
+                        <span class="w-1.5 h-1.5 rounded-sm" style="background:#22c55e;"></span>
+                    </div>
                 </div>
 
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
-                    <div class="h-4 flex items-end justify-center">
-                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Brickwall Ceiling</span>
-                    </div>
-                    <div class="grid" style="grid-template-columns:auto auto auto; column-gap:4px; align-items:end;">
-                        <div class="daw-fader-scale" style="grid-column:1; grid-row:1; height:130px;">${dawFaderScaleHtml()}</div>
-                        <div class="daw-fader-track" style="grid-column:2; grid-row:1; height:130px; justify-self:center;">
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Brickwall<br>Ceiling</span>
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                        <div class="daw-fader-track" style="height:130px;">
                             <input id="dawlim-ceil-slider-${sk}" type="range" min="-12" max="0" step="0.01" value="${s.ceiling}" class="daw-fader-input eq8-fader-thumb"
                                 oninput="window.dawLimiterSetField('${key}','ceiling', this.value)">
                         </div>
-                        <div class="daw-fader-scale" style="grid-column:3; grid-row:1; height:130px;">${dawFaderScaleHtml()}</div>
-                        <input id="dawlim-ceil-input-${sk}" type="text" value="${dawFmtDb(s.ceiling)}" onchange="window.dawLimiterSetFieldFromText('${key}','ceiling', this.value)" style="grid-column:2; grid-row:2; justify-self:center; margin-top:6px;" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
-                    </div>
-                </div>
                         <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
+                    <input id="dawlim-ceil-input-${sk}" type="text" value="${dawFmtDb(s.ceiling)}" onchange="window.dawLimiterSetFieldFromText('${key}','ceiling', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
 
                 <div class="flex-1 min-w-0 rounded-lg flex items-stretch justify-center gap-6 py-3" style="background:#000; border:1px solid rgba(47,208,255,0.35); min-height:180px; box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
@@ -3199,12 +3195,6 @@
                         const rText = document.getElementById('dawlim-peak-R-' + psk);
                         if (lText) lText.innerText = lVal > 0.5 ? (Math.round(20 * Math.log10(lVal / 100) * 10) / 10) : '-Inf';
                         if (rText) rText.innerText = rVal > 0.5 ? (Math.round(20 * Math.log10(rVal / 100) * 10) / 10) : '-Inf';
-
-                        // Gain-reduction meter — how far the incoming level pokes above threshold
-                        const limState = dawLimiterGetState(`${pCtx.trackId}::${pCtx.selectedIndex}`);
-                        const threshNorm = ((limState.threshold + 24) / 24) * 100;
-                        const grVal = Math.max(0, Math.min(100, (base - threshNorm) * 1.6));
-                        window.dawUpdateLed('dawlim-led-GR-' + psk, grVal);
                     }
                 }
 
