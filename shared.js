@@ -1972,6 +1972,8 @@
                     detail.innerHTML = window.dawHePanel(key, plugin);
                 } else if (plugin && plugin.id === 'sovereign-delay') {
                     detail.innerHTML = window.dawSdPanel(key, plugin);
+                } else if (plugin && plugin.id === 'multiband-comp') {
+                    detail.innerHTML = window.dawMbPanel(key, plugin);
                 } else {
                     detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
                 }
@@ -3541,6 +3543,383 @@
         };
 
         // ============================================================
+        // MULTIBAND COMP — a C4-style 4-band parametric compressor:
+        // a log-frequency graph with a purple dynamic-range band, an
+        // orange transfer curve, and 4 draggable colored band nodes;
+        // Crossover Low/Mid/High/Q; an Output fader + L/R meters; four
+        // band strips (Solo/Bypass, Thresh mini-fader, Gain/Range/
+        // Attack/Release); and a Master column that nudges all bands
+        // at once plus Release/Behavior/Knee dropdowns.
+        // ============================================================
+        window.dawMbState = window.dawMbState || {};
+
+        function dawMbDefaultState() {
+            return {
+                xover: { low: 80, mid: 3268, high: 11396, q: 0.50 },
+                output: 0.0,
+                release: 'ARC', behavior: 'Electro', knee: 'Soft',
+                bands: [
+                    { thresh: -63.3, gain: 3.0, range: -5.9, attack: 4.00, release: 40.27, solo: false, bypass: false },
+                    { thresh: -31.7, gain: 3.0, range: -6.0, attack: 2.00, release: 20.04, solo: false, bypass: false },
+                    { thresh: -14.6, gain: 3.0, range: -6.0, attack: 11.99, release: 5.00, solo: false, bypass: false },
+                    { thresh: -49.6, gain: 7.0, range: -6.0, attack: 2.00, release: 5.00, solo: false, bypass: false }
+                ]
+            };
+        }
+        function dawMbGetState(key) {
+            if (!window.dawMbState[key]) window.dawMbState[key] = dawMbDefaultState();
+            return window.dawMbState[key];
+        }
+
+        const DAW_MB_COLORS = ['#ff9a3d', '#4ade80', '#c084fc', '#fde047'];
+        const DAW_MB_FREQ_MIN = 16, DAW_MB_FREQ_MAX = 16000;
+        const DAW_MB_GAIN_MIN = -18, DAW_MB_GAIN_MAX = 18;
+        const DAW_MB_GRAPH_W = 680, DAW_MB_GRAPH_H = 230;
+        function dawMbFreqToX(f) { return ((Math.log10(f) - Math.log10(DAW_MB_FREQ_MIN)) / (Math.log10(DAW_MB_FREQ_MAX) - Math.log10(DAW_MB_FREQ_MIN))) * DAW_MB_GRAPH_W; }
+        function dawMbGainToY(g) { return DAW_MB_GRAPH_H / 2 - (g / DAW_MB_GAIN_MAX) * (DAW_MB_GRAPH_H / 2); }
+        function dawMbAnchors(s) {
+            const x = s.xover;
+            return [
+                Math.sqrt(DAW_MB_FREQ_MIN * x.low),
+                Math.sqrt(x.low * x.mid),
+                Math.sqrt(x.mid * x.high),
+                Math.sqrt(x.high * DAW_MB_FREQ_MAX)
+            ];
+        }
+
+        function dawMbGraphInner(key, s, t) {
+            const anchors = dawMbAnchors(s);
+            const pts = anchors.map((f, i) => [dawMbFreqToX(f), dawMbGainToY(s.bands[i].gain)]);
+            const curvePts = [];
+            const N = 80;
+            for (let i = 0; i <= N; i++) {
+                const x = (i / N) * DAW_MB_GRAPH_W;
+                // Catmull-Rom-ish smoothing across the 4 anchor points
+                let seg = 0;
+                while (seg < pts.length - 2 && x > pts[seg + 1][0]) seg++;
+                const p0 = pts[Math.max(0, seg - 1)], p1 = pts[seg], p2 = pts[Math.min(pts.length - 1, seg + 1)], p3 = pts[Math.min(pts.length - 1, seg + 2)];
+                const span = Math.max(1, p2[0] - p1[0]);
+                const tt = Math.max(0, Math.min(1, (x - p1[0]) / span));
+                const y = 0.5 * ((2 * p1[1]) + (p2[1] - p0[1]) * tt + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * tt * tt + (3 * p1[1] - p0[1] - 3 * p2[1] + p3[1]) * tt * tt * tt);
+                const jitter = Math.sin(t / 400 + i) * 0.6;
+                curvePts.push([x, y + jitter]);
+            }
+            const curveStr = curvePts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+            const bandTop = curvePts.map(p => `${p[0].toFixed(1)},${(p[1] - 16).toFixed(1)}`).join(' ');
+            const bandBot = curvePts.slice().reverse().map(p => `${p[0].toFixed(1)},${(p[1] + 16).toFixed(1)}`).join(' ');
+
+            const gridLines = [16, 32, 64, 128, 250, 500, 1000, 2000, 4000, 8000, 16000].map(f => {
+                const x = dawMbFreqToX(f).toFixed(1);
+                const label = f >= 1000 ? (f / 1000) + 'k' : f;
+                return `<line x1="${x}" y1="0" x2="${x}" y2="${DAW_MB_GRAPH_H}" stroke="rgba(47,208,255,0.10)" stroke-width="1"/>
+                        <text x="${x}" y="${DAW_MB_GRAPH_H - 4}" font-size="8" fill="#4a5568" text-anchor="middle">${label}</text>`;
+            }).join('');
+            const gainLines = [-18, -12, -6, 0, 6, 12, 18].map(g => {
+                const y = dawMbGainToY(g).toFixed(1);
+                return `<line x1="0" y1="${y}" x2="${DAW_MB_GRAPH_W}" y2="${y}" stroke="${g === 0 ? 'rgba(47,208,255,0.25)' : 'rgba(47,208,255,0.08)'}" stroke-width="1"/>
+                        <text x="4" y="${y - 2}" font-size="8" fill="#4a5568">${g}</text>`;
+            }).join('');
+            const xoverLines = [s.xover.low, s.xover.mid, s.xover.high].map(f => {
+                const x = dawMbFreqToX(f).toFixed(1);
+                return `<line x1="${x}" y1="0" x2="${x}" y2="${DAW_MB_GRAPH_H}" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="2,3"/>`;
+            }).join('');
+            const dots = pts.map((p, i) => `
+                <circle class="dawmb-node" data-band="${i}" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="6" fill="${DAW_MB_COLORS[i]}" stroke="#000" stroke-width="1.5" style="cursor:ns-resize;"/>`).join('');
+
+            return `
+                <rect x="0" y="0" width="${DAW_MB_GRAPH_W}" height="${DAW_MB_GRAPH_H}" fill="#000"/>
+                ${gridLines}${gainLines}${xoverLines}
+                <polygon points="${bandTop} ${bandBot}" fill="rgba(167,139,250,0.28)"/>
+                <polyline points="${curveStr}" fill="none" stroke="#ff9a3d" stroke-width="2"/>
+                ${dots}`;
+        }
+
+        window.dawMbRafIds = window.dawMbRafIds || {};
+        window.dawMbAnimate = function(key) {
+            const sk = eq8SafeKey(key);
+            if (window.dawMbRafIds[sk]) return;
+            const step = (t) => {
+                const svg = document.getElementById(`dawmb-graph-${sk}`);
+                if (!svg) { delete window.dawMbRafIds[sk]; return; }
+                if (!svg.dataset.dragging) svg.innerHTML = dawMbGraphInner(key, dawMbGetState(key), t);
+                window.dawMbRafIds[sk] = window.requestAnimationFrame(step);
+            };
+            window.dawMbRafIds[sk] = window.requestAnimationFrame(step);
+        };
+
+        window.dawMbNodeDrag = function(e, key) {
+            const sk = eq8SafeKey(key);
+            const svg = document.getElementById(`dawmb-graph-${sk}`);
+            if (!svg || !e.target.classList.contains('dawmb-node')) return;
+            e.preventDefault();
+            const bandIdx = parseInt(e.target.getAttribute('data-band'), 10);
+            svg.dataset.dragging = '1';
+            const move = (ev) => {
+                const pt = ev.touches ? ev.touches[0] : ev;
+                const rect = svg.getBoundingClientRect();
+                const y = ((pt.clientY - rect.top) / rect.height) * DAW_MB_GRAPH_H;
+                const g = Math.max(DAW_MB_GAIN_MIN, Math.min(DAW_MB_GAIN_MAX, -((y - DAW_MB_GRAPH_H / 2) / (DAW_MB_GRAPH_H / 2)) * DAW_MB_GAIN_MAX));
+                const s = dawMbGetState(key);
+                s.bands[bandIdx].gain = g;
+                delete window.dawFxActivePresetLabel[key];
+                const badge = document.getElementById(`dawmb-badge-${sk}`);
+                if (badge) badge.innerText = 'factory preset';
+                svg.innerHTML = dawMbGraphInner(key, s, performance.now());
+                const val = document.getElementById(`dawmb-gain-${bandIdx}-${sk}`);
+                if (val) val.value = g.toFixed(1);
+            };
+            const up = () => {
+                delete svg.dataset.dragging;
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
+        function dawMbClearBadge(key) {
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawmb-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+        }
+
+        window.dawMbSetXover = function(key, field, text) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            const s = dawMbGetState(key);
+            if (field === 'q') s.xover.q = Math.max(0.1, Math.min(4, num));
+            else s.xover[field] = Math.max(DAW_MB_FREQ_MIN, Math.min(DAW_MB_FREQ_MAX, num));
+            dawMbClearBadge(key);
+            window.renderDawFxPicker();
+        };
+
+        window.dawMbSetBandField = function(key, bandIdx, field, text) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            const s = dawMbGetState(key);
+            const clamps = { thresh: [-60, 0], gain: [-18, 18], range: [-60, 0], attack: [0.1, 200], release: [1, 2000] };
+            const [lo, hi] = clamps[field];
+            s.bands[bandIdx][field] = Math.max(lo, Math.min(hi, num));
+            dawMbClearBadge(key);
+            const sk = eq8SafeKey(key);
+            const val = document.getElementById(`dawmb-${field}-${bandIdx}-${sk}`);
+            if (val) val.value = s.bands[bandIdx][field].toFixed(field === 'attack' || field === 'release' ? 2 : 1);
+            const slider = document.getElementById(`dawmb-threshslider-${bandIdx}-${sk}`);
+            if (field === 'thresh' && slider) slider.value = s.bands[bandIdx].thresh;
+            const svg = document.getElementById(`dawmb-graph-${sk}`);
+            if (field === 'gain' && svg) svg.innerHTML = dawMbGraphInner(key, s, performance.now());
+        };
+
+        window.dawMbToggleBand = function(key, bandIdx, field) {
+            const s = dawMbGetState(key);
+            s.bands[bandIdx][field] = !s.bands[bandIdx][field];
+            dawMbClearBadge(key);
+            window.renderDawFxPicker();
+        };
+
+        window.dawMbSetDropdown = function(key, field, value) {
+            const s = dawMbGetState(key);
+            s[field] = value;
+            dawMbClearBadge(key);
+        };
+
+        window.dawMbMasterNudge = function(key, field, dir) {
+            const s = dawMbGetState(key);
+            const step = field === 'attack' ? 0.5 : field === 'release' ? 1 : 0.5;
+            const clamps = { thresh: [-60, 0], gain: [-18, 18], range: [-60, 0], attack: [0.1, 200], release: [1, 2000] };
+            const [lo, hi] = clamps[field];
+            s.bands.forEach(b => { b[field] = Math.max(lo, Math.min(hi, b[field] + dir * step)); });
+            dawMbClearBadge(key);
+            window.renderDawFxPicker();
+        };
+
+        window.dawMbPanel = function(key, plugin) {
+            const s = dawMbGetState(key);
+            const sk = eq8SafeKey(key);
+            try { window.dawMbAnimate(key); } catch (e) {}
+            try { window.dawStartMeterLoop(); } catch (e) {}
+
+            const bandCol = (i) => {
+                const b = s.bands[i];
+                return `
+                <div class="rounded-lg p-1.5 flex flex-col items-center gap-1" style="border:1px solid ${DAW_MB_COLORS[i]}55; background:rgba(0,0,0,0.3); width:100px;">
+                    <div class="flex items-center gap-1 w-full">
+                        <button onclick="window.dawMbToggleBand('${key}',${i},'solo')" class="flex-1 text-[7px] font-black py-0.5 rounded border transition-colors ${b.solo ? 'bg-[#fde047] text-black border-[#fde047]' : 'text-gray-500 border-[rgba(47,208,255,0.3)] hover:text-[#2fd0ff]'}">S</button>
+                        <button onclick="window.dawMbToggleBand('${key}',${i},'bypass')" class="flex-1 text-[7px] font-black py-0.5 rounded border transition-colors ${b.bypass ? 'bg-red-500 text-black border-red-500' : 'text-gray-500 border-[rgba(47,208,255,0.3)] hover:text-[#2fd0ff]'}">Byp</button>
+                    </div>
+                    <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest">Thresh</span>
+                    <input id="dawmb-thresh-${i}-${sk}" type="text" value="${b.thresh.toFixed(1)}" onchange="window.dawMbSetBandField('${key}',${i},'thresh', this.value)" class="w-14 bg-black/50 border rounded px-1 py-0.5 text-[8px] text-center font-bold outline-none" style="border-color:${DAW_MB_COLORS[i]}77; color:${DAW_MB_COLORS[i]};">
+                    <div class="flex items-end gap-1 mt-0.5">
+                        <div class="daw-fader-track" style="height:90px;">
+                            <input id="dawmb-threshslider-${i}-${sk}" type="range" min="-60" max="0" step="0.1" value="${b.thresh}" class="daw-fader-input eq8-fader-thumb"
+                                oninput="window.dawMbSetBandField('${key}',${i},'thresh', this.value)">
+                        </div>
+                    </div>
+                    <div class="w-full space-y-1 mt-1.5">
+                        <input id="dawmb-gain-${i}-${sk}" type="text" value="${b.gain.toFixed(1)}" onchange="window.dawMbSetBandField('${key}',${i},'gain', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[8px] text-center neon-blue-text font-bold outline-none">
+                        <input id="dawmb-range-${i}-${sk}" type="text" value="${b.range.toFixed(1)}" onchange="window.dawMbSetBandField('${key}',${i},'range', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[8px] text-center neon-blue-text font-bold outline-none">
+                        <input id="dawmb-attack-${i}-${sk}" type="text" value="${b.attack.toFixed(2)}" onchange="window.dawMbSetBandField('${key}',${i},'attack', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[8px] text-center neon-blue-text font-bold outline-none">
+                        <input id="dawmb-release-${i}-${sk}" type="text" value="${b.release.toFixed(2)}" onchange="window.dawMbSetBandField('${key}',${i},'release', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[8px] text-center neon-blue-text font-bold outline-none">
+                    </div>
+                </div>`;
+            };
+
+            const masterStepper = (field, label) => `
+                <div class="flex items-center gap-1.5">
+                    <div class="flex flex-col">
+                        <button onclick="window.dawMbMasterNudge('${key}','${field}',1)" class="text-gray-500 hover:text-[#2fd0ff] leading-none text-[8px]">▲</button>
+                        <button onclick="window.dawMbMasterNudge('${key}','${field}',-1)" class="text-gray-500 hover:text-[#2fd0ff] leading-none text-[8px]">▼</button>
+                    </div>
+                    <span class="text-[8px] text-gray-400 font-bold uppercase tracking-widest">${label}</span>
+                </div>`;
+
+            return `
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button onclick="event.stopPropagation(); window.dawMbTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                        <span id="dawmb-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div id="dawmb-preset-menu-${sk}" class="hidden-section"></div>
+                </span>
+            </div>
+            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+
+            <div class="flex gap-2 mt-3">
+                <div class="flex-1 min-w-0 rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
+                    <svg id="dawmb-graph-${sk}" viewBox="0 0 ${DAW_MB_GRAPH_W} ${DAW_MB_GRAPH_H}" style="width:100%; height:190px; display:block;"
+                         onmousedown="window.dawMbNodeDrag(event,'${key}')" ontouchstart="window.dawMbNodeDrag(event,'${key}')">${dawMbGraphInner(key, s, 0)}</svg>
+                </div>
+                <div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:70px;">
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Output</span>
+                    <div class="daw-fader-track" style="height:130px;">
+                        <input id="dawmb-output-slider-${sk}" type="range" min="-18" max="18" step="0.1" value="${s.output}" class="daw-fader-input eq8-fader-thumb"
+                            oninput="window.dawMbSetOutput('${key}', this.value)">
+                    </div>
+                    <input id="dawmb-output-val-${sk}" type="text" value="${s.output.toFixed(1)}" onchange="window.dawMbSetOutput('${key}', this.value)" class="w-12 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[7px] text-center neon-blue-text font-bold outline-none">
+                    <div class="flex gap-1 mt-1">
+                        <div class="daw-led-meter-single" id="dawmb-led-L-${sk}" style="height:80px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                        <div class="daw-led-meter-single" id="dawmb-led-R-${sk}" style="height:80px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                    </div>
+                    <div class="flex gap-1">
+                        <span id="dawmb-peak-L-${sk}" class="text-[6px] neon-blue-text font-bold">-Inf</span>
+                        <span id="dawmb-peak-R-${sk}" class="text-[6px] neon-blue-text font-bold">-Inf</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 mt-2 flex-wrap">
+                <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest">Crossover</span>
+                <span class="text-[7px] text-gray-500 uppercase font-black">Low</span>
+                <input type="text" value="${Math.round(s.xover.low)}" onchange="window.dawMbSetXover('${key}','low', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
+                <span class="text-[7px] text-gray-500 uppercase font-black">Mid</span>
+                <input type="text" value="${Math.round(s.xover.mid)}" onchange="window.dawMbSetXover('${key}','mid', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
+                <span class="text-[7px] text-gray-500 uppercase font-black">High</span>
+                <input type="text" value="${Math.round(s.xover.high)}" onchange="window.dawMbSetXover('${key}','high', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
+                <span class="text-[7px] text-gray-500 uppercase font-black">Q</span>
+                <input type="text" value="${s.xover.q.toFixed(2)}" onchange="window.dawMbSetXover('${key}','q', this.value)" class="w-12 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
+            </div>
+
+            <div class="flex gap-2 mt-3">
+                <div class="flex flex-col justify-around text-[8px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0 py-8" style="height:150px;">
+                    <span>Gain</span><span>Range</span><span>Attk</span><span>Rel</span>
+                </div>
+                <div class="flex gap-2 flex-1">
+                    ${[0, 1, 2, 3].map(bandCol).join('')}
+                </div>
+                <div class="rounded-lg p-2 flex flex-col gap-1.5 flex-shrink-0" style="width:110px; border:1px solid rgba(47,208,255,0.25); background:rgba(0,0,0,0.3);">
+                    <span class="text-[8px] neon-blue-text font-black uppercase tracking-widest text-center border-b border-[rgba(47,208,255,0.2)] pb-1">Master</span>
+                    ${masterStepper('thresh', 'Threshold')}
+                    ${masterStepper('gain', 'Gain')}
+                    ${masterStepper('range', 'Range')}
+                    ${masterStepper('attack', 'Attack')}
+                    ${masterStepper('release', 'Release')}
+                    <div class="mt-1">
+                        <div class="text-[6px] text-gray-500 uppercase font-black tracking-widest">Release</div>
+                        <select onchange="window.dawMbSetDropdown('${key}','release', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] font-bold neon-blue-text outline-none">
+                            ${['ARC','Manual'].map(o => `<option value="${o}" ${s.release === o ? 'selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <div class="text-[6px] text-gray-500 uppercase font-black tracking-widest">Behavior</div>
+                        <select onchange="window.dawMbSetDropdown('${key}','behavior', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] font-bold neon-blue-text outline-none">
+                            ${['Electro','Opto','Vari-Mu','FET'].map(o => `<option value="${o}" ${s.behavior === o ? 'selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <div class="text-[6px] text-gray-500 uppercase font-black tracking-widest">Knee</div>
+                        <select onchange="window.dawMbSetDropdown('${key}','knee', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] font-bold neon-blue-text outline-none">
+                            ${['Soft','Hard'].map(o => `<option value="${o}" ${s.knee === o ? 'selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+            </div>`;
+        };
+
+        window.dawMbSetOutput = function(key, value) {
+            const num = parseFloat(String(value).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            const s = dawMbGetState(key);
+            s.output = Math.max(-18, Math.min(18, num));
+            dawMbClearBadge(key);
+            const sk = eq8SafeKey(key);
+            const sl = document.getElementById(`dawmb-output-slider-${sk}`); if (sl) sl.value = s.output;
+            const val = document.getElementById(`dawmb-output-val-${sk}`); if (val) val.value = s.output.toFixed(1);
+        };
+
+        window.dawMbTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawmb-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawMbRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawMbRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawmb-preset-menu-${sk}`);
+            if (!el) return;
+            const userPresets = (window.dawFxUserPresets['multiband-comp'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawMbApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                <button onclick="window.dawMbApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
+                </button>
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawMbApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+
+        window.dawMbApplyPreset = function(key, presetIndex) {
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawMbState[key] = dawMbDefaultState();
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = (window.dawFxUserPresets['multiband-comp'] || [])[presetIndex];
+                if (preset) {
+                    window.dawMbState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
+            window.renderDawFxPicker();
+        };
+
+        // ============================================================
         // Unified top-menu (the "⋮" in the FX window title bar):
         // Remove from Chain / Preset / Save Preset — dispatches to
         // whichever plugin panel is currently open (generic, EQ-8, or
@@ -3600,6 +3979,7 @@
             else if (sel.plugin.id === 'bass-maximizer') window.dawBmTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'harmonic-exciter') window.dawHeTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'sovereign-delay') window.dawSdTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'multiband-comp') window.dawMbTogglePresetMenu(sel.key);
             else window.dawFxTogglePresetMenu(sel.key);
         };
 
@@ -3624,6 +4004,8 @@
                 data = JSON.parse(JSON.stringify(dawHeGetState(sel.key)));
             } else if (sel.plugin.id === 'sovereign-delay') {
                 data = JSON.parse(JSON.stringify(dawSdGetState(sel.key)));
+            } else if (sel.plugin.id === 'multiband-comp') {
+                data = JSON.parse(JSON.stringify(dawMbGetState(sel.key)));
             } else {
                 const choice = window.dawFxPresetChoice[sel.key];
                 data = { values: choice ? choice.values : sel.plugin.values };
@@ -3632,7 +4014,7 @@
             window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
             window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
             window.dawFxActivePresetLabel[sel.key] = label;
-            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay') {
+            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp') {
                 window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
             }
             window.renderDawFxPicker();
@@ -4527,6 +4909,20 @@
                         window.dawUpdateLed('dawimg-led-R-' + isk, rVal);
                         const lText = document.getElementById('dawimg-peak-L-' + isk);
                         const rText = document.getElementById('dawimg-peak-R-' + isk);
+                        if (lText) lText.innerText = lVal > 0.5 ? (Math.round(20 * Math.log10(lVal / 100) * 10) / 10) : '-Inf';
+                        if (rText) rText.innerText = rVal > 0.5 ? (Math.round(20 * Math.log10(rVal / 100) * 10) / 10) : '-Inf';
+                    }
+                    // Same pattern for an open Multiband Comp panel — drive its
+                    // Output L/R meters off the selected track's channel level.
+                    if (pPlugin && pPlugin.id === 'multiband-comp') {
+                        const msk = eq8SafeKey(`${pCtx.trackId}::${pCtx.selectedIndex}`);
+                        const base = window.dawMeterPeaks[pCtx.trackId === 'master' ? 'master' : ('t-' + pCtx.trackId)] || 0;
+                        const lVal = base;
+                        const rVal = Math.max(0, Math.min(100, base * (0.88 + Math.random() * 0.18)));
+                        window.dawUpdateLed('dawmb-led-L-' + msk, lVal);
+                        window.dawUpdateLed('dawmb-led-R-' + msk, rVal);
+                        const lText = document.getElementById('dawmb-peak-L-' + msk);
+                        const rText = document.getElementById('dawmb-peak-R-' + msk);
                         if (lText) lText.innerText = lVal > 0.5 ? (Math.round(20 * Math.log10(lVal / 100) * 10) / 10) : '-Inf';
                         if (rText) rText.innerText = rVal > 0.5 ? (Math.round(20 * Math.log10(rVal / 100) * 10) / 10) : '-Inf';
                     }
