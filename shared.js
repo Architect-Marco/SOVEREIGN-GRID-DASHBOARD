@@ -2322,9 +2322,12 @@
                         </div>
                         <div class="flex flex-col items-center gap-1.5">
                             <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Width</span>
-                            <div class="daw-fader-track" style="height:130px;">
-                                <input id="dawimg-width-slider-${sk}" type="range" min="0" max="3" step="0.01" value="${s.width}" class="daw-fader-input eq8-fader-thumb"
-                                    oninput="window.dawImagerSetField('${key}','width', this.value)">
+                            <div class="flex items-end gap-1">
+                                <div class="daw-fader-scale" style="visibility:hidden;">${dawFaderScaleHtml()}</div>
+                                <div class="daw-fader-track" style="height:130px;">
+                                    <input id="dawimg-width-slider-${sk}" type="range" min="0" max="3" step="0.01" value="${s.width}" class="daw-fader-input eq8-fader-thumb"
+                                        oninput="window.dawImagerSetField('${key}','width', this.value)">
+                                </div>
                             </div>
                             <input id="dawimg-width-input-${sk}" type="text" value="${s.width.toFixed(2)}" onchange="window.dawImagerSetFieldFromText('${key}','width', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                         </div>
