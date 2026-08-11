@@ -3779,28 +3779,30 @@
                 </div>`;
 
             return `
-            <div class="flex items-start justify-between gap-2 mb-1">
-                <div class="min-w-0">
-                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
-                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
-                </div>
-                <span class="relative inline-block flex-shrink-0">
-                    <button onclick="event.stopPropagation(); window.dawMbTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
-                        <span id="dawmb-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
-                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
-                    </button>
-                    <div id="dawmb-preset-menu-${sk}" class="hidden-section"></div>
-                </span>
+            <div class="mb-1">
+                <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
             </div>
-            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+            <div class="flex items-center justify-between gap-2 mt-1">
+                <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+                <div class="flex items-center gap-3 flex-shrink-0">
+                    <span class="relative inline-block flex-shrink-0">
+                        <button onclick="event.stopPropagation(); window.dawMbTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                            <span id="dawmb-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <div id="dawmb-preset-menu-${sk}" class="hidden-section"></div>
+                    </span>
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0" style="width:70px; text-align:center;">Output</span>
+                </div>
+            </div>
 
-            <div class="flex gap-2 mt-3">
+            <div class="flex gap-2 mt-2">
                 <div class="flex-1 min-w-0 rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
                     <svg id="dawmb-graph-${sk}" viewBox="0 0 ${DAW_MB_GRAPH_W} ${DAW_MB_GRAPH_H}" style="width:100%; height:190px; display:block;"
                          onmousedown="window.dawMbNodeDrag(event,'${key}')" ontouchstart="window.dawMbNodeDrag(event,'${key}')">${dawMbGraphInner(key, s, 0)}</svg>
                 </div>
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:70px;">
-                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Output</span>
                     <div class="daw-fader-track" style="height:130px;">
                         <input id="dawmb-output-slider-${sk}" type="range" min="-18" max="18" step="0.1" value="${s.output}" class="daw-fader-input eq8-fader-thumb"
                             oninput="window.dawMbSetOutput('${key}', this.value)">
@@ -3821,7 +3823,7 @@
                 <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest">Crossover</span>
                 <span class="text-[7px] text-gray-500 uppercase font-black">Low</span>
                 <input type="text" value="${Math.round(s.xover.low)}" onchange="window.dawMbSetXover('${key}','low', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
-                <span class="text-[7px] text-gray-500 uppercase font-black">Mid</span>
+                <span class="text-[7px] text-gray-500 uppercase font-black">Med</span>
                 <input type="text" value="${Math.round(s.xover.mid)}" onchange="window.dawMbSetXover('${key}','mid', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 <span class="text-[7px] text-gray-500 uppercase font-black">High</span>
                 <input type="text" value="${Math.round(s.xover.high)}" onchange="window.dawMbSetXover('${key}','high', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
@@ -3837,7 +3839,7 @@
                     ${[0, 1, 2, 3].map(bandCol).join('')}
                 </div>
                 <div class="rounded-lg p-2 flex flex-col gap-1.5 flex-shrink-0" style="width:110px; border:1px solid rgba(47,208,255,0.25); background:rgba(0,0,0,0.3);">
-                    <span class="text-[8px] neon-blue-text font-black uppercase tracking-widest text-center border-b border-[rgba(47,208,255,0.2)] pb-1">Master</span>
+                    <span class="text-[9px] neon-blue-text font-black italic uppercase tracking-widest text-center border-b border-[rgba(47,208,255,0.2)] pb-1">Master</span>
                     ${masterStepper('thresh', 'Threshold')}
                     ${masterStepper('gain', 'Gain')}
                     ${masterStepper('range', 'Range')}
