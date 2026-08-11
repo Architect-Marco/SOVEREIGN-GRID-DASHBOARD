@@ -893,10 +893,10 @@
                 { name: 'sovereign: clean low end', values: [['SUB','50Hz'],['PUNCH','40%'],['GRIT','5%'],['LIMITER','-3.0d']] }
               ] },
             { id: 'stereo-imager', name: 'Stereo Imager', tagline: 'Width Expansion', category: 'SPACE',
-              values: [['WIDTH','125%'],['PAN','0'],['CTR-FOCUS','10%'],['SOFT-EDGE','20%']],
+              values: [['GAIN','0.0d'],['WIDTH','2.00'],['ASYM','0'],['ROT','0.0']],
               presets: [
-                { name: 'sovereign: wide master', values: [['WIDTH','150%'],['PAN','0'],['CTR-FOCUS','15%'],['SOFT-EDGE','25%']] },
-                { name: 'sovereign: mono-safe', values: [['WIDTH','105%'],['PAN','0'],['CTR-FOCUS','25%'],['SOFT-EDGE','10%']] }
+                { name: 'sovereign: wide master', values: [['GAIN','0.0d'],['WIDTH','2.60'],['ASYM','0'],['ROT','0.0']] },
+                { name: 'sovereign: mono-safe', values: [['GAIN','0.0d'],['WIDTH','1.10'],['ASYM','0'],['ROT','0.0']] }
               ] },
             { id: 'aether-reverb', name: 'Aether-Reverb', tagline: 'Luxury Space', category: 'SPACE',
               values: [['SIZE','65%'],['DECAY','2.4s'],['DAMP','40%'],['MIX','15%']],
@@ -1542,27 +1542,61 @@
 
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0 pt-1">
                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Gain</span>
-                    <div style="height:${EQ8_GRAPH_H - 30}px; display:flex; align-items:center;">
-                        <input type="range" class="eq8-vslider" min="${EQ8_GAIN_MIN}" max="${EQ8_GAIN_MAX}" step="0.1" value="${state.outputGain}"
-                            oninput="window.dawEqSetOutputGain('${key}', this.value)">
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                        <div class="daw-fader-track" style="height:${EQ8_GRAPH_H - 30}px;">
+                            <input id="eq8-outgain-slider-${sk}" type="range" min="${EQ8_GAIN_MIN}" max="${EQ8_GAIN_MAX}" step="0.1" value="${state.outputGain}" class="daw-fader-input eq8-fader-thumb"
+                                oninput="window.dawEqSetOutputGain('${key}', this.value)">
+                        </div>
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
-                    <span id="eq8-outgain-${sk}" class="text-[8px] neon-blue-text font-bold">${state.outputGain.toFixed(1)}</span>
+                    <input id="eq8-outgain-${sk}" type="text" value="${state.outputGain.toFixed(1)}" onchange="window.dawEqSetOutputGainFromText('${key}', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
             </div>`;
         };
 
         // --- Partial builders (also used for lightweight re-renders during drag) ---
 
+        // Approximate per-band gain contribution (in dB) at a given frequency,
+        // shaped by that band's bandwidth/Q — this is what makes BW/Q visibly
+        // widen or narrow the bump/shelf on the curve, instead of only moving
+        // the freq/gain node.
+        function eq8BandGainAt(band, freqHz) {
+            if (!band.enabled || !band.gain) return 0;
+            const octDist = Math.log2(Math.max(1e-6, freqHz / band.freq));
+            const sigma = Math.max(0.05, band.bw) / 2; // wider BW/Q -> wider affected region
+            switch (band.type) {
+                case 'Low Shelf':
+                    return band.gain / (1 + Math.exp(octDist / sigma));
+                case 'High Shelf':
+                    return band.gain / (1 + Math.exp(-octDist / sigma));
+                case 'Low Pass':
+                    return band.gain / (1 + Math.exp(octDist / (sigma * 0.6)));
+                case 'High Pass':
+                    return band.gain / (1 + Math.exp(-octDist / (sigma * 0.6)));
+                default: // Band, Notch — symmetric bell centered on freq
+                    return band.gain * Math.exp(-(octDist * octDist) / (2 * sigma * sigma));
+            }
+        }
+
         window.dawEqBuildSvg = function(key) {
             const state = dawEqGetState(key);
             const sk = eq8SafeKey(key);
-            const sorted = state.bands.map((b, i) => ({ ...b, i })).sort((a, b) => a.freq - b.freq);
 
-            let pathPts = sorted.map(b => `${eq8FreqToX(b.freq).toFixed(1)},${eq8GainToY(b.gain).toFixed(1)}`);
-            if (sorted.length) {
-                pathPts = [`0,${eq8GainToY(sorted[0].gain).toFixed(1)}`, ...pathPts, `${EQ8_GRAPH_W},${eq8GainToY(sorted[sorted.length - 1].gain).toFixed(1)}`];
+            // Sample the summed response across the graph width so the curve
+            // reflects every band's actual gain + bandwidth, not just straight
+            // lines between the node points.
+            const SAMPLES = 140;
+            const curvePts = [];
+            for (let i = 0; i <= SAMPLES; i++) {
+                const x = (i / SAMPLES) * EQ8_GRAPH_W;
+                const freqAtX = eq8XToFreq(x);
+                let total = 0;
+                for (const b of state.bands) total += eq8BandGainAt(b, freqAtX);
+                total = Math.max(EQ8_GAIN_MIN, Math.min(EQ8_GAIN_MAX, total));
+                curvePts.push(`${x.toFixed(1)},${eq8GainToY(total).toFixed(1)}`);
             }
-            const curve = pathPts.length ? `<polyline points="${pathPts.join(' ')}" fill="none" stroke="#2fd0ff" stroke-width="2" opacity="0.9"/>` : '';
+            const curve = `<polyline points="${curvePts.join(' ')}" fill="none" stroke="#2fd0ff" stroke-width="2" opacity="0.9"/>`;
 
             const freqLines = EQ8_FREQ_GRID.map(f => {
                 const x = eq8FreqToX(f).toFixed(1);
@@ -1606,7 +1640,7 @@
             return `
             <div class="flex items-center gap-3">
                 <label class="flex items-center gap-1.5 text-[9px] font-bold neon-blue-text uppercase tracking-widest">
-                    <input type="checkbox" ${b.enabled ? 'checked' : ''} onchange="window.dawEqSetBandField('${key}','enabled', this.checked)"> Enabled
+                    <input type="checkbox" class="daw-checkbox" ${b.enabled ? 'checked' : ''} onchange="window.dawEqSetBandField('${key}','enabled', this.checked)"> Enabled
                 </label>
                 <select onchange="window.dawEqSetBandField('${key}','type', this.value)" class="flex-1 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-2 py-1 text-[9px] font-bold neon-blue-text outline-none">
                     ${EQ8_TYPES.map(t => `<option value="${t}" ${b.type === t ? 'selected' : ''}>${t}</option>`).join('')}
@@ -1700,8 +1734,17 @@
             const state = dawEqGetState(key);
             state.outputGain = parseFloat(value);
             eq8ClearPresetBadge(key);
-            const el = document.getElementById(`eq8-outgain-${eq8SafeKey(key)}`);
-            if (el) el.innerText = state.outputGain.toFixed(1);
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`eq8-outgain-${sk}`);
+            if (el) el.value = state.outputGain.toFixed(1);
+            const slider = document.getElementById(`eq8-outgain-slider-${sk}`);
+            if (slider) slider.value = state.outputGain;
+        };
+
+        window.dawEqSetOutputGainFromText = function(key, text) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            window.dawEqSetOutputGain(key, Math.max(EQ8_GAIN_MIN, Math.min(EQ8_GAIN_MAX, num)));
         };
 
         window.dawEqAddBand = function(key) {
@@ -1915,9 +1958,8 @@
                     detail.innerHTML = window.dawEqPanel(key, plugin);
                 } else if (plugin && plugin.id === 'master-limiter') {
                     detail.innerHTML = window.dawLimiterPanel(key, plugin);
-                } else if (plugin && plugin.id === 'aether-reverb') {
-                    detail.innerHTML = window.dawReverbPanel(key, plugin);
-                    window.dawReverbStartMeterLoop(key);
+                } else if (plugin && plugin.id === 'stereo-imager') {
+                    detail.innerHTML = window.dawImagerPanel(key, plugin);
                 } else {
                     detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
                 }
@@ -2028,6 +2070,7 @@
         window.dawLimiterPanel = function(key, plugin) {
             const s = dawLimiterGetState(key);
             const sk = eq8SafeKey(key);
+            try { window.dawStartMeterLoop(); } catch (e) {}
             return `
             <div class="flex items-start justify-between gap-2 mb-1">
                 <div class="min-w-0">
@@ -2047,9 +2090,13 @@
             <div class="flex gap-4 mt-4">
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Threshold</span>
-                    <div style="height:130px; display:flex; align-items:center;">
-                        <input id="dawlim-thresh-slider-${sk}" type="range" class="eq8-vslider" min="-24" max="0" step="0.01" value="${s.threshold}"
-                            oninput="window.dawLimiterSetField('${key}','threshold', this.value)">
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                        <div class="daw-fader-track" style="height:130px;">
+                            <input id="dawlim-thresh-slider-${sk}" type="range" min="-24" max="0" step="0.01" value="${s.threshold}" class="daw-fader-input eq8-fader-thumb"
+                                oninput="window.dawLimiterSetField('${key}','threshold', this.value)">
+                        </div>
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
                     <input id="dawlim-thresh-input-${sk}" type="text" value="${dawFmtDb(s.threshold)}" onchange="window.dawLimiterSetFieldFromText('${key}','threshold', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
@@ -2066,24 +2113,37 @@
 
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Brickwall<br>Ceiling</span>
-                    <div style="height:130px; display:flex; align-items:center;">
-                        <input id="dawlim-ceil-slider-${sk}" type="range" class="eq8-vslider" min="-12" max="0" step="0.01" value="${s.ceiling}"
-                            oninput="window.dawLimiterSetField('${key}','ceiling', this.value)">
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                        <div class="daw-fader-track" style="height:130px;">
+                            <input id="dawlim-ceil-slider-${sk}" type="range" min="-12" max="0" step="0.01" value="${s.ceiling}" class="daw-fader-input eq8-fader-thumb"
+                                oninput="window.dawLimiterSetField('${key}','ceiling', this.value)">
+                        </div>
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
                     </div>
                     <input id="dawlim-ceil-input-${sk}" type="text" value="${dawFmtDb(s.ceiling)}" onchange="window.dawLimiterSetFieldFromText('${key}','ceiling', this.value)" class="w-16 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
 
-                <div class="flex-1 min-w-0 rounded-lg overflow-hidden relative" style="background:linear-gradient(180deg, #1a1a1a 0%, #1a1a1a 35%, #6b7a78 35%, #6b7a78 100%); border:1px solid rgba(47,208,255,0.3); min-height:150px;">
-                    <div class="absolute top-1 left-1.5 text-[6px] text-gray-500 font-bold leading-tight">0.2<br>0.4<br>0.6<br>0.8</div>
+                <div class="flex-1 min-w-0 rounded-lg flex items-stretch justify-center gap-6 py-3" style="background:#000; border:1px solid rgba(47,208,255,0.35); min-height:180px; box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
+                    <div class="flex flex-col items-center gap-1.5">
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">L</span>
+                        <div class="daw-led-meter-single" id="dawlim-led-L-${sk}" style="height:130px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                        <span id="dawlim-peak-L-${sk}" class="text-[8px] neon-blue-text font-bold">-Inf</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1.5">
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">R</span>
+                        <div class="daw-led-meter-single" id="dawlim-led-R-${sk}" style="height:130px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                        <span id="dawlim-peak-R-${sk}" class="text-[8px] neon-blue-text font-bold">-Inf</span>
+                    </div>
                 </div>
             </div>
 
             <div class="flex items-center gap-4 mt-3">
                 <label class="flex items-center gap-1.5 text-[9px] font-bold neon-blue-text uppercase tracking-widest">
-                    <input type="checkbox" ${s.constantGain ? 'checked' : ''} onchange="window.dawLimiterSetField('${key}','constantGain', this.checked)"> Constant Gain
+                    <input type="checkbox" class="daw-checkbox" ${s.constantGain ? 'checked' : ''} onchange="window.dawLimiterSetField('${key}','constantGain', this.checked)"> Constant Gain
                 </label>
                 <label class="flex items-center gap-1.5 text-[9px] font-bold neon-blue-text uppercase tracking-widest">
-                    <input type="checkbox" ${s.truePeak ? 'checked' : ''} onchange="window.dawLimiterSetField('${key}','truePeak', this.checked)"> True Peak
+                    <input type="checkbox" class="daw-checkbox" ${s.truePeak ? 'checked' : ''} onchange="window.dawLimiterSetField('${key}','truePeak', this.checked)"> True Peak
                 </label>
             </div>
 
@@ -2175,61 +2235,60 @@
         };
 
         // ============================================================
-        // AETHER REVERB — bespoke panel (Time Response / EQ / Reverb Damping,
-        // plus a real mixer-style fader strip: Gain, Output, Direct, Early
-        // Ref, Reverb — same daw-fader-* / daw-led-meter-single markup as
-        // the main console strip, animated live via requestAnimationFrame).
+        // STEREO IMAGER — a Waves S1-style panel: Gain & Width vertical
+        // faders, a live polar goniometer (correlation wedge, animated
+        // with window.requestAnimationFrame), Asymmetry & Rotation
+        // sliders, Input/Meter Mode (L-R / M-S) toggles, phase controls,
+        // and L/R output LED meters.
         // ============================================================
-        window.dawReverbState = window.dawReverbState || {}; // key -> {...}
+        window.dawImagerState = window.dawImagerState || {}; // key -> {gain,width,asymmetry,rotation,inputMode,meterMode,invL,invR,swap}
 
-        function dawReverbDefaultState() {
+        function dawImagerDefaultState() {
+            return { gain: 0.0, width: 2.00, asymmetry: 0, rotation: 0.0, inputMode: 'LR', meterMode: 'LR', invL: false, invR: false, swap: false };
+        }
+        function dawImagerGetState(key) {
+            if (!window.dawImagerState[key]) window.dawImagerState[key] = dawImagerDefaultState();
+            return window.dawImagerState[key];
+        }
+        function dawImgFmtGain(v) { return (v >= 0 ? '+' : '') + v.toFixed(1); }
+
+        const DAW_IMG_GRAPH_W = 280, DAW_IMG_GRAPH_H = 190;
+        const DAW_IMG_RINGS = [ [118,'0'], [88.5,'-6'], [59,'-12'], [29.5,'-18'] ]; // radius -> label, innermost (-24) is the apex itself
+
+        function dawImagerGeometry(s, jitter) {
+            const apexX = DAW_IMG_GRAPH_W / 2 + (s.asymmetry / 90) * 36;
+            const apexY = DAW_IMG_GRAPH_H - 14;
+            const spread = (s.width / 3) * 118;
+            const j = jitter || 0;
             return {
-                dimension: 3.00, roomSize: 5516, distance: 10.02,
-                balance: 3.0, decayTime: 1.2, preDelay: 88.9, density: 0.850,
-                erLowcutOn: true, erLowcutFreq: 16,
-                revShelf: -3.0, erAbsorb: -6.0, hiFreq: 4095,
-                dampLowFreq: 511, dampLowRatio: 1.37, dampHighRatio: 0.40, dampHighFreq: 7104,
-                gain: 80, direct: 80, earlyRef: 80, reverb: 80
+                apexX, apexY,
+                leftX: apexX - spread + j * 0.6,
+                rightX: apexX + spread - j * 0.4,
+                topY: 14
             };
         }
-        function dawReverbGetState(key) {
-            if (!window.dawReverbState[key]) window.dawReverbState[key] = dawReverbDefaultState();
-            return window.dawReverbState[key];
-        }
 
-        function dawReverbParamBox(label, value, field, key, sk, width) {
+        function dawImagerGoniometerInner(key, s, jitter) {
+            const g = dawImagerGeometry(s, jitter);
+            const rings = DAW_IMG_RINGS.map(([r, label]) => `
+                <path d="M ${(g.apexX - r).toFixed(1)} ${g.apexY} A ${r} ${r} 0 0 1 ${(g.apexX + r).toFixed(1)} ${g.apexY}" fill="none" stroke="rgba(47,208,255,0.22)" stroke-width="1"/>
+                <text x="${(g.apexX - r).toFixed(1)}" y="${g.apexY + 11}" font-size="8" fill="#2fd0ff" text-anchor="middle" opacity="0.75">${label}</text>
+                <text x="${(g.apexX + r).toFixed(1)}" y="${g.apexY + 11}" font-size="8" fill="#2fd0ff" text-anchor="middle" opacity="0.75">${label}</text>`).join('');
             return `
-                <div class="flex flex-col items-center gap-1" style="width:${width || 48}px;">
-                    <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">${label}</span>
-                    <input id="dawrev-box-${field}-${sk}" type="text" value="${value}" onchange="window.dawReverbSetFieldFromText('${key}','${field}', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[7.5px] text-center neon-blue-text font-bold outline-none">
-                </div>`;
+                <rect x="0" y="0" width="${DAW_IMG_GRAPH_W}" height="${DAW_IMG_GRAPH_H}" fill="#000"/>
+                ${rings}
+                <text x="${g.apexX.toFixed(1)}" y="${g.apexY + 11}" font-size="8" fill="#2fd0ff" text-anchor="middle">-24</text>
+                <g transform="rotate(${s.rotation} ${g.apexX.toFixed(1)} ${g.apexY.toFixed(1)})">
+                    <line x1="${g.apexX.toFixed(1)}" y1="${g.apexY}" x2="${g.apexX.toFixed(1)}" y2="${g.topY}" stroke="rgba(47,208,255,0.35)" stroke-width="1"/>
+                    <polygon points="${g.leftX.toFixed(1)},${g.topY} ${g.rightX.toFixed(1)},${g.topY} ${g.apexX.toFixed(1)},${g.apexY}" fill="rgba(47,208,255,0.28)" stroke="#2fd0ff" stroke-width="1.6"/>
+                </g>`;
         }
 
-        function dawReverbFaderColumn(label, field, key, sk, s, dotColor) {
-            const dot = dotColor ? `<div id="dawrev-dot-${field}-${sk}" class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:${dotColor}; opacity:0.35; box-shadow:0 0 4px ${dotColor};"></div>` : '';
-            return `
-                <div class="flex flex-col items-center gap-1 flex-shrink-0">
-                    <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
-                    ${dot}
-                    <div class="flex items-end gap-1">
-                        <div class="daw-fader-track" style="width:12px; height:130px;"><input id="dawrev-fader-${field}-${sk}" type="range" min="0" max="100" value="${s[field]}" class="daw-fader-input" style="width:130px;" oninput="window.dawReverbSetFader('${key}','${field}', this.value)"></div>
-                    </div>
-                    <span class="daw-mixer-value-field" id="dawrev-val-${field}-${sk}" style="font-size:6.5px; padding:1px 0; width:26px;">${s[field].toFixed(1)}</span>
-                </div>`;
-        }
-
-        function dawReverbOutputMeter(label, field, sk) {
-            return `
-                <div class="flex flex-col items-center gap-1 flex-shrink-0">
-                    <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
-                    <div class="daw-led-meter-single" id="dawrev-led-${field}-${sk}" style="width:7px; height:130px;"><div class="daw-led-mask" style="height:100%;"></div></div>
-                    <span class="daw-mixer-value-field" id="dawrev-val-${field}-${sk}" style="font-size:6.5px; padding:1px 0; width:26px;">-Inf</span>
-                </div>`;
-        }
-
-        window.dawReverbPanel = function(key, plugin) {
-            const s = dawReverbGetState(key);
+        window.dawImagerPanel = function(key, plugin) {
+            const s = dawImagerGetState(key);
             const sk = eq8SafeKey(key);
+            try { window.dawStartMeterLoop(); } catch (e) {}
+            try { window.dawImagerAnimate(key); } catch (e) {}
             return `
             <div class="flex items-start justify-between gap-2 mb-1">
                 <div class="min-w-0">
@@ -2237,256 +2296,214 @@
                     <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
                 </div>
                 <span class="relative inline-block flex-shrink-0">
-                    <button onclick="event.stopPropagation(); window.dawReverbTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
-                        <span id="dawrev-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                    <button onclick="event.stopPropagation(); window.dawImagerTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                        <span id="dawimg-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
                         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
                     </button>
-                    <div id="dawrev-preset-menu-${sk}" class="hidden-section"></div>
+                    <div id="dawimg-preset-menu-${sk}" class="hidden-section"></div>
                 </span>
             </div>
             <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
 
-            <div class="flex gap-2 mt-4 items-start">
-                <!-- LEFT COLUMN: the two graph boxes, stacked. min-w-0 lets it actually
-                     shrink to fit — the modal only has ~460px of real content width once
-                     the chain sidebar and padding are accounted for. -->
-                <div class="flex-1 min-w-0 flex flex-col gap-2">
-
-                    <!-- BOX 1 — Time Response (graph + buttons). Kept to exactly the
-                         core params (9 fields total) so its height stays close to
-                         Box 3 (Gain/Output) on the right, keeping the grid aligned. -->
-                    <div class="rounded-lg p-2.5" style="background:rgba(0,0,0,0.35); border:1px solid rgba(47,208,255,0.25);">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Time Response</span>
-                            <div class="flex items-center gap-1.5">
-                                <span class="text-[6px] text-gray-600 uppercase font-black tracking-widest">Decorrelation</span>
-                                <button onclick="window.dawReverbSetField('${key}','erLowcutOn', ${!s.erLowcutOn})" class="text-[6.5px] font-bold neon-blue-text border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5 bg-black/50">EVar: 0</button>
-                                <button onclick="window.dawReverbSetField('${key}','erLowcutOn', ${!s.erLowcutOn})" class="text-[6.5px] font-bold neon-blue-text border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5 bg-black/50">RVar: 0</button>
+            <div class="flex gap-3 mt-4">
+                <!-- LEFT: Gain / Width faders + Input Mode -->
+                <div class="flex flex-col gap-3 flex-shrink-0">
+                    <div class="flex gap-2">
+                        <div class="flex flex-col items-center gap-1.5">
+                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Gain</span>
+                            <div class="flex items-end gap-1">
+                                <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                                <div class="daw-fader-track" style="height:130px;">
+                                    <input id="dawimg-gain-slider-${sk}" type="range" min="-24" max="0" step="0.1" value="${s.gain}" class="daw-fader-input eq8-fader-thumb"
+                                        oninput="window.dawImagerSetField('${key}','gain', this.value)">
+                                </div>
                             </div>
+                            <input id="dawimg-gain-input-${sk}" type="text" value="${dawImgFmtGain(s.gain)}" onchange="window.dawImagerSetFieldFromText('${key}','gain', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                         </div>
-                        <div class="rounded relative overflow-hidden" style="height:76px; background:linear-gradient(180deg, rgba(47,208,255,0.10), rgba(0,0,0,0.5));">
-                            <div id="dawrev-timeresp-${sk}" class="absolute inset-0 flex items-end gap-[2px] px-2 pb-1"></div>
-                        </div>
-
-                        <div class="flex gap-2 flex-wrap mt-2.5">
-                            ${dawReverbParamBox('Dimension', s.dimension.toFixed(2), 'dimension', key, sk)}
-                            ${dawReverbParamBox('Room Size', s.roomSize, 'roomSize', key, sk)}
-                            ${dawReverbParamBox('Distance', s.distance.toFixed(2), 'distance', key, sk)}
-                            ${dawReverbParamBox('Balance', s.balance.toFixed(1), 'balance', key, sk)}
-                        </div>
-                        <div class="flex gap-2 flex-wrap mt-2">
-                            ${dawReverbParamBox('Decay Time', s.decayTime.toFixed(1), 'decayTime', key, sk)}
-                            ${dawReverbParamBox('Pre Delay', s.preDelay.toFixed(1), 'preDelay', key, sk)}
-                            ${dawReverbParamBox('Density', s.density.toFixed(3), 'density', key, sk)}
-                        </div>
-
-                        <div class="flex items-center gap-1.5 mt-2.5 flex-shrink-0">
-                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest w-14 flex-shrink-0">ER Lowcut</span>
-                            <button onclick="window.dawReverbSetField('${key}','erLowcutOn', ${!s.erLowcutOn})" class="w-4 h-4 rounded flex-shrink-0 border ${s.erLowcutOn ? 'bg-[#2fd0ff] border-[#2fd0ff]' : 'bg-black/50 border-white/20'}"></button>
-                            ${dawReverbParamBox('Freq', s.erLowcutFreq, 'erLowcutFreq', key, sk, 46)}
+                        <div class="flex flex-col items-center gap-1.5">
+                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Width</span>
+                            <div class="daw-fader-track" style="height:130px;">
+                                <input id="dawimg-width-slider-${sk}" type="range" min="0" max="3" step="0.01" value="${s.width}" class="daw-fader-input eq8-fader-thumb"
+                                    oninput="window.dawImagerSetField('${key}','width', this.value)">
+                            </div>
+                            <input id="dawimg-width-input-${sk}" type="text" value="${s.width.toFixed(2)}" onchange="window.dawImagerSetFieldFromText('${key}','width', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                         </div>
                     </div>
 
-                    <!-- BOX 2 — Frequency Response (graph), plus the remaining EQ/damping
-                         fields below it (Rev Shelf, ER Absorb, Hi Freq, Reverb Damping) —
-                         this is what gives Box 2 enough height to line up with Box 4. -->
-                    <div class="rounded-lg p-2.5" style="background:rgba(0,0,0,0.35); border:1px solid rgba(47,208,255,0.25);">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Frequency Response</span>
+                    <div class="rounded-md px-2 py-2 bg-black/40" style="border:1px solid rgba(47,208,255,0.25);">
+                        <div class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center mb-1.5">Input Mode</div>
+                        <div class="flex rounded overflow-hidden border border-[rgba(47,208,255,0.4)]" id="dawimg-inputmode-${sk}">
+                            <button onclick="window.dawImagerToggleMode('${key}','inputMode','LR')" class="flex-1 text-[8px] font-black py-1 transition-colors ${s.inputMode === 'LR' ? 'bg-[#2fd0ff] text-black' : 'text-gray-500 hover:text-[#2fd0ff]'}">L-R</button>
+                            <button onclick="window.dawImagerToggleMode('${key}','inputMode','MS')" class="flex-1 text-[8px] font-black py-1 transition-colors ${s.inputMode === 'MS' ? 'bg-[#2fd0ff] text-black' : 'text-gray-500 hover:text-[#2fd0ff]'}">M-S</button>
                         </div>
-                        <div class="rounded relative overflow-hidden" style="height:90px; background:rgba(47,208,255,0.06);">
-                            <svg viewBox="0 0 300 90" preserveAspectRatio="none" class="absolute inset-0 w-full h-full">
-                                <path d="M0,28 C40,26 70,24 100,26 C140,29 170,40 200,52 C230,62 260,68 300,70 L300,90 L0,90 Z" fill="rgba(47,208,255,0.20)"/>
-                                <path d="M0,28 C40,26 70,24 100,26 C140,29 170,40 200,52 C230,62 260,68 300,70" fill="none" stroke="#2fd0ff" stroke-width="1.4"/>
-                                <path d="M0,20 C50,19 90,22 120,30 C160,42 200,55 240,60 C260,62 280,63 300,63" fill="none" stroke="#facc15" stroke-width="1.2" opacity="0.85"/>
-                            </svg>
-                        </div>
-                        <div class="flex justify-between mt-1 px-1">
-                            <span class="text-[6px] text-gray-600 font-bold">62</span><span class="text-[6px] text-gray-600 font-bold">250</span><span class="text-[6px] text-gray-600 font-bold">1k</span><span class="text-[6px] text-gray-600 font-bold">4k</span><span class="text-[6px] text-gray-600 font-bold">16k</span>
-                        </div>
-
-                        <div class="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
-                            <div class="flex flex-col items-center gap-1" style="width:46px;">
-                                <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Rev Shelf</span>
-                                <input id="dawrev-box-revShelf-${sk}" type="text" value="${s.revShelf.toFixed(1)}" onchange="window.dawReverbSetFieldFromText('${key}','revShelf', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
-                            </div>
-                            <div class="flex flex-col items-center gap-1" style="width:46px;">
-                                <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">ER Absorb</span>
-                                <input id="dawrev-box-erAbsorb-${sk}" type="text" value="${s.erAbsorb.toFixed(1)}" onchange="window.dawReverbSetFieldFromText('${key}','erAbsorb', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
-                            </div>
-                            <div class="flex flex-col items-center gap-1" style="width:46px;">
-                                <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Hi Freq</span>
-                                <input id="dawrev-box-hiFreq-${sk}" type="text" value="${s.hiFreq}" onchange="window.dawReverbSetFieldFromText('${key}','hiFreq', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
-                            <div class="flex items-center gap-1.5 flex-shrink-0">
-                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0">Reverb Damping</span>
-                                <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0">Low</span>
-                                ${dawReverbParamBox('', s.dampLowFreq, 'dampLowFreq', key, sk, 44)}
-                                ${dawReverbParamBox('', s.dampLowRatio.toFixed(2) + 'x', 'dampLowRatio', key, sk, 44)}
-                            </div>
-                            <div class="flex items-center gap-1.5 flex-shrink-0">
-                                <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0">High</span>
-                                ${dawReverbParamBox('', s.dampHighRatio.toFixed(2) + 'x', 'dampHighRatio', key, sk, 44)}
-                                ${dawReverbParamBox('', s.dampHighFreq, 'dampHighFreq', key, sk, 44)}
-                            </div>
+                        <div class="flex items-center justify-center gap-1.5 mt-2" id="dawimg-phase-${sk}">
+                            <button onclick="window.dawImagerTogglePhase('${key}','invL')" title="Invert L phase" class="w-6 h-6 rounded text-[9px] font-black border transition-colors ${s.invL ? 'bg-[#2fd0ff] text-black border-[#2fd0ff]' : 'text-gray-400 border-[rgba(47,208,255,0.35)] hover:text-[#2fd0ff]'}">+</button>
+                            <button onclick="window.dawImagerTogglePhase('${key}','swap')" title="Swap L/R" class="w-8 h-6 rounded text-[9px] font-black border transition-colors ${s.swap ? 'bg-[#2fd0ff] text-black border-[#2fd0ff]' : 'text-gray-400 border-[rgba(47,208,255,0.35)] hover:text-[#2fd0ff]'}">&#8596;</button>
+                            <button onclick="window.dawImagerTogglePhase('${key}','invR')" title="Invert R phase" class="w-6 h-6 rounded text-[9px] font-black border transition-colors ${s.invR ? 'bg-[#2fd0ff] text-black border-[#2fd0ff]' : 'text-gray-400 border-[rgba(47,208,255,0.35)] hover:text-[#2fd0ff]'}">+</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- RIGHT COLUMN: the two fader boxes, stacked, kept intentionally
-                     narrow (~150px) since the modal only has ~460px of real content
-                     width total once the chain sidebar and padding are subtracted. -->
-                <div class="flex flex-col gap-1.5 flex-shrink-0">
+                <!-- MIDDLE: Goniometer -->
+                <div class="flex-1 min-w-0 rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
+                    <svg id="dawimg-goniometer-${sk}" viewBox="0 0 ${DAW_IMG_GRAPH_W} ${DAW_IMG_GRAPH_H}" style="width:100%; height:190px; display:block;">${dawImagerGoniometerInner(key, s, 0)}</svg>
+                </div>
 
-                    <!-- BOX 3 — Gain (1 fader) + Output (2 LED meters) -->
-                    <div class="flex items-end gap-1.5 rounded-lg p-1.5" style="background:rgba(0,0,0,0.4); border:1px solid rgba(47,208,255,0.2);">
-                        <div class="flex flex-col items-center gap-1 flex-shrink-0">
-                            <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest">Gain</span>
-                            <div class="daw-fader-track" style="width:12px; height:130px;"><input id="dawrev-fader-gain-${sk}" type="range" min="0" max="100" value="${s.gain}" class="daw-fader-input" style="width:130px;" oninput="window.dawReverbSetFader('${key}','gain', this.value)"></div>
-                            <span class="daw-mixer-value-field" id="dawrev-val-gain-${sk}" style="font-size:6.5px; padding:1px 0; width:26px;">${s.gain.toFixed(1)}</span>
+                <!-- RIGHT: Output meters + Meter Mode -->
+                <div class="flex flex-col gap-2 flex-shrink-0 items-center">
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Output</span>
+                    <div class="flex-1 min-h-0 rounded-lg flex items-stretch justify-center gap-3 py-2 px-2" style="background:#000; border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
+                        <div class="flex flex-col items-center gap-1.5">
+                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">L</span>
+                            <div class="daw-led-meter-single" id="dawimg-led-L-${sk}" style="height:100px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                            <span id="dawimg-peak-L-${sk}" class="text-[7px] neon-blue-text font-bold">-Inf</span>
                         </div>
-                        <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest self-center -mb-8">Output</span>
-                        ${dawReverbOutputMeter('', 'outL', sk)}
-                        ${dawReverbOutputMeter('', 'outR', sk)}
+                        <div class="flex flex-col items-center gap-1.5">
+                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">R</span>
+                            <div class="daw-led-meter-single" id="dawimg-led-R-${sk}" style="height:100px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                            <span id="dawimg-peak-R-${sk}" class="text-[7px] neon-blue-text font-bold">-Inf</span>
+                        </div>
                     </div>
-
-                    <!-- BOX 4 — Direct / Early Ref / Reverb sends (3 faders, mixer-style) -->
-                    <div class="flex items-end gap-1.5 rounded-lg p-1.5" style="background:rgba(0,0,0,0.4); border:1px solid rgba(47,208,255,0.2);">
-                        ${dawReverbFaderColumn('Direct', 'direct', key, sk, s, '#f87171')}
-                        ${dawReverbFaderColumn('Early Ref', 'earlyRef', key, sk, s, '#facc15')}
-                        ${dawReverbFaderColumn('Reverb', 'reverb', key, sk, s, '#60a5fa')}
+                    <div class="rounded-md px-1.5 py-1.5 bg-black/40 w-full" style="border:1px solid rgba(47,208,255,0.25);">
+                        <div class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center mb-1">Meter Mode</div>
+                        <div class="flex rounded overflow-hidden border border-[rgba(47,208,255,0.4)]" id="dawimg-metermode-${sk}">
+                            <button onclick="window.dawImagerToggleMode('${key}','meterMode','LR')" class="flex-1 text-[7px] font-black py-1 transition-colors ${s.meterMode === 'LR' ? 'bg-[#2fd0ff] text-black' : 'text-gray-500 hover:text-[#2fd0ff]'}">L-R</button>
+                            <button onclick="window.dawImagerToggleMode('${key}','meterMode','MS')" class="flex-1 text-[7px] font-black py-1 transition-colors ${s.meterMode === 'MS' ? 'bg-[#2fd0ff] text-black' : 'text-gray-500 hover:text-[#2fd0ff]'}">M-S</button>
+                        </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="flex items-center gap-2 mt-3">
+                <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest w-16 flex-shrink-0">Asymmetry</span>
+                <input id="dawimg-asym-slider-${sk}" type="range" min="-90" max="90" step="1" value="${s.asymmetry}" class="eq8-hslider"
+                    oninput="window.dawImagerSetField('${key}','asymmetry', this.value)">
+                <input id="dawimg-asym-input-${sk}" type="text" value="${Math.round(s.asymmetry)}" onchange="window.dawImagerSetFieldFromText('${key}','asymmetry', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold flex-shrink-0 outline-none">
+            </div>
+            <div class="flex items-center gap-2 mt-2.5">
+                <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest w-16 flex-shrink-0">Rotation</span>
+                <input id="dawimg-rot-slider-${sk}" type="range" min="-45" max="45" step="0.1" value="${s.rotation}" class="eq8-hslider"
+                    oninput="window.dawImagerSetField('${key}','rotation', this.value)">
+                <input id="dawimg-rot-input-${sk}" type="text" value="${s.rotation.toFixed(1)}" onchange="window.dawImagerSetFieldFromText('${key}','rotation', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold flex-shrink-0 outline-none">
             </div>`;
         };
 
-        window.dawReverbSetField = function(key, field, value) {
-            const s = dawReverbGetState(key);
-            const numericFields = ['dimension','roomSize','distance','balance','decayTime','preDelay','density','erLowcutFreq','revShelf','erAbsorb','hiFreq','dampLowFreq','dampLowRatio','dampHighRatio','dampHighFreq'];
-            s[field] = numericFields.includes(field) ? parseFloat(value) : !!value;
-            delete window.dawFxActivePresetLabel[key];
-            const sk = eq8SafeKey(key);
-            const badge = document.getElementById(`dawrev-badge-${sk}`);
-            if (badge) badge.innerText = 'factory preset';
-            window.renderDawFxPicker();
-        };
-
-        window.dawReverbSetFieldFromText = function(key, field, text) {
-            const suffixed = ['dampLowRatio', 'dampHighRatio'];
-            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
-            if (isNaN(num)) return;
-            window.dawReverbSetField(key, field, num);
-        };
-
-        window.dawReverbSetFader = function(key, field, value) {
-            const s = dawReverbGetState(key);
+        window.dawImagerSetField = function(key, field, value) {
+            const s = dawImagerGetState(key);
             s[field] = parseFloat(value);
             delete window.dawFxActivePresetLabel[key];
             const sk = eq8SafeKey(key);
-            const badge = document.getElementById(`dawrev-badge-${sk}`);
+            const badge = document.getElementById(`dawimg-badge-${sk}`);
             if (badge) badge.innerText = 'factory preset';
-            const valEl = document.getElementById(`dawrev-val-${field}-${sk}`);
-            if (valEl) valEl.innerText = s[field].toFixed(1);
+            if (field === 'gain') { const inp = document.getElementById(`dawimg-gain-input-${sk}`); if (inp) inp.value = dawImgFmtGain(s.gain); }
+            else if (field === 'width') { const inp = document.getElementById(`dawimg-width-input-${sk}`); if (inp) inp.value = s.width.toFixed(2); }
+            else if (field === 'asymmetry') { const inp = document.getElementById(`dawimg-asym-input-${sk}`); if (inp) inp.value = Math.round(s.asymmetry); }
+            else if (field === 'rotation') { const inp = document.getElementById(`dawimg-rot-input-${sk}`); if (inp) inp.value = s.rotation.toFixed(1); }
         };
 
-        window.dawReverbTogglePresetMenu = function(key) {
+        window.dawImagerSetFieldFromText = function(key, field, text) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            window.dawImagerSetField(key, field, num);
             const sk = eq8SafeKey(key);
-            const el = document.getElementById(`dawrev-preset-menu-${sk}`);
+            const s = dawImagerGetState(key);
+            if (field === 'gain') { const sl = document.getElementById(`dawimg-gain-slider-${sk}`); if (sl) sl.value = s.gain; }
+            if (field === 'width') { const sl = document.getElementById(`dawimg-width-slider-${sk}`); if (sl) sl.value = s.width; }
+            if (field === 'asymmetry') { const sl = document.getElementById(`dawimg-asym-slider-${sk}`); if (sl) sl.value = s.asymmetry; }
+            if (field === 'rotation') { const sl = document.getElementById(`dawimg-rot-slider-${sk}`); if (sl) sl.value = s.rotation; }
+        };
+
+        window.dawImagerToggleMode = function(key, whichField, value) {
+            const s = dawImagerGetState(key);
+            s[whichField] = value;
+            const sk = eq8SafeKey(key);
+            const wrap = document.getElementById(whichField === 'inputMode' ? `dawimg-inputmode-${sk}` : `dawimg-metermode-${sk}`);
+            if (wrap) {
+                const btns = wrap.querySelectorAll('button');
+                btns.forEach(b => {
+                    const isOn = b.getAttribute('onclick').includes(`'${value}'`);
+                    b.classList.toggle('bg-[#2fd0ff]', isOn);
+                    b.classList.toggle('text-black', isOn);
+                    b.classList.toggle('text-gray-500', !isOn);
+                });
+            }
+        };
+
+        window.dawImagerTogglePhase = function(key, which) {
+            const s = dawImagerGetState(key);
+            s[which] = !s[which];
+            const sk = eq8SafeKey(key);
+            const wrap = document.getElementById(`dawimg-phase-${sk}`);
+            if (wrap) {
+                const btn = which === 'invL' ? wrap.children[0] : which === 'swap' ? wrap.children[1] : wrap.children[2];
+                if (btn) {
+                    btn.classList.toggle('bg-[#2fd0ff]', s[which]);
+                    btn.classList.toggle('text-black', s[which]);
+                    btn.classList.toggle('border-[#2fd0ff]', s[which]);
+                    btn.classList.toggle('text-gray-400', !s[which]);
+                }
+            }
+        };
+
+        window.dawImagerTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawimg-preset-menu-${sk}`);
             if (!el) return;
             const isHidden = el.classList.contains('hidden-section');
-            if (isHidden) { window.dawReverbRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            if (isHidden) { window.dawImagerRenderPresetMenu(key); el.classList.remove('hidden-section'); }
             else el.classList.add('hidden-section');
         };
 
-        window.dawReverbRenderPresetMenu = function(key) {
+        window.dawImagerRenderPresetMenu = function(key) {
             const sk = eq8SafeKey(key);
-            const el = document.getElementById(`dawrev-preset-menu-${sk}`);
+            const el = document.getElementById(`dawimg-preset-menu-${sk}`);
             if (!el) return;
-            const userPresets = (window.dawFxUserPresets['aether-reverb'] || []);
+            const userPresets = (window.dawFxUserPresets['stereo-imager'] || []);
             const activeLabel = window.dawFxActivePresetLabel[key];
             el.innerHTML = `
             <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
-                <button onclick="window.dawReverbApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
-                <button onclick="window.dawReverbApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                <button onclick="window.dawImagerApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                <button onclick="window.dawImagerApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
                     <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
                 </button>
                 ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
                 ${userPresets.map((p, i) => `
-                <button onclick="window.dawReverbApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                <button onclick="window.dawImagerApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
                     <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
                 </button>`).join('')}
             </div>`;
         };
 
-        window.dawReverbApplyPreset = function(key, presetIndex) {
+        window.dawImagerApplyPreset = function(key, presetIndex) {
             if (presetIndex === null || presetIndex === undefined) {
-                window.dawReverbState[key] = dawReverbDefaultState();
+                window.dawImagerState[key] = dawImagerDefaultState();
                 delete window.dawFxActivePresetLabel[key];
             } else {
-                const preset = (window.dawFxUserPresets['aether-reverb'] || [])[presetIndex];
+                const preset = (window.dawFxUserPresets['stereo-imager'] || [])[presetIndex];
                 if (preset) {
-                    window.dawReverbState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawImagerState[key] = JSON.parse(JSON.stringify(preset.data));
                     window.dawFxActivePresetLabel[key] = preset.name;
                 }
             }
             window.renderDawFxPicker();
         };
 
-        // Live meter animation for the Output LED meters and the Direct/Early
-        // Ref/Reverb send indicator dots, mirroring the console's own
-        // dawStartMeterLoop pattern — self-terminates once the panel closes.
-        window.dawReverbMeterLoopRunning = false;
-        window.dawReverbStartMeterLoop = function(key) {
-            if (window.dawReverbMeterLoopRunning) return;
-            window.dawReverbMeterLoopRunning = true;
+        // Live goniometer animation — driven by window.requestAnimationFrame.
+        // Stops itself automatically once the plugin panel is no longer in
+        // the DOM (e.g. the picker was closed or another plugin selected).
+        window.dawImagerRafIds = window.dawImagerRafIds || {};
+        window.dawImagerAnimate = function(key) {
             const sk = eq8SafeKey(key);
-            const peaks = {};
-            const tick = () => {
-                const modal = document.getElementById('plugin-picker-modal');
-                const stillOpen = modal && !modal.classList.contains('hidden-section') && document.getElementById(`dawrev-led-outL-${sk}`);
-                if (!stillOpen) { window.dawReverbMeterLoopRunning = false; return; }
-
-                // Output L/R — continuous LED bars, driven off the Gain fader.
-                const gainFader = document.getElementById(`dawrev-fader-gain-${sk}`);
-                const gainVal = gainFader ? Number(gainFader.value) : 0;
-                ['outL', 'outR'].forEach(field => {
-                    const led = document.getElementById(`dawrev-led-${field}-${sk}`);
-                    const valEl = document.getElementById(`dawrev-val-${field}-${sk}`);
-                    if (!led) return;
-                    const target = gainVal * (0.7 + Math.random() * 0.28);
-                    const prev = peaks[field] || 0;
-                    const next = prev + (target - prev) * 0.25;
-                    peaks[field] = next;
-                    window.dawUpdateLed(`dawrev-led-${field}-${sk}`, Math.min(100, next));
-                    if (valEl) valEl.innerText = next > 0.5 ? (Math.round(20 * Math.log10(next / 100) * 10) / 10) : '-Inf';
-                });
-
-                // Direct / Early Ref / Reverb — small peak indicator dots that flicker with signal.
-                ['direct', 'earlyRef', 'reverb'].forEach(field => {
-                    const fader = document.getElementById(`dawrev-fader-${field}-${sk}`);
-                    const dot = document.getElementById(`dawrev-dot-${field}-${sk}`);
-                    if (!fader || !dot) return;
-                    const base = Number(fader.value);
-                    const flicker = base > 0 ? (0.35 + Math.random() * 0.65 * (base / 100)) : 0.15;
-                    dot.style.opacity = flicker.toFixed(2);
-                });
-
-                // Time Response bars — quick decorative animation of the impulse "sparkline".
-                const respEl = document.getElementById(`dawrev-timeresp-${sk}`);
-                if (respEl && respEl.childElementCount === 0) {
-                    const bars = Array.from({ length: 28 }, () => {
-                        const h = Math.max(6, Math.random() * 60);
-                        const color = Math.random() > 0.9 ? '#facc15' : (Math.random() > 0.85 ? '#2fd0ff' : 'rgba(47,208,255,0.35)');
-                        return `<div style="width:3px; height:${h}%; background:${color}; border-radius:1px; flex-shrink:0;"></div>`;
-                    }).join('');
-                    respEl.innerHTML = bars;
-                }
-                window.dawReverbRafId = window.requestAnimationFrame(tick);
+            if (window.dawImagerRafIds[sk]) return; // loop already running for this instance
+            const step = (t) => {
+                const svg = document.getElementById(`dawimg-goniometer-${sk}`);
+                if (!svg) { delete window.dawImagerRafIds[sk]; return; }
+                const s = dawImagerGetState(key);
+                const jitter = Math.sin(t / 180) * 5 + Math.sin(t / 71) * 2.5;
+                svg.innerHTML = dawImagerGoniometerInner(key, s, jitter);
+                window.dawImagerRafIds[sk] = window.requestAnimationFrame(step);
             };
-            tick();
+            window.dawImagerRafIds[sk] = window.requestAnimationFrame(step);
         };
 
         // ============================================================
@@ -2545,7 +2562,7 @@
             if (!sel) return;
             if (sel.plugin.id === 'surgical-eq8') window.dawEqTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'master-limiter') window.dawLimiterTogglePresetMenu(sel.key);
-            else if (sel.plugin.id === 'aether-reverb') window.dawReverbTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'stereo-imager') window.dawImagerTogglePresetMenu(sel.key);
             else window.dawFxTogglePresetMenu(sel.key);
         };
 
@@ -2562,8 +2579,8 @@
                 data = { bands: JSON.parse(JSON.stringify(st.bands)), outputGain: st.outputGain };
             } else if (sel.plugin.id === 'master-limiter') {
                 data = JSON.parse(JSON.stringify(dawLimiterGetState(sel.key)));
-            } else if (sel.plugin.id === 'aether-reverb') {
-                data = JSON.parse(JSON.stringify(dawReverbGetState(sel.key)));
+            } else if (sel.plugin.id === 'stereo-imager') {
+                data = JSON.parse(JSON.stringify(dawImagerGetState(sel.key)));
             } else {
                 const choice = window.dawFxPresetChoice[sel.key];
                 data = { values: choice ? choice.values : sel.plugin.values };
@@ -2572,7 +2589,7 @@
             window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
             window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
             window.dawFxActivePresetLabel[sel.key] = label;
-            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'aether-reverb') {
+            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager') {
                 window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
             }
             window.renderDawFxPicker();
@@ -3436,6 +3453,41 @@
                 window.dawUpdateLed('daw-led-master', Math.min(100, masterNext));
                 const masterPeakEl = document.getElementById('daw-mixer-peak-master');
                 if (masterPeakEl) masterPeakEl.innerText = masterNext > 0.5 ? (Math.round(20 * Math.log10(masterNext / 100) * 10) / 10) : '-Inf';
+
+                // If a Master Limiter plugin panel is currently open, drive its L/R
+                // stereo meters off the same level data as that track's channel meter.
+                const pCtx = window.activePluginPickerContext;
+                if (pCtx && pCtx.type === 'daw' && pCtx.selectedIndex !== null) {
+                    const pFxList = dawFxListFor(pCtx.trackId) || [];
+                    const pName = pFxList[pCtx.selectedIndex];
+                    const pPlugin = pName && window.SOVEREIGN_12_PLUGINS.find(p => p.name === pName);
+                    if (pPlugin && pPlugin.id === 'master-limiter') {
+                        const psk = eq8SafeKey(`${pCtx.trackId}::${pCtx.selectedIndex}`);
+                        const base = window.dawMeterPeaks[pCtx.trackId === 'master' ? 'master' : ('t-' + pCtx.trackId)] || 0;
+                        const lVal = base;
+                        const rVal = Math.max(0, Math.min(100, base * (0.88 + Math.random() * 0.18)));
+                        window.dawUpdateLed('dawlim-led-L-' + psk, lVal);
+                        window.dawUpdateLed('dawlim-led-R-' + psk, rVal);
+                        const lText = document.getElementById('dawlim-peak-L-' + psk);
+                        const rText = document.getElementById('dawlim-peak-R-' + psk);
+                        if (lText) lText.innerText = lVal > 0.5 ? (Math.round(20 * Math.log10(lVal / 100) * 10) / 10) : '-Inf';
+                        if (rText) rText.innerText = rVal > 0.5 ? (Math.round(20 * Math.log10(rVal / 100) * 10) / 10) : '-Inf';
+                    }
+                    // Same pattern for an open Stereo Imager panel — drive its L/R
+                    // output meters off the selected track's channel level.
+                    if (pPlugin && pPlugin.id === 'stereo-imager') {
+                        const isk = eq8SafeKey(`${pCtx.trackId}::${pCtx.selectedIndex}`);
+                        const base = window.dawMeterPeaks[pCtx.trackId === 'master' ? 'master' : ('t-' + pCtx.trackId)] || 0;
+                        const lVal = base;
+                        const rVal = Math.max(0, Math.min(100, base * (0.88 + Math.random() * 0.18)));
+                        window.dawUpdateLed('dawimg-led-L-' + isk, lVal);
+                        window.dawUpdateLed('dawimg-led-R-' + isk, rVal);
+                        const lText = document.getElementById('dawimg-peak-L-' + isk);
+                        const rText = document.getElementById('dawimg-peak-R-' + isk);
+                        if (lText) lText.innerText = lVal > 0.5 ? (Math.round(20 * Math.log10(lVal / 100) * 10) / 10) : '-Inf';
+                        if (rText) rText.innerText = rVal > 0.5 ? (Math.round(20 * Math.log10(rVal / 100) * 10) / 10) : '-Inf';
+                    }
+                }
 
                 requestAnimationFrame(tick);
             };
