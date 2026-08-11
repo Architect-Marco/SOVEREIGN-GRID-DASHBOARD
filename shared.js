@@ -3619,16 +3619,12 @@
                 return `<line x1="0" y1="${y}" x2="${DAW_MB_GRAPH_W}" y2="${y}" stroke="${g === 0 ? 'rgba(47,208,255,0.25)' : 'rgba(47,208,255,0.08)'}" stroke-width="1"/>
                         <text x="4" y="${y - 2}" font-size="8" fill="#4a5568">${g}</text>`;
             }).join('');
-            const xoverLines = [s.xover.low, s.xover.mid, s.xover.high].map(f => {
-                const x = dawMbFreqToX(f).toFixed(1);
-                return `<line x1="${x}" y1="0" x2="${x}" y2="${DAW_MB_GRAPH_H}" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="2,3"/>`;
-            }).join('');
             const dots = pts.map((p, i) => `
                 <circle class="dawmb-node" data-band="${i}" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="6" fill="${DAW_MB_COLORS[i]}" stroke="#000" stroke-width="1.5" style="cursor:ns-resize;"/>`).join('');
 
             return `
                 <rect x="0" y="0" width="${DAW_MB_GRAPH_W}" height="${DAW_MB_GRAPH_H}" fill="#000"/>
-                ${gridLines}${gainLines}${xoverLines}
+                ${gridLines}${gainLines}
                 <polygon points="${bandTop} ${bandBot}" fill="rgba(167,139,250,0.28)"/>
                 <polyline points="${curveStr}" fill="none" stroke="#ff9a3d" stroke-width="2"/>
                 ${dots}`;
@@ -3747,24 +3743,24 @@
             const bandCol = (i) => {
                 const b = s.bands[i];
                 return `
-                <div class="rounded-lg p-1.5 flex flex-col items-center gap-1" style="border:1px solid ${DAW_MB_COLORS[i]}55; background:rgba(0,0,0,0.3); width:100px;">
+                <div class="rounded-lg p-2 flex flex-col items-center gap-1" style="border:1px solid ${DAW_MB_COLORS[i]}55; background:rgba(0,0,0,0.3); width:100px;">
                     <div class="flex items-center gap-1 w-full">
                         <button onclick="window.dawMbToggleBand('${key}',${i},'solo')" class="flex-1 text-[7px] font-black py-0.5 rounded border transition-colors ${b.solo ? 'bg-[#fde047] text-black border-[#fde047]' : 'text-gray-500 border-[rgba(47,208,255,0.3)] hover:text-[#2fd0ff]'}">S</button>
                         <button onclick="window.dawMbToggleBand('${key}',${i},'bypass')" class="flex-1 text-[7px] font-black py-0.5 rounded border transition-colors ${b.bypass ? 'bg-red-500 text-black border-red-500' : 'text-gray-500 border-[rgba(47,208,255,0.3)] hover:text-[#2fd0ff]'}">Byp</button>
                     </div>
                     <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest">Thresh</span>
                     <input id="dawmb-thresh-${i}-${sk}" type="text" value="${b.thresh.toFixed(1)}" onchange="window.dawMbSetBandField('${key}',${i},'thresh', this.value)" class="w-14 bg-black/50 border rounded px-1 py-0.5 text-[8px] text-center font-bold outline-none" style="border-color:${DAW_MB_COLORS[i]}77; color:${DAW_MB_COLORS[i]};">
-                    <div class="flex items-end gap-1 mt-0.5">
+                    <div class="flex items-end gap-1 mt-0.5 mb-2">
                         <div class="daw-fader-track" style="height:90px;">
                             <input id="dawmb-threshslider-${i}-${sk}" type="range" min="-60" max="0" step="0.1" value="${b.thresh}" class="daw-fader-input eq8-fader-thumb"
                                 oninput="window.dawMbSetBandField('${key}',${i},'thresh', this.value)">
                         </div>
                     </div>
-                    <div class="w-full space-y-1 mt-1.5">
-                        <input id="dawmb-gain-${i}-${sk}" type="text" value="${b.gain.toFixed(1)}" onchange="window.dawMbSetBandField('${key}',${i},'gain', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[8px] text-center neon-blue-text font-bold outline-none">
-                        <input id="dawmb-range-${i}-${sk}" type="text" value="${b.range.toFixed(1)}" onchange="window.dawMbSetBandField('${key}',${i},'range', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[8px] text-center neon-blue-text font-bold outline-none">
-                        <input id="dawmb-attack-${i}-${sk}" type="text" value="${b.attack.toFixed(2)}" onchange="window.dawMbSetBandField('${key}',${i},'attack', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[8px] text-center neon-blue-text font-bold outline-none">
-                        <input id="dawmb-release-${i}-${sk}" type="text" value="${b.release.toFixed(2)}" onchange="window.dawMbSetBandField('${key}',${i},'release', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[8px] text-center neon-blue-text font-bold outline-none">
+                    <div class="w-full space-y-1.5 mt-1">
+                        <input id="dawmb-gain-${i}-${sk}" type="text" value="${b.gain.toFixed(1)}" onchange="window.dawMbSetBandField('${key}',${i},'gain', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
+                        <input id="dawmb-range-${i}-${sk}" type="text" value="${b.range.toFixed(1)}" onchange="window.dawMbSetBandField('${key}',${i},'range', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
+                        <input id="dawmb-attack-${i}-${sk}" type="text" value="${b.attack.toFixed(2)}" onchange="window.dawMbSetBandField('${key}',${i},'attack', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
+                        <input id="dawmb-release-${i}-${sk}" type="text" value="${b.release.toFixed(2)}" onchange="window.dawMbSetBandField('${key}',${i},'release', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
                     </div>
                 </div>`;
             };
@@ -3803,7 +3799,7 @@
                          onmousedown="window.dawMbNodeDrag(event,'${key}')" ontouchstart="window.dawMbNodeDrag(event,'${key}')">${dawMbGraphInner(key, s, 0)}</svg>
                 </div>
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:70px;">
-                    <div class="daw-fader-track" style="height:130px;">
+                    <div class="daw-fader-track" style="height:170px;">
                         <input id="dawmb-output-slider-${sk}" type="range" min="-18" max="18" step="0.1" value="${s.output}" class="daw-fader-input eq8-fader-thumb"
                             oninput="window.dawMbSetOutput('${key}', this.value)">
                     </div>
@@ -3838,7 +3834,7 @@
                 <div class="flex gap-2 flex-1">
                     ${[0, 1, 2, 3].map(bandCol).join('')}
                 </div>
-                <div class="rounded-lg p-2 flex flex-col gap-1.5 flex-shrink-0" style="width:110px; border:1px solid rgba(47,208,255,0.25); background:rgba(0,0,0,0.3);">
+                <div class="rounded-lg p-2.5 flex flex-col gap-2 flex-shrink-0" style="width:110px; border:1px solid rgba(47,208,255,0.25); background:rgba(0,0,0,0.3);">
                     <span class="text-[9px] neon-blue-text font-black italic uppercase tracking-widest text-center border-b border-[rgba(47,208,255,0.2)] pb-1">Master</span>
                     ${masterStepper('thresh', 'Threshold')}
                     ${masterStepper('gain', 'Gain')}
