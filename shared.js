@@ -2206,24 +2206,24 @@
         }
 
         function dawReverbFaderColumn(label, field, key, sk, s, dotColor) {
-            const dot = dotColor ? `<div id="dawrev-dot-${field}-${sk}" class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${dotColor}; opacity:0.35; box-shadow:0 0 4px ${dotColor};"></div>` : '';
+            const dot = dotColor ? `<div id="dawrev-dot-${field}-${sk}" class="w-2 h-2 rounded-full flex-shrink-0" style="background:${dotColor}; opacity:0.35; box-shadow:0 0 4px ${dotColor};"></div>` : '';
             return `
-                <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
+                <div class="flex flex-col items-center gap-1 flex-shrink-0">
                     <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
                     ${dot}
                     <div class="flex items-end gap-1">
-                        <div class="daw-fader-track" style="height:100px;"><input id="dawrev-fader-${field}-${sk}" type="range" min="0" max="100" value="${s[field]}" class="daw-fader-input" style="width:100px;" oninput="window.dawReverbSetFader('${key}','${field}', this.value)"></div>
+                        <div class="daw-fader-track" style="height:80px;"><input id="dawrev-fader-${field}-${sk}" type="range" min="0" max="100" value="${s[field]}" class="daw-fader-input" style="width:80px;" oninput="window.dawReverbSetFader('${key}','${field}', this.value)"></div>
                     </div>
-                    <span class="daw-mixer-value-field" id="dawrev-val-${field}-${sk}" style="font-size:7px; padding:1px 0; width:34px;">${s[field].toFixed(1)}</span>
+                    <span class="daw-mixer-value-field" id="dawrev-val-${field}-${sk}" style="font-size:7px; padding:1px 0; width:32px;">${s[field].toFixed(1)}</span>
                 </div>`;
         }
 
         function dawReverbOutputMeter(label, field, sk) {
             return `
-                <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
+                <div class="flex flex-col items-center gap-1 flex-shrink-0">
                     <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
-                    <div class="daw-led-meter-single" id="dawrev-led-${field}-${sk}" style="height:100px;"><div class="daw-led-mask" style="height:100%;"></div></div>
-                    <span class="daw-mixer-value-field" id="dawrev-val-${field}-${sk}" style="font-size:7px; padding:1px 0; width:34px;">-Inf</span>
+                    <div class="daw-led-meter-single" id="dawrev-led-${field}-${sk}" style="height:80px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                    <span class="daw-mixer-value-field" id="dawrev-val-${field}-${sk}" style="font-size:7px; padding:1px 0; width:32px;">-Inf</span>
                 </div>`;
         }
 
@@ -2248,7 +2248,7 @@
 
             <div class="flex gap-3 mt-4 flex-wrap items-start">
                 <!-- LEFT COLUMN: the two graph boxes, stacked -->
-                <div class="flex-1 min-w-[280px] flex flex-col gap-3">
+                <div class="flex-1 min-w-[340px] flex flex-col gap-3">
 
                     <!-- BOX 1 — Time Response (graph + buttons) -->
                     <div class="rounded-lg p-2.5" style="background:rgba(0,0,0,0.35); border:1px solid rgba(47,208,255,0.25);">
@@ -2297,10 +2297,14 @@
                         </div>
                     </div>
 
-                    <!-- BOX 2 — Frequency Response (graph) -->
+                    <!-- BOX 2 — Frequency Response (graph). Header follows the same
+                         structure as Box 1: title row wrapped in flex/justify-between,
+                         sitting directly above the graph. -->
                     <div class="rounded-lg p-2.5" style="background:rgba(0,0,0,0.35); border:1px solid rgba(47,208,255,0.25);">
-                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Frequency Response</span>
-                        <div class="rounded relative overflow-hidden mt-2" style="height:90px; background:rgba(47,208,255,0.06);">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Frequency Response</span>
+                        </div>
+                        <div class="rounded relative overflow-hidden" style="height:90px; background:rgba(47,208,255,0.06);">
                             <svg viewBox="0 0 300 90" preserveAspectRatio="none" class="absolute inset-0 w-full h-full">
                                 <path d="M0,28 C40,26 70,24 100,26 C140,29 170,40 200,52 C230,62 260,68 300,70 L300,90 L0,90 Z" fill="rgba(47,208,255,0.20)"/>
                                 <path d="M0,28 C40,26 70,24 100,26 C140,29 170,40 200,52 C230,62 260,68 300,70" fill="none" stroke="#2fd0ff" stroke-width="1.4"/>
@@ -2314,14 +2318,14 @@
                 </div>
 
                 <!-- RIGHT COLUMN: the two fader boxes, stacked -->
-                <div class="flex flex-col gap-3 flex-shrink-0">
+                <div class="flex flex-col gap-2.5 flex-shrink-0">
 
                     <!-- BOX 3 — Gain (1 fader) + Output (2 LED meters) -->
-                    <div class="flex items-end gap-3 rounded-lg p-2.5" style="background:rgba(0,0,0,0.4); border:1px solid rgba(47,208,255,0.2);">
-                        <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
+                    <div class="flex items-end gap-2.5 rounded-lg p-2" style="background:rgba(0,0,0,0.4); border:1px solid rgba(47,208,255,0.2);">
+                        <div class="flex flex-col items-center gap-1 flex-shrink-0">
                             <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest">Gain</span>
-                            <div class="daw-fader-track" style="height:100px;"><input id="dawrev-fader-gain-${sk}" type="range" min="0" max="100" value="${s.gain}" class="daw-fader-input" style="width:100px;" oninput="window.dawReverbSetFader('${key}','gain', this.value)"></div>
-                            <span class="daw-mixer-value-field" id="dawrev-val-gain-${sk}" style="font-size:7px; padding:1px 0; width:34px;">${s.gain.toFixed(1)}</span>
+                            <div class="daw-fader-track" style="height:80px;"><input id="dawrev-fader-gain-${sk}" type="range" min="0" max="100" value="${s.gain}" class="daw-fader-input" style="width:80px;" oninput="window.dawReverbSetFader('${key}','gain', this.value)"></div>
+                            <span class="daw-mixer-value-field" id="dawrev-val-gain-${sk}" style="font-size:7px; padding:1px 0; width:32px;">${s.gain.toFixed(1)}</span>
                         </div>
                         <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest self-center -mb-8">Output</span>
                         ${dawReverbOutputMeter('', 'outL', sk)}
@@ -2329,7 +2333,7 @@
                     </div>
 
                     <!-- BOX 4 — Direct / Early Ref / Reverb sends (3 faders, mixer-style) -->
-                    <div class="flex items-end gap-3 rounded-lg p-2.5" style="background:rgba(0,0,0,0.4); border:1px solid rgba(47,208,255,0.2);">
+                    <div class="flex items-end gap-2.5 rounded-lg p-2" style="background:rgba(0,0,0,0.4); border:1px solid rgba(47,208,255,0.2);">
                         ${dawReverbFaderColumn('Direct', 'direct', key, sk, s, '#f87171')}
                         ${dawReverbFaderColumn('Early Ref', 'earlyRef', key, sk, s, '#facc15')}
                         ${dawReverbFaderColumn('Reverb', 'reverb', key, sk, s, '#60a5fa')}
