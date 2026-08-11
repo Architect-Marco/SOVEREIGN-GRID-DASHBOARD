@@ -28,18 +28,11 @@
             box-shadow: 0 0 6px rgba(47,208,255,0.7); cursor: ns-resize; }
         .eq8-node { cursor: grab; }
         .eq8-node:active { cursor: grabbing; }
-        /* Custom vertical gain fader (EQ-8 output gain) — replaces a native
-           vertical range input with a drag-driven div, for reliable behavior
-           across browsers, plus room for an adjacent number readout. */
-        .eq8-vfader-track { position: relative; width: 6px; height: 100%; border-radius: 3px;
-            background: rgba(47,208,255,0.15); cursor: ns-resize; flex-shrink: 0; }
-        .eq8-vfader-fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px;
-            background: linear-gradient(180deg, rgba(47,208,255,0.65), rgba(47,208,255,0.25)); pointer-events: none; }
-        .eq8-vfader-thumb { position: absolute; left: 50%; width: 18px; height: 12px; border-radius: 3px;
-            background: #0a0a0a; border: 2px solid #2fd0ff; box-shadow: 0 0 6px rgba(47,208,255,0.7);
-            transform: translate(-50%, 50%); pointer-events: none; }
-        .eq8-vfader-readout { flex-shrink: 0; font-size: 8px; font-weight: 700; color: #2fd0ff; text-align: center;
-            background: rgba(0,0,0,0.5); border: 1px solid rgba(47,208,255,0.4); border-radius: 4px; padding: 2px 4px; }
+        /* Override just for the EQ-8 / Master Limiter vertical faders — same
+           working slider as the DAW mixer's .daw-fader-input, but with a
+           black-and-neon thumb instead of the mixer's default light thumb. */
+        .eq8-fader-thumb::-webkit-slider-thumb { background: #0a0a0a !important; border: 2px solid #2fd0ff !important; box-shadow: 0 0 6px rgba(47,208,255,0.7) !important; }
+        .eq8-fader-thumb::-moz-range-thumb { background: #0a0a0a !important; border: 2px solid #2fd0ff !important; box-shadow: 0 0 6px rgba(47,208,255,0.7) !important; }
     </style>
 </head>
 </head>
@@ -214,32 +207,10 @@
                     <div class="flex overflow-x-auto slick-scroll" id="daw-mixer"></div>
                 </div>
 
-                <!-- DAW PLUGIN DETAIL — floating HUD overlay, centered over the DAW view -->
-                <div id="daw-plugin-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6" style="background:rgba(0,0,0,0.6);" onclick="if(event.target===this) window.closeDawPluginDetail()">
-                    <div class="w-full max-w-2xl overflow-hidden" style="background:rgba(0,0,0,0.9); border:1px solid #00f2ff; box-shadow: inset 0 0 3px rgba(0,242,255,0.65); border-radius:18px;" onclick="event.stopPropagation()">
-                        <div class="flex items-start justify-between px-4 pt-2.5 pb-2 border-b border-white/5">
-                            <div class="min-w-0 flex items-baseline gap-2.5">
-                                <h3 id="dpd-title" class="text-sm font-black uppercase tracking-tight truncate" style="color:#00f2ff; text-shadow:0 0 6px rgba(0,242,255,0.55);">Plugin</h3>
-                                <p id="dpd-subtitle" class="neon-blue-text uppercase tracking-widest truncate" style="font-size:7px; background:rgba(47,208,255,0.08); border:1px solid rgba(47,208,255,0.4); border-radius:4px; padding:2px 7px; text-shadow:0 0 5px rgba(47,208,255,0.6);">Category</p>
-                            </div>
-                            <button onclick="window.closeDawPluginDetail()" class="text-gray-500 hover:text-white flex-shrink-0 ml-3" title="Close">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
-                            </button>
-                        </div>
-                        <div class="flex items-end justify-between px-4 py-2">
-                            <div class="flex flex-row gap-2 flex-shrink-0">
-                                <button onclick="window.dpdResetDefaults()" style="background:#2b2b2b;" class="px-3 py-1 rounded-lg text-[9px] font-black uppercase text-gray-300 whitespace-nowrap">Reset</button>
-                                <button onclick="window.dpdRemoveFromChain()" style="background:rgba(139,0,0,0.15); border:1px solid rgba(239,68,68,0.5); color:#f87171;" class="px-3 py-1 rounded-lg text-[9px] font-black uppercase whitespace-nowrap">Remove from Chain</button>
-                            </div>
-                            <div id="dpd-knobs" class="flex items-start gap-6 overflow-x-auto"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- PLUGIN PICKER MODAL — "The Sovereign 12" FX window, used by the FX chip on each track/master to add or remove plugins -->
+                <!-- PLUGIN PICKER MODAL — "The Sovereign 12" FX window, used by the FX chip on each track/master to add or remove plugins, and now also the single entry point Device Rack cards open into -->
                 <div id="plugin-picker-backdrop" class="hidden-section fixed inset-0 z-50" style="background:rgba(0,0,0,0.75);" onclick="window.closePluginPicker()"></div>
-                <div id="plugin-picker-modal" class="hidden-section fixed inset-0 z-50 flex items-center justify-center p-6" style="pointer-events:none;">
-                    <div class="w-full max-w-3xl overflow-hidden flex flex-col" style="pointer-events:auto; max-height:85vh; background:#0a0a0a; border:1px solid rgba(47,208,255,0.55); box-shadow: 0 0 28px rgba(47,208,255,0.18), inset 0 0 4px rgba(47,208,255,0.35); border-radius:14px;" onclick="event.stopPropagation(); window.dawFxCloseTopMenu()">
+                <div id="plugin-picker-modal" class="hidden-section fixed inset-0 z-50 flex items-center justify-center p-4" style="pointer-events:none;">
+                    <div class="w-full max-w-[1180px] overflow-hidden flex flex-col" style="pointer-events:auto; max-height:94vh; background:#0a0a0a; border:1px solid rgba(47,208,255,0.55); box-shadow: 0 0 28px rgba(47,208,255,0.18), inset 0 0 4px rgba(47,208,255,0.35); border-radius:14px;" onclick="event.stopPropagation(); window.dawFxCloseTopMenu()">
 
                         <!-- Title bar, macOS-style chrome -->
                         <div class="flex items-center justify-between px-4 py-2.5 border-b border-[rgba(47,208,255,0.22)] flex-shrink-0" style="background:linear-gradient(180deg, rgba(47,208,255,0.07), rgba(47,208,255,0));">
@@ -261,7 +232,7 @@
                             <!-- LEFT BOX: Chain list -->
                             <div id="plugin-picker-chain-box" class="flex flex-col flex-shrink-0" style="width:230px; border:1px solid rgba(47,208,255,0.5); border-radius:10px; background:rgba(47,208,255,0.03); box-shadow: inset 0 0 12px rgba(47,208,255,0.1), 0 0 10px rgba(47,208,255,0.08);">
                                 <div class="px-3 py-2 border-b border-[rgba(47,208,255,0.2)] text-[8px] font-black uppercase tracking-[0.25em] text-gray-500 flex-shrink-0">Chain</div>
-                                <div id="plugin-picker-chain-list" class="flex-1 overflow-y-auto slick-scroll p-1.5" style="min-height:0;"></div>
+                                <div id="plugin-picker-chain-list" class="flex-1 p-1.5" style="overflow:visible;"></div>
                                 <div class="flex gap-1.5 p-2 border-t border-[rgba(47,208,255,0.2)] flex-shrink-0">
                                     <button id="plugin-picker-add-btn" onclick="window.dawFxToggleAddMode()" class="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md border border-[rgba(47,208,255,0.45)] bg-black/40 hover:bg-[#2fd0ff]/15 text-[9px] font-black uppercase tracking-widest neon-blue-text transition-colors" title="Add a plugin">
                                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
@@ -276,7 +247,7 @@
 
                             <!-- RIGHT BOX: Plugin detail / browse-to-add -->
                             <div class="flex flex-col flex-1 min-w-0 relative" style="border:1px solid rgba(47,208,255,0.5); border-radius:10px; background:rgba(47,208,255,0.02); box-shadow: inset 0 0 12px rgba(47,208,255,0.1), 0 0 10px rgba(47,208,255,0.08);" onclick="window.dawFxClosePresetMenuIfOpen()">
-                                <div id="plugin-picker-detail" class="flex-1 overflow-y-auto slick-scroll p-4" style="min-height:0;"></div>
+                                <div id="plugin-picker-detail" class="flex-1 p-4" style="overflow:visible;"></div>
                             </div>
                         </div>
 
