@@ -904,13 +904,6 @@
                 { name: 'sovereign: vocal hall', values: [['SIZE','75%'],['DECAY','3.2s'],['DAMP','35%'],['MIX','18%']] },
                 { name: 'sovereign: tight room', values: [['SIZE','30%'],['DECAY','1.1s'],['DAMP','55%'],['MIX','10%']] }
               ] },
-            { id: 'sovereign-delay', name: 'Sovereign Delay', tagline: 'Luxury Echo', category: 'SPACE',
-              values: [['DELAY','350ms'],['FEEDBACK','35%'],['DRY/WET','35%'],['PING PONG','Off']],
-              presets: [
-                { name: 'sovereign: slap echo', values: [['DELAY','120ms'],['FEEDBACK','15%'],['DRY/WET','20%'],['PING PONG','Off']] },
-                { name: 'sovereign: ping pong space', values: [['DELAY','420ms'],['FEEDBACK','45%'],['DRY/WET','40%'],['PING PONG','On']] },
-                { name: 'sovereign: dub throw', values: [['DELAY','660ms'],['FEEDBACK','60%'],['DRY/WET','50%'],['PING PONG','On']] }
-              ] },
             { id: 'vocal-deesser', name: 'Vocal De-Esser', tagline: 'The Smoothness', category: 'DYNAMICS',
               values: [['FREQ','7kHz'],['THRESH','-15d'],['RANGE','-6.0d'],['SPEED','Fast']],
               presets: [
@@ -1477,7 +1470,6 @@
             return Math.pow(10, t * (Math.log10(EQ8_FREQ_MAX) - Math.log10(EQ8_FREQ_MIN)) + Math.log10(EQ8_FREQ_MIN));
         }
         function eq8GainToY(g) { return (EQ8_GRAPH_H / 2) - (g / EQ8_GAIN_MAX) * (EQ8_GRAPH_H / 2); }
-        function eq8GainPct(g) { return Math.max(0, Math.min(100, ((g - EQ8_GAIN_MIN) / (EQ8_GAIN_MAX - EQ8_GAIN_MIN)) * 100)); }
         function eq8YToGain(y) {
             const clamped = Math.max(0, Math.min(EQ8_GRAPH_H, y));
             return Math.max(EQ8_GAIN_MIN, Math.min(EQ8_GAIN_MAX, ((EQ8_GRAPH_H / 2 - clamped) / (EQ8_GRAPH_H / 2)) * EQ8_GAIN_MAX));
@@ -1550,14 +1542,11 @@
 
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0 pt-1">
                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Gain</span>
-                    <div class="flex items-center gap-2" style="height:${EQ8_GRAPH_H - 30}px;">
-                        <div id="eq8-gainfader-track-${sk}" class="eq8-vfader-track"
-                            onmousedown="window.dawEqGainFaderDown(event,'${key}')" ontouchstart="window.dawEqGainFaderDown(event,'${key}')">
-                            <div id="eq8-gainfader-fill-${sk}" class="eq8-vfader-fill" style="height:${eq8GainPct(state.outputGain)}%;"></div>
-                            <div id="eq8-gainfader-thumb-${sk}" class="eq8-vfader-thumb" style="bottom:${eq8GainPct(state.outputGain)}%;"></div>
-                        </div>
-                        <span id="eq8-outgain-${sk}" class="eq8-vfader-readout">${state.outputGain.toFixed(1)}</span>
+                    <div style="height:${EQ8_GRAPH_H - 30}px; display:flex; align-items:center;">
+                        <input type="range" class="eq8-vslider" min="${EQ8_GAIN_MIN}" max="${EQ8_GAIN_MAX}" step="0.1" value="${state.outputGain}"
+                            oninput="window.dawEqSetOutputGain('${key}', this.value)">
                     </div>
+                    <span id="eq8-outgain-${sk}" class="text-[8px] neon-blue-text font-bold">${state.outputGain.toFixed(1)}</span>
                 </div>
             </div>`;
         };
@@ -1617,7 +1606,7 @@
             return `
             <div class="flex items-center gap-3">
                 <label class="flex items-center gap-1.5 text-[9px] font-bold neon-blue-text uppercase tracking-widest">
-                    <input type="checkbox" class="daw-checkbox" ${b.enabled ? 'checked' : ''} onchange="window.dawEqSetBandField('${key}','enabled', this.checked)"> Enabled
+                    <input type="checkbox" ${b.enabled ? 'checked' : ''} onchange="window.dawEqSetBandField('${key}','enabled', this.checked)"> Enabled
                 </label>
                 <select onchange="window.dawEqSetBandField('${key}','type', this.value)" class="flex-1 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-2 py-1 text-[9px] font-bold neon-blue-text outline-none">
                     ${EQ8_TYPES.map(t => `<option value="${t}" ${b.type === t ? 'selected' : ''}>${t}</option>`).join('')}
@@ -1711,54 +1700,8 @@
             const state = dawEqGetState(key);
             state.outputGain = parseFloat(value);
             eq8ClearPresetBadge(key);
-            const sk = eq8SafeKey(key);
-            const el = document.getElementById(`eq8-outgain-${sk}`);
+            const el = document.getElementById(`eq8-outgain-${eq8SafeKey(key)}`);
             if (el) el.innerText = state.outputGain.toFixed(1);
-            const fill = document.getElementById(`eq8-gainfader-fill-${sk}`);
-            const thumb = document.getElementById(`eq8-gainfader-thumb-${sk}`);
-            const pct = eq8GainPct(state.outputGain);
-            if (fill) fill.style.height = pct + '%';
-            if (thumb) thumb.style.bottom = pct + '%';
-        };
-
-        // Custom drag-driven vertical gain fader — replaces the native
-        // vertical <input type=range> hack, which is unreliable across
-        // browsers. Behaves like the SVG node dragging above: mousedown
-        // starts a drag, mousemove computes value from pointer position,
-        // mouseup ends it.
-        window.dawEqGainFaderDown = function(event, key) {
-            event.preventDefault();
-            const sk = eq8SafeKey(key);
-            const track = document.getElementById(`eq8-gainfader-track-${sk}`);
-            if (!track) return;
-            const rect = track.getBoundingClientRect();
-
-            function valueFromEvent(e) {
-                const pt = e.touches ? e.touches[0] : e;
-                const frac = 1 - Math.max(0, Math.min(1, (pt.clientY - rect.top) / rect.height));
-                const raw = EQ8_GAIN_MIN + frac * (EQ8_GAIN_MAX - EQ8_GAIN_MIN);
-                return Math.round(raw * 10) / 10;
-            }
-
-            function apply(e) {
-                window.dawEqSetOutputGain(key, valueFromEvent(e));
-            }
-            apply(event);
-
-            function onMove(e) {
-                if (e.cancelable) e.preventDefault();
-                apply(e);
-            }
-            function onUp() {
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-                document.removeEventListener('touchmove', onMove);
-                document.removeEventListener('touchend', onUp);
-            }
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-            document.addEventListener('touchmove', onMove, { passive: false });
-            document.addEventListener('touchend', onUp);
         };
 
         window.dawEqAddBand = function(key) {
@@ -1915,6 +1858,16 @@
             document.getElementById('plugin-picker-backdrop').classList.remove('hidden-section');
         };
 
+        // Opens the same rich FX picker as above, but jumps straight to a specific
+        // plugin already in the chain (used by Device Rack cards / FX drop-downs,
+        // which used to open the separate knobs-only "plugin detail" popup).
+        window.openDawFxPickerAtItem = function(trackId, pluginName) {
+            window.openDawFxPicker(trackId);
+            const fxList = dawFxListFor(trackId) || [];
+            const idx = fxList.indexOf(pluginName);
+            if (idx >= 0) window.dawFxSelectChainItem(idx);
+        };
+
         // Renders BOTH boxes for the DAW context, based on ctx.mode / ctx.selectedIndex
         window.renderDawFxPicker = function() {
             const ctx = window.activePluginPickerContext;
@@ -1962,8 +1915,9 @@
                     detail.innerHTML = window.dawEqPanel(key, plugin);
                 } else if (plugin && plugin.id === 'master-limiter') {
                     detail.innerHTML = window.dawLimiterPanel(key, plugin);
-                } else if (plugin && plugin.id === 'sovereign-delay') {
-                    detail.innerHTML = window.dawDelayPanel(key, plugin);
+                } else if (plugin && plugin.id === 'aether-reverb') {
+                    detail.innerHTML = window.dawReverbPanel(key, plugin);
+                    window.dawReverbStartMeterLoop(key);
                 } else {
                     detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
                 }
@@ -2221,69 +2175,50 @@
         };
 
         // ============================================================
-        // SOVEREIGN DELAY — a hardware-echo-style panel (Tap tempo, big
-        // Delay/Feedback knobs, Ping Pong + phase-invert toggles, sync
-        // mode, Modulation, Filters, a two-channel LED meter matching
-        // the DAW mixer, and Dry/Wet + Output + Analog). All controls
-        // follow the black-background / neon-blue-outline house style:
-        // boxes keep their outline at rest, and only the text lights up
-        // brighter neon blue when a box is the active selection.
+        // AETHER REVERB — bespoke panel (Time Response / EQ / Reverb Damping,
+        // plus a real mixer-style fader strip: Gain, Output, Direct, Early
+        // Ref, Reverb — same daw-fader-* / daw-led-meter-single markup as
+        // the main console strip, animated live via requestAnimationFrame).
         // ============================================================
-        window.dawDelayState = window.dawDelayState || {}; // key -> {syncMode,delayMs,pingPong,invertL,invertR,feedback,depth,rate,hipass,lopass,link,dryWet,output,analog}
+        window.dawReverbState = window.dawReverbState || {}; // key -> {...}
 
-        function dawDelayDefaultState() {
+        function dawReverbDefaultState() {
             return {
-                syncMode: 'MS', delayMs: 350, pingPong: false, invertL: false, invertR: false,
-                feedback: 35, depth: 20, rate: 2.0, hipass: 20, lopass: 20000, link: true,
-                dryWet: 35, output: 0, analog: 0
+                dimension: 3.00, roomSize: 5516, distance: 10.02,
+                balance: 3.0, decayTime: 1.2, preDelay: 88.9, density: 0.850,
+                erLowcutOn: true, erLowcutFreq: 16,
+                revShelf: -3.0, erAbsorb: -6.0, hiFreq: 4095,
+                dampLowFreq: 511, dampLowRatio: 1.37, dampHighRatio: 0.40, dampHighFreq: 7104,
+                gain: 80, direct: 80, earlyRef: 80, reverb: 80
             };
         }
-        function dawDelayGetState(key) {
-            if (!window.dawDelayState[key]) window.dawDelayState[key] = dawDelayDefaultState();
-            return window.dawDelayState[key];
+        function dawReverbGetState(key) {
+            if (!window.dawReverbState[key]) window.dawReverbState[key] = dawReverbDefaultState();
+            return window.dawReverbState[key];
         }
 
-        const DAW_DELAY_FIELD_META = {
-            delayMs:  { min: 1,   max: 3500,  step: 1,   fmt: v => Math.round(v) + 'ms' },
-            feedback: { min: 0,   max: 100,   step: 1,   fmt: v => Math.round(v) + '%' },
-            depth:    { min: 0,   max: 100,   step: 1,   fmt: v => Math.round(v) + '%' },
-            rate:     { min: 0.1, max: 20,    step: 0.1, fmt: v => v.toFixed(1) + 'Hz' },
-            hipass:   { min: 20,  max: 20000, step: 1,   fmt: v => eq8FmtFreq(v) + 'Hz' },
-            lopass:   { min: 20,  max: 20000, step: 1,   fmt: v => eq8FmtFreq(v) + 'Hz' },
-            dryWet:   { min: 0,   max: 100,   step: 1,   fmt: v => Math.round(v) + '%' },
-            output:   { min: -24, max: 24,    step: 0.1, fmt: v => dawFmtDb(v) },
-            analog:   { min: 0,   max: 100,   step: 1,   fmt: v => Math.round(v) + '%' }
-        };
-
-        function dawDelayKnobHtml(key, field, label, sk) {
-            const s = dawDelayGetState(key);
-            const meta = DAW_DELAY_FIELD_META[field];
-            const pct = (s[field] - meta.min) / (meta.max - meta.min);
-            const deg = -135 + pct * 270;
+        function dawReverbParamBox(label, value, field, key, sk, width) {
             return `
-            <div class="flex flex-col items-center gap-1">
-                <div id="dawdelay-knob-${field}-${sk}" class="mfx-knob relative w-8 h-8 rounded-full bg-black border-2 border-[rgba(47,208,255,0.4)] cursor-ns-resize select-none" onmousedown="window.dawDelayKnobDrag(event,'${key}','${field}')" ontouchstart="window.dawDelayKnobDrag(event,'${key}','${field}')">
-                    <div id="dawdelay-knob-${field}-${sk}-ind" class="absolute top-0.5 left-1/2 w-0.5 h-3 bg-[#2fd0ff] origin-bottom" style="transform:translateX(-50%) rotate(${deg}deg);"></div>
-                </div>
-                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
-                <input type="text" id="dawdelay-knob-${field}-${sk}-val" value="${meta.fmt(s[field])}" onclick="event.stopPropagation()" onchange="window.dawDelaySetFieldFromText('${key}','${field}', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-0.5 text-[8px] text-center neon-blue-text font-bold outline-none">
-            </div>`;
+                <div class="flex flex-col items-center gap-1" style="width:${width || 62}px;">
+                    <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">${label}</span>
+                    <input id="dawrev-box-${field}-${sk}" type="text" value="${value}" onchange="window.dawReverbSetFieldFromText('${key}','${field}', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
+                </div>`;
         }
 
-        function dawDelayToggleBtnHtml(key, field, label, sk) {
-            const s = dawDelayGetState(key);
-            const active = !!s[field];
-            return `<button id="dawdelay-tog-${field}-${sk}" onclick="window.dawDelayToggleField('${key}','${field}')" class="px-2 py-1 rounded border text-[8px] font-black uppercase tracking-wide transition-colors bg-black ${active ? 'border-[#2fd0ff] neon-blue-text' : 'border-[rgba(47,208,255,0.3)] text-gray-500 hover:text-gray-300'}">${label}</button>`;
+        function dawReverbFaderColumn(label, field, key, sk, s) {
+            return `
+                <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
+                    <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
+                    <div class="flex items-end gap-1">
+                        <div class="daw-fader-track" style="height:100px;"><input id="dawrev-fader-${field}-${sk}" type="range" min="0" max="100" value="${s[field]}" class="daw-fader-input" style="width:100px;" oninput="window.dawReverbSetFader('${key}','${field}', this.value)"></div>
+                        <div class="daw-led-meter-single" id="dawrev-led-${field}-${sk}" style="height:100px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                    </div>
+                    <span class="daw-mixer-value-field" id="dawrev-val-${field}-${sk}" style="font-size:7px; padding:1px 0;">${s[field].toFixed(1)}</span>
+                </div>`;
         }
 
-        function dawDelayModeBtnHtml(key, mode, sk) {
-            const s = dawDelayGetState(key);
-            const active = s.syncMode === mode;
-            return `<button id="dawdelay-mode-${mode}-${sk}" onclick="window.dawDelaySetSyncMode('${key}','${mode}')" class="flex-1 px-2 py-1 rounded border text-[8px] font-black uppercase tracking-wide transition-colors bg-black ${active ? 'border-[#2fd0ff] neon-blue-text' : 'border-[rgba(47,208,255,0.3)] text-gray-500 hover:text-gray-300'}">${mode}</button>`;
-        }
-
-        window.dawDelayPanel = function(key, plugin) {
-            const s = dawDelayGetState(key);
+        window.dawReverbPanel = function(key, plugin) {
+            const s = dawReverbGetState(key);
             const sk = eq8SafeKey(key);
             return `
             <div class="flex items-start justify-between gap-2 mb-1">
@@ -2292,246 +2227,174 @@
                     <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
                 </div>
                 <span class="relative inline-block flex-shrink-0">
-                    <button onclick="event.stopPropagation(); window.dawDelayTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
-                        <span id="dawdelay-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                    <button onclick="event.stopPropagation(); window.dawReverbTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                        <span id="dawrev-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
                         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
                     </button>
-                    <div id="dawdelay-preset-menu-${sk}" class="hidden-section"></div>
+                    <div id="dawrev-preset-menu-${sk}" class="hidden-section"></div>
                 </span>
             </div>
             <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
 
-            <div class="flex items-start gap-3 mt-4">
-                <div class="flex flex-col items-center gap-1.5 flex-shrink-0 pt-1">
-                    <button id="dawdelay-tap-${sk}" onclick="window.dawDelayTap('${key}')" class="px-3 py-2 rounded border text-[9px] font-black uppercase tracking-widest bg-black border-[rgba(47,208,255,0.4)] neon-blue-text hover:border-[#2fd0ff] transition-colors">Tap</button>
-                    <span class="text-[6px] text-gray-600 uppercase font-bold tracking-widest">Tempo</span>
-                </div>
+            <div class="flex gap-4 mt-4 flex-wrap items-start">
+                <div class="flex-1 min-w-[260px]">
+                    <div class="text-[7px] text-gray-500 uppercase font-black tracking-widest mb-1.5">Time Response</div>
+                    <div class="flex gap-2 flex-wrap">
+                        ${dawReverbParamBox('Dimension', s.dimension.toFixed(2), 'dimension', key, sk)}
+                        ${dawReverbParamBox('Room Size', s.roomSize, 'roomSize', key, sk)}
+                        ${dawReverbParamBox('Distance', s.distance.toFixed(2), 'distance', key, sk)}
+                        ${dawReverbParamBox('Balance', s.balance.toFixed(1), 'balance', key, sk)}
+                        ${dawReverbParamBox('Decay Time', s.decayTime.toFixed(1), 'decayTime', key, sk)}
+                        ${dawReverbParamBox('Pre Delay', s.preDelay.toFixed(1), 'preDelay', key, sk)}
+                        ${dawReverbParamBox('Density', s.density.toFixed(3), 'density', key, sk)}
+                    </div>
 
-                <div class="flex flex-col items-center gap-2 flex-shrink-0">
-                    <div class="flex gap-1">
-                        ${dawDelayToggleBtnHtml(key, 'invertL', 'ØL', sk)}
-                        ${dawDelayToggleBtnHtml(key, 'pingPong', 'Ping Pong', sk)}
-                        ${dawDelayToggleBtnHtml(key, 'invertR', 'ØR', sk)}
+                    <div class="mt-3 rounded-lg relative overflow-hidden" style="height:80px; background:linear-gradient(180deg, rgba(47,208,255,0.10), rgba(0,0,0,0.5)); border:1px solid rgba(47,208,255,0.25);">
+                        <div id="dawrev-timeresp-${sk}" class="absolute inset-0 flex items-end gap-[2px] px-2 pb-1"></div>
                     </div>
-                    <div class="bg-black border border-[rgba(47,208,255,0.4)] rounded px-3 py-1.5 text-center" style="min-width:80px;">
-                        <span id="dawdelay-lcd-${sk}" class="text-lg font-mono font-black neon-blue-text tracking-widest" style="text-shadow:0 0 6px rgba(47,208,255,0.8);">${String(Math.round(s.delayMs)).padStart(4,'0')}</span>
-                        <div class="text-[6px] text-gray-600 uppercase font-bold tracking-widest mt-0.5">ms delay</div>
-                    </div>
-                    <div class="flex gap-1 w-full">
-                        ${dawDelayModeBtnHtml(key, 'BPM', sk)}
-                        ${dawDelayModeBtnHtml(key, 'HOST', sk)}
-                        ${dawDelayModeBtnHtml(key, 'MS', sk)}
-                    </div>
-                </div>
 
-                ${dawDelayKnobHtml(key, 'feedback', 'Feedback', sk)}
-
-                <div class="flex flex-col items-center gap-1 flex-1 min-w-0 pt-1">
-                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Meter</span>
-                    <div class="flex gap-1" style="height:110px;">
-                        <div class="daw-led-meter-single" id="dawdelay-led-l-${sk}"><div class="daw-led-mask" style="height:58%;"></div></div>
-                        <div class="daw-led-meter-single" id="dawdelay-led-r-${sk}"><div class="daw-led-mask" style="height:54%;"></div></div>
+                    <div class="flex items-center gap-3 mt-3 flex-wrap">
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest w-14 flex-shrink-0">ER Lowcut</span>
+                        <button onclick="window.dawReverbSetField('${key}','erLowcutOn', ${!s.erLowcutOn})" class="w-4 h-4 rounded flex-shrink-0 border ${s.erLowcutOn ? 'bg-[#2fd0ff] border-[#2fd0ff]' : 'bg-black/50 border-white/20'}"></button>
+                        ${dawReverbParamBox('Freq', s.erLowcutFreq, 'erLowcutFreq', key, sk, 46)}
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0 ml-2">Rev Shelf</span>
+                        ${dawReverbParamBox('', s.revShelf.toFixed(1), 'revShelf', key, sk, 46)}
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0">ER Absorb</span>
+                        ${dawReverbParamBox('', s.erAbsorb.toFixed(1), 'erAbsorb', key, sk, 46)}
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0">Hi Freq</span>
+                        ${dawReverbParamBox('', s.hiFreq, 'hiFreq', key, sk, 46)}
                     </div>
-                    <div class="flex gap-3 text-[6px] text-gray-600 font-bold">
-                        <span>L</span><span>R</span>
-                    </div>
-                </div>
-            </div>
 
-            <div class="flex items-start gap-5 mt-5 pt-4" style="border-top:1px solid rgba(47,208,255,0.15);">
-                <div class="flex flex-col gap-1.5 flex-shrink-0">
-                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest text-center">Modulation</span>
-                    <div class="flex gap-3">
-                        ${dawDelayKnobHtml(key, 'depth', 'Depth', sk)}
-                        ${dawDelayKnobHtml(key, 'rate', 'Rate', sk)}
+                    <div class="flex items-center gap-2 mt-3">
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest w-20 flex-shrink-0">Reverb Damping</span>
+                        <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0">Low</span>
+                        ${dawReverbParamBox('', s.dampLowFreq, 'dampLowFreq', key, sk, 44)}
+                        ${dawReverbParamBox('', s.dampLowRatio.toFixed(2) + 'x', 'dampLowRatio', key, sk, 44)}
+                        <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0 ml-2">High</span>
+                        ${dawReverbParamBox('', s.dampHighRatio.toFixed(2) + 'x', 'dampHighRatio', key, sk, 44)}
+                        ${dawReverbParamBox('', s.dampHighFreq, 'dampHighFreq', key, sk, 44)}
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-1.5 flex-shrink-0" style="border-left:1px solid rgba(47,208,255,0.15); padding-left:20px;">
-                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest text-center">Filters</span>
-                    <div class="flex gap-3 items-start">
-                        ${dawDelayKnobHtml(key, 'hipass', 'HiPass', sk)}
-                        ${dawDelayKnobHtml(key, 'lopass', 'LoPass', sk)}
-                        <div class="flex flex-col items-center gap-1 pt-1.5">
-                            ${dawDelayToggleBtnHtml(key, 'link', 'Link', sk)}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex items-start gap-3 mt-4 pt-4" style="border-top:1px solid rgba(47,208,255,0.15);">
-                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0 pt-2">Output</span>
-                <div class="flex gap-3">
-                    ${dawDelayKnobHtml(key, 'dryWet', 'Dry/Wet', sk)}
-                    ${dawDelayKnobHtml(key, 'output', 'Output', sk)}
-                    ${dawDelayKnobHtml(key, 'analog', 'Analog', sk)}
+                <div class="flex items-end gap-3 flex-shrink-0 bg-black/40 rounded-lg p-2.5" style="border:1px solid rgba(47,208,255,0.2);">
+                    ${dawReverbFaderColumn('Gain', 'gain', key, sk, s)}
+                    ${dawReverbFaderColumn('Direct', 'direct', key, sk, s)}
+                    ${dawReverbFaderColumn('Early Ref', 'earlyRef', key, sk, s)}
+                    ${dawReverbFaderColumn('Reverb', 'reverb', key, sk, s)}
                 </div>
             </div>`;
         };
 
-        window.dawDelayRefreshControl = function(key, field) {
-            const s = dawDelayGetState(key);
-            const sk = eq8SafeKey(key);
-            const meta = DAW_DELAY_FIELD_META[field];
-            if (meta) {
-                const pct = (s[field] - meta.min) / (meta.max - meta.min);
-                const deg = -135 + pct * 270;
-                const ind = document.getElementById(`dawdelay-knob-${field}-${sk}-ind`);
-                if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
-                const val = document.getElementById(`dawdelay-knob-${field}-${sk}-val`);
-                if (val) val.value = meta.fmt(s[field]);
-            }
-            if (field === 'delayMs') {
-                const lcd = document.getElementById(`dawdelay-lcd-${sk}`);
-                if (lcd) lcd.innerText = String(Math.round(s.delayMs)).padStart(4, '0');
-            }
-        };
-
-        window.dawDelaySetField = function(key, field, value) {
-            const s = dawDelayGetState(key);
-            const meta = DAW_DELAY_FIELD_META[field];
-            if (meta) {
-                let v = parseFloat(value);
-                if (isNaN(v)) return;
-                v = Math.max(meta.min, Math.min(meta.max, v));
-                if (meta.step) v = Math.round(v / meta.step) * meta.step;
-                s[field] = v;
-            } else {
-                s[field] = value;
-            }
+        window.dawReverbSetField = function(key, field, value) {
+            const s = dawReverbGetState(key);
+            const numericFields = ['dimension','roomSize','distance','balance','decayTime','preDelay','density','erLowcutFreq','revShelf','erAbsorb','hiFreq','dampLowFreq','dampLowRatio','dampHighRatio','dampHighFreq'];
+            s[field] = numericFields.includes(field) ? parseFloat(value) : !!value;
             delete window.dawFxActivePresetLabel[key];
             const sk = eq8SafeKey(key);
-            const badge = document.getElementById(`dawdelay-badge-${sk}`);
+            const badge = document.getElementById(`dawrev-badge-${sk}`);
             if (badge) badge.innerText = 'factory preset';
-            window.dawDelayRefreshControl(key, field);
+            window.renderDawFxPicker();
         };
 
-        window.dawDelaySetFieldFromText = function(key, field, text) {
+        window.dawReverbSetFieldFromText = function(key, field, text) {
+            const suffixed = ['dampLowRatio', 'dampHighRatio'];
             const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
             if (isNaN(num)) return;
-            window.dawDelaySetField(key, field, num);
+            window.dawReverbSetField(key, field, num);
         };
 
-        window.dawDelayKnobDrag = function(e, key, field) {
-            e.preventDefault();
-            e.stopPropagation();
-            const meta = DAW_DELAY_FIELD_META[field];
-            if (!meta) return;
-            const s = dawDelayGetState(key);
-            const startY = e.touches ? e.touches[0].clientY : e.clientY;
-            const startVal = s[field];
-            const range = meta.max - meta.min;
-            function move(ev) {
-                if (ev.cancelable) ev.preventDefault();
-                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
-                const deltaPx = startY - clientY;
-                let v = startVal + (deltaPx / 150) * range;
-                v = Math.max(meta.min, Math.min(meta.max, v));
-                window.dawDelaySetField(key, field, v);
-            }
-            function up() {
-                document.removeEventListener('mousemove', move);
-                document.removeEventListener('mouseup', up);
-                document.removeEventListener('touchmove', move);
-                document.removeEventListener('touchend', up);
-            }
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', up);
-            document.addEventListener('touchmove', move, { passive: false });
-            document.addEventListener('touchend', up);
-        };
-
-        window.dawDelayToggleField = function(key, field) {
-            const s = dawDelayGetState(key);
-            s[field] = !s[field];
+        window.dawReverbSetFader = function(key, field, value) {
+            const s = dawReverbGetState(key);
+            s[field] = parseFloat(value);
             delete window.dawFxActivePresetLabel[key];
             const sk = eq8SafeKey(key);
-            const badge = document.getElementById(`dawdelay-badge-${sk}`);
+            const badge = document.getElementById(`dawrev-badge-${sk}`);
             if (badge) badge.innerText = 'factory preset';
-            const btn = document.getElementById(`dawdelay-tog-${field}-${sk}`);
-            if (btn) {
-                btn.classList.toggle('border-[#2fd0ff]', s[field]);
-                btn.classList.toggle('neon-blue-text', s[field]);
-                btn.classList.toggle('border-[rgba(47,208,255,0.3)]', !s[field]);
-                btn.classList.toggle('text-gray-500', !s[field]);
-            }
+            const valEl = document.getElementById(`dawrev-val-${field}-${sk}`);
+            if (valEl) valEl.innerText = s[field].toFixed(1);
         };
 
-        window.dawDelaySetSyncMode = function(key, mode) {
-            const s = dawDelayGetState(key);
-            s.syncMode = mode;
-            delete window.dawFxActivePresetLabel[key];
+        window.dawReverbTogglePresetMenu = function(key) {
             const sk = eq8SafeKey(key);
-            const badge = document.getElementById(`dawdelay-badge-${sk}`);
-            if (badge) badge.innerText = 'factory preset';
-            ['BPM', 'HOST', 'MS'].forEach(m => {
-                const btn = document.getElementById(`dawdelay-mode-${m}-${sk}`);
-                if (!btn) return;
-                const active = m === mode;
-                btn.classList.toggle('border-[#2fd0ff]', active);
-                btn.classList.toggle('neon-blue-text', active);
-                btn.classList.toggle('border-[rgba(47,208,255,0.3)]', !active);
-                btn.classList.toggle('text-gray-500', !active);
-            });
-        };
-
-        window.dawDelayTapTimes = window.dawDelayTapTimes || {}; // key -> last tap timestamp (ms)
-        window.dawDelayTap = function(key) {
-            const now = Date.now();
-            const last = window.dawDelayTapTimes[key];
-            window.dawDelayTapTimes[key] = now;
-            if (last && (now - last) < 3000) {
-                window.dawDelaySetField(key, 'delayMs', now - last);
-            }
-            const sk = eq8SafeKey(key);
-            const btn = document.getElementById(`dawdelay-tap-${sk}`);
-            if (btn) {
-                btn.classList.add('bg-[#2fd0ff]/25');
-                setTimeout(() => { if (btn) btn.classList.remove('bg-[#2fd0ff]/25'); }, 120);
-            }
-        };
-
-        window.dawDelayTogglePresetMenu = function(key) {
-            const sk = eq8SafeKey(key);
-            const el = document.getElementById(`dawdelay-preset-menu-${sk}`);
+            const el = document.getElementById(`dawrev-preset-menu-${sk}`);
             if (!el) return;
             const isHidden = el.classList.contains('hidden-section');
-            if (isHidden) { window.dawDelayRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            if (isHidden) { window.dawReverbRenderPresetMenu(key); el.classList.remove('hidden-section'); }
             else el.classList.add('hidden-section');
         };
 
-        window.dawDelayRenderPresetMenu = function(key) {
+        window.dawReverbRenderPresetMenu = function(key) {
             const sk = eq8SafeKey(key);
-            const el = document.getElementById(`dawdelay-preset-menu-${sk}`);
+            const el = document.getElementById(`dawrev-preset-menu-${sk}`);
             if (!el) return;
-            const userPresets = (window.dawFxUserPresets['sovereign-delay'] || []);
+            const userPresets = (window.dawFxUserPresets['aether-reverb'] || []);
             const activeLabel = window.dawFxActivePresetLabel[key];
             el.innerHTML = `
             <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
-                <button onclick="window.dawDelayApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
-                <button onclick="window.dawDelayApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                <button onclick="window.dawReverbApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                <button onclick="window.dawReverbApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
                     <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
                 </button>
                 ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
                 ${userPresets.map((p, i) => `
-                <button onclick="window.dawDelayApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                <button onclick="window.dawReverbApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
                     <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
                 </button>`).join('')}
             </div>`;
         };
 
-        window.dawDelayApplyPreset = function(key, presetIndex) {
+        window.dawReverbApplyPreset = function(key, presetIndex) {
             if (presetIndex === null || presetIndex === undefined) {
-                window.dawDelayState[key] = dawDelayDefaultState();
+                window.dawReverbState[key] = dawReverbDefaultState();
                 delete window.dawFxActivePresetLabel[key];
             } else {
-                const preset = (window.dawFxUserPresets['sovereign-delay'] || [])[presetIndex];
+                const preset = (window.dawFxUserPresets['aether-reverb'] || [])[presetIndex];
                 if (preset) {
-                    window.dawDelayState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawReverbState[key] = JSON.parse(JSON.stringify(preset.data));
                     window.dawFxActivePresetLabel[key] = preset.name;
                 }
             }
             window.renderDawFxPicker();
+        };
+
+        // Live meter animation for the Gain / Direct / Early Ref / Reverb
+        // faders, mirroring the console's own dawStartMeterLoop pattern —
+        // self-terminates once the panel is no longer on screen.
+        window.dawReverbMeterLoopRunning = false;
+        window.dawReverbStartMeterLoop = function(key) {
+            if (window.dawReverbMeterLoopRunning) return;
+            window.dawReverbMeterLoopRunning = true;
+            const sk = eq8SafeKey(key);
+            const fields = ['gain', 'direct', 'earlyRef', 'reverb'];
+            const peaks = {};
+            const tick = () => {
+                const modal = document.getElementById('plugin-picker-modal');
+                const stillOpen = modal && !modal.classList.contains('hidden-section') && document.getElementById(`dawrev-led-gain-${sk}`);
+                if (!stillOpen) { window.dawReverbMeterLoopRunning = false; return; }
+                fields.forEach(field => {
+                    const fader = document.getElementById(`dawrev-fader-${field}-${sk}`);
+                    const led = document.getElementById(`dawrev-led-${field}-${sk}`);
+                    if (!fader || !led) return;
+                    const base = Number(fader.value);
+                    const target = base * (0.7 + Math.random() * 0.25);
+                    const prev = peaks[field] || 0;
+                    const next = prev + (target - prev) * 0.25;
+                    peaks[field] = next;
+                    window.dawUpdateLed(`dawrev-led-${field}-${sk}`, Math.min(100, next));
+                });
+                // Time Response bars — quick decorative animation of the impulse "sparkline".
+                const respEl = document.getElementById(`dawrev-timeresp-${sk}`);
+                if (respEl && respEl.childElementCount === 0) {
+                    const bars = Array.from({ length: 28 }, () => {
+                        const h = Math.max(6, Math.random() * 60);
+                        const color = Math.random() > 0.9 ? '#facc15' : (Math.random() > 0.85 ? '#2fd0ff' : 'rgba(47,208,255,0.35)');
+                        return `<div style="width:3px; height:${h}%; background:${color}; border-radius:1px; flex-shrink:0;"></div>`;
+                    }).join('');
+                    respEl.innerHTML = bars;
+                }
+                window.dawReverbRafId = window.requestAnimationFrame(tick);
+            };
+            tick();
         };
 
         // ============================================================
@@ -2542,7 +2405,6 @@
         // ============================================================
         window.dawFxUserPresets = window.dawFxUserPresets || {}; // pluginId -> [{name, data}]
         window.dawFxActivePresetLabel = window.dawFxActivePresetLabel || {}; // key -> label string (EQ-8 / Limiter)
-
 
         function dawFxCurrentSelection() {
             const ctx = window.activePluginPickerContext;
@@ -2591,7 +2453,7 @@
             if (!sel) return;
             if (sel.plugin.id === 'surgical-eq8') window.dawEqTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'master-limiter') window.dawLimiterTogglePresetMenu(sel.key);
-            else if (sel.plugin.id === 'sovereign-delay') window.dawDelayTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'aether-reverb') window.dawReverbTogglePresetMenu(sel.key);
             else window.dawFxTogglePresetMenu(sel.key);
         };
 
@@ -2608,8 +2470,8 @@
                 data = { bands: JSON.parse(JSON.stringify(st.bands)), outputGain: st.outputGain };
             } else if (sel.plugin.id === 'master-limiter') {
                 data = JSON.parse(JSON.stringify(dawLimiterGetState(sel.key)));
-            } else if (sel.plugin.id === 'sovereign-delay') {
-                data = JSON.parse(JSON.stringify(dawDelayGetState(sel.key)));
+            } else if (sel.plugin.id === 'aether-reverb') {
+                data = JSON.parse(JSON.stringify(dawReverbGetState(sel.key)));
             } else {
                 const choice = window.dawFxPresetChoice[sel.key];
                 data = { values: choice ? choice.values : sel.plugin.values };
@@ -2618,7 +2480,7 @@
             window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
             window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
             window.dawFxActivePresetLabel[sel.key] = label;
-            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'sovereign-delay') {
+            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'aether-reverb') {
                 window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
             }
             window.renderDawFxPicker();
@@ -3420,8 +3282,6 @@
         ];
         window.dawMixerFxExpanded = {};
         window.dawHeaderFxExpanded = {};
-        window.dawFxParams = {}; // { trackId: { pluginName: { paramLabel: numericValue } } }
-        window.dpdContext = null;
         window.dawSelectedTrackId = 'master'; // drives which track's chain the Device Rack shows
 
         // Meter loop: LEDs only move while a track is actually playing (mirrors a
@@ -3626,7 +3486,7 @@
                     </div>
                     ${isExpanded ? `
                     <div class="ml-6 mr-1 bg-black/50 border border-white/5 rounded-lg p-2 space-y-1 overflow-y-auto slick-scroll" style="max-height:124px;">
-                        ${fxList.map(name => `<button onclick="window.openDawPluginDetail('${t.id}','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[9px] font-bold neon-blue-text hover:text-white truncate transition-colors block" title="Adjust ${name}">• ${name}</button>`).join('')}
+                        ${fxList.map(name => `<button onclick="window.openDawFxPickerAtItem('${t.id}','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[9px] font-bold neon-blue-text hover:text-white truncate transition-colors block" title="Adjust ${name}">• ${name}</button>`).join('')}
                     </div>` : ''}
                 </div>`;
             }).join('');
@@ -3792,7 +3652,7 @@
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0 transition-transform" style="${masterExpanded ? 'transform:rotate(180deg);' : ''}"><path d="m6 9 6 6 6-6"/></svg>
                     </button>
                     <div class="w-full ${masterExpanded ? '' : 'hidden'} bg-black/60 border border-white/5 rounded-lg p-2 space-y-1">
-                        ${masterFxList.length ? masterFxList.map(name => `<button onclick="window.openDawPluginDetail('master','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[7.5px] font-bold neon-blue-text hover:text-white truncate transition-colors">• ${name}</button>`).join('') : '<div class="text-[7.5px] font-bold text-gray-600 italic">No plugins</div>'}
+                        ${masterFxList.length ? masterFxList.map(name => `<button onclick="window.openDawFxPickerAtItem('master','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[7.5px] font-bold neon-blue-text hover:text-white truncate transition-colors">• ${name}</button>`).join('') : '<div class="text-[7.5px] font-bold text-gray-600 italic">No plugins</div>'}
                     </div>
 
                     <div class="daw-mixer-io-row">
@@ -3843,7 +3703,7 @@
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0 transition-transform" style="${isExpanded ? 'transform:rotate(180deg);' : ''}"><path d="m6 9 6 6 6-6"/></svg>
                     </button>
                     <div class="w-full ${isExpanded ? '' : 'hidden'} bg-black/60 border border-white/5 rounded-lg p-2 space-y-1">
-                        ${fxList.length ? fxList.map(name => `<button onclick="window.openDawPluginDetail('${t.id}','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[7.5px] font-bold neon-blue-text hover:text-white truncate transition-colors">• ${name}</button>`).join('') : '<div class="text-[7.5px] font-bold text-gray-600 italic">No plugins</div>'}
+                        ${fxList.length ? fxList.map(name => `<button onclick="window.openDawFxPickerAtItem('${t.id}','${name.replace(/'/g, "\\'")}')" class="w-full text-left text-[7.5px] font-bold neon-blue-text hover:text-white truncate transition-colors">• ${name}</button>`).join('') : '<div class="text-[7.5px] font-bold text-gray-600 italic">No plugins</div>'}
                     </div>
 
                     <div class="daw-mixer-io-row">
@@ -4014,7 +3874,7 @@
                             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                         </button>
                     </div>
-                    <div onclick="window.openDawPluginDetail('${trackId}','${name.replace(/'/g, "\\'")}')" class="px-2 py-1.5 cursor-pointer">
+                    <div onclick="window.openDawFxPickerAtItem('${trackId}','${name.replace(/'/g, "\\'")}')" class="px-2 py-1.5 cursor-pointer">
                         <div class="flex flex-wrap gap-1">${chips}</div>
                         <div class="text-[7px] text-gray-600 uppercase font-black tracking-widest mt-1">Tap to edit</div>
                     </div>
@@ -5138,179 +4998,6 @@
         window.toggleDawMixerFxBox = function(trackId) {
             window.dawMixerFxExpanded[trackId] = !window.dawMixerFxExpanded[trackId];
             window.renderDawMixer();
-        };
-
-        // ============================================================
-        // DAW KNOB ARC HELPERS — 270° gapped-arc knob geometry (gap centered at bottom)
-        // ============================================================
-        function dawPolarPoint(cx, cy, r, angleDeg) {
-            const rad = (angleDeg * Math.PI) / 180;
-            return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
-        }
-        function dawArcPath(cx, cy, r, startDeg, endDeg) {
-            if (endDeg <= startDeg) endDeg = startDeg + 0.001;
-            const start = dawPolarPoint(cx, cy, r, startDeg);
-            const end = dawPolarPoint(cx, cy, r, endDeg);
-            const delta = endDeg - startDeg;
-            const largeArc = delta > 180 ? 1 : 0;
-            return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
-        }
-        function dawKnobSvg(label, pct) {
-            const cx = 22, cy = 22, r = 17;
-            const startDeg = -135, endDeg = 135;
-            const valDeg = startDeg + pct * (endDeg - startDeg);
-            const trackPath = dawArcPath(cx, cy, r, startDeg, endDeg);
-            const progressPath = dawArcPath(cx, cy, r, startDeg, valDeg);
-            const tip = dawPolarPoint(cx, cy, r, valDeg);
-            const tipInner = dawPolarPoint(cx, cy, r - 5, valDeg);
-            return `
-            <svg width="44" height="44" viewBox="0 0 44 44" style="overflow:visible;">
-                <path d="${trackPath}" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="3" stroke-linecap="round"/>
-                <path id="dpd-knob-arc-${label}" d="${progressPath}" fill="none" stroke="#2fd0ff" stroke-width="3" stroke-linecap="round" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.85));"/>
-                <line id="dpd-knob-tick-${label}" x1="${tipInner.x.toFixed(2)}" y1="${tipInner.y.toFixed(2)}" x2="${tip.x.toFixed(2)}" y2="${tip.y.toFixed(2)}" stroke="#e8fbff" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 3px rgba(232,251,255,0.9));"/>
-            </svg>`;
-        }
-
-        // ============================================================
-        // DAW PLUGIN DETAIL — click a plugin in the FX chain to tweak it
-        // ============================================================
-        window.openDawPluginDetail = function(trackId, pluginName) {
-            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === pluginName);
-            if (!plugin) return;
-
-            window.dawFxParams[trackId] = window.dawFxParams[trackId] || {};
-            if (!window.dawFxParams[trackId][pluginName]) {
-                const initial = {};
-                plugin.values.forEach(([label, defaultStr]) => {
-                    const parsed = dawParseParamValue(defaultStr);
-                    initial[label] = parsed ? parsed.value : defaultStr;
-                });
-                window.dawFxParams[trackId][pluginName] = initial;
-            }
-
-            const paramMeta = {};
-            plugin.values.forEach(([label, defaultStr]) => { paramMeta[label] = dawParseParamValue(defaultStr); });
-            window.dpdContext = { trackId, pluginName, paramMeta, plugin };
-
-            document.getElementById('dpd-title').innerText = plugin.name;
-            document.getElementById('dpd-subtitle').innerText = plugin.category + ' · ' + plugin.tagline;
-
-            const knobsContainer = document.getElementById('dpd-knobs');
-            const state = window.dawFxParams[trackId][pluginName];
-            knobsContainer.innerHTML = plugin.values.map(([label, defaultStr]) => {
-                const parsed = paramMeta[label];
-                if (!parsed) {
-                    return `
-                    <div class="flex flex-col items-center gap-1.5 opacity-60 flex-shrink-0">
-                        <div class="w-11 h-11 rounded-full border border-white/10 flex items-center justify-center text-gray-600 text-[6.5px] font-black uppercase text-center px-1">Fixed</div>
-                        <div class="text-[7.5px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
-                        <div class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:2px 6px; color:#9ca3af;">${defaultStr}</div>
-                    </div>`;
-                }
-                const currentVal = state[label];
-                const pct = (currentVal - parsed.min) / (parsed.max - parsed.min);
-                return `
-                <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
-                    <div class="dpd-knob relative w-11 h-11 flex items-center justify-center cursor-ns-resize select-none" onmousedown="window.dpdKnobDrag(event,'${label}')" ontouchstart="window.dpdKnobDrag(event,'${label}')">
-                        ${dawKnobSvg(label, pct)}
-                    </div>
-                    <div class="text-[7.5px] text-gray-500 uppercase font-black tracking-widest">${label}</div>
-                    <div id="dpd-val-${label}" class="daw-mixer-value-field" style="width:auto; min-width:52px; padding:1px 6px; color:#2fd0ff; text-shadow:0 0 6px rgba(47,208,255,0.7); border-color:rgba(47,208,255,0.35);">${parsed.format(currentVal)}</div>
-                </div>`;
-            }).join('');
-
-            document.getElementById('daw-plugin-detail-modal').classList.remove('hidden');
-        };
-
-        window.closeDawPluginDetail = function() {
-            document.getElementById('daw-plugin-detail-modal').classList.add('hidden');
-            window.dpdContext = null;
-        };
-
-        window.dpdUpdateKnobVisual = function(label, value, parsed) {
-            const pct = (value - parsed.min) / (parsed.max - parsed.min);
-            const cx = 22, cy = 22, r = 17;
-            const startDeg = -135, endDeg = 135;
-            const valDeg = startDeg + pct * (endDeg - startDeg);
-            const arcEl = document.getElementById('dpd-knob-arc-' + label);
-            if (arcEl) arcEl.setAttribute('d', dawArcPath(cx, cy, r, startDeg, valDeg));
-            const tickEl = document.getElementById('dpd-knob-tick-' + label);
-            if (tickEl) {
-                const tip = dawPolarPoint(cx, cy, r, valDeg);
-                const tipInner = dawPolarPoint(cx, cy, r - 5, valDeg);
-                tickEl.setAttribute('x1', tipInner.x.toFixed(2));
-                tickEl.setAttribute('y1', tipInner.y.toFixed(2));
-                tickEl.setAttribute('x2', tip.x.toFixed(2));
-                tickEl.setAttribute('y2', tip.y.toFixed(2));
-            }
-            const valEl = document.getElementById('dpd-val-' + label);
-            if (valEl) valEl.innerText = parsed.format(value);
-        };
-
-        window.dpdKnobDrag = function(e, label) {
-            e.preventDefault();
-            const ctx = window.dpdContext;
-            if (!ctx) return;
-            const parsed = ctx.paramMeta[label];
-            if (!parsed) return;
-            const startY = e.touches ? e.touches[0].clientY : e.clientY;
-            const startVal = window.dawFxParams[ctx.trackId][ctx.pluginName][label];
-            const range = parsed.max - parsed.min;
-            let pendingVal = null;
-            let rafScheduled = false;
-            const applyFrame = () => {
-                rafScheduled = false;
-                if (pendingVal === null) return;
-                window.dawFxParams[ctx.trackId][ctx.pluginName][label] = pendingVal;
-                window.dpdUpdateKnobVisual(label, pendingVal, parsed);
-            };
-            const move = (ev) => {
-                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
-                const deltaY = startY - clientY;
-                const sensitivity = range / 150;
-                let newVal = startVal + deltaY * sensitivity;
-                newVal = Math.max(parsed.min, Math.min(parsed.max, newVal));
-                pendingVal = newVal;
-                if (!rafScheduled) { rafScheduled = true; requestAnimationFrame(applyFrame); }
-            };
-            const up = () => {
-                document.removeEventListener('mousemove', move);
-                document.removeEventListener('mouseup', up);
-                document.removeEventListener('touchmove', move);
-                document.removeEventListener('touchend', up);
-            };
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', up);
-            document.addEventListener('touchmove', move);
-            document.addEventListener('touchend', up);
-        };
-
-        window.dpdResetDefaults = function() {
-            const ctx = window.dpdContext;
-            if (!ctx) return;
-            const initial = {};
-            ctx.plugin.values.forEach(([label, defaultStr]) => {
-                const parsed = ctx.paramMeta[label];
-                initial[label] = parsed ? parsed.min : defaultStr; // reset = fully counter-clockwise (7 o'clock / zero position)
-            });
-            window.dawFxParams[ctx.trackId][ctx.pluginName] = initial;
-            ctx.plugin.values.forEach(([label]) => {
-                const parsed = ctx.paramMeta[label];
-                if (parsed) window.dpdUpdateKnobVisual(label, initial[label], parsed);
-            });
-        };
-
-        window.dpdRemoveFromChain = function() {
-            const ctx = window.dpdContext;
-            if (!ctx) return;
-            const fxList = dawFxListFor(ctx.trackId);
-            if (fxList) {
-                const idx = fxList.indexOf(ctx.pluginName);
-                if (idx >= 0) fxList.splice(idx, 1);
-                if (window.dawFxParams[ctx.trackId]) delete window.dawFxParams[ctx.trackId][ctx.pluginName];
-                dawRerenderFxOwner(ctx.trackId);
-            }
-            window.closeDawPluginDetail();
         };
 
         window.initDawWaves = function() {
