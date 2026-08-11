@@ -1962,6 +1962,8 @@
                     detail.innerHTML = window.dawImagerPanel(key, plugin);
                 } else if (plugin && plugin.id === 'bass-maximizer') {
                     detail.innerHTML = window.dawBmPanel(key, plugin);
+                } else if (plugin && plugin.id === 'harmonic-exciter') {
+                    detail.innerHTML = window.dawHePanel(key, plugin);
                 } else {
                     detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
                 }
@@ -2878,6 +2880,298 @@
         };
 
         // ============================================================
+        // HARMONIC EXCITER — vertical "HARMONIC EXCITER" side label, an
+        // animated bar-style spectrum analyzer up top (rAF-driven), Low
+        // Pass / High Pass / Input knobs on the left, 10 harmonic-band
+        // vertical faders (same mixer-style fader as elsewhere in the
+        // DAW) across the middle, Power / Gain / Output on the right,
+        // and a stack of view-mode buttons (Enable, Monitor, Profiles,
+        // Visual Mode, Scope, Graphic).
+        // ============================================================
+        window.dawHeState = window.dawHeState || {};
+
+        function dawHeDefaultState() {
+            return {
+                lowPass: 0.96, highPass: 0.56, input: 0.50, gain: 0.50, output: 1.00,
+                power: true, enable: true, monitor: false, viewMode: 'Visual Mode',
+                bands: [0, 0, 0, -32, -32, 0, -64, 48, 0, 0]
+            };
+        }
+        function dawHeGetState(key) {
+            if (!window.dawHeState[key]) window.dawHeState[key] = dawHeDefaultState();
+            return window.dawHeState[key];
+        }
+
+        const DAW_HE_FIELDS = {
+            lowPass:  { min: 0, max: 1, decimals: 2 },
+            highPass: { min: 0, max: 1, decimals: 2 },
+            input:    { min: 0, max: 1, decimals: 2 },
+            gain:     { min: 0, max: 1, decimals: 2 },
+            output:   { min: 0, max: 2, decimals: 2 }
+        };
+        const DAW_HE_BAND_LABELS = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th'];
+        const DAW_HE_MODES = ['Profiles', 'Visual Mode', 'Scope', 'Graphic'];
+
+        function dawHeKnob(key, sk, field, label, size) {
+            const s = dawHeGetState(key);
+            const c = DAW_HE_FIELDS[field];
+            const pct = (s[field] - c.min) / (c.max - c.min);
+            const deg = -135 + pct * 270;
+            const dim = size || 40;
+            return `
+            <div class="flex flex-col items-center gap-1">
+                <div id="dawhe-knob-${field}-${sk}" class="relative rounded-full bg-black border-2 border-[rgba(47,208,255,0.45)] cursor-ns-resize select-none flex-shrink-0"
+                     style="width:${dim}px; height:${dim}px;"
+                     onmousedown="event.stopPropagation(); window.dawHeKnobDrag(event,'${key}','${field}')" ontouchstart="event.stopPropagation(); window.dawHeKnobDrag(event,'${key}','${field}')">
+                    <div id="dawhe-knob-ind-${field}-${sk}" class="absolute top-0.5 left-1/2 w-0.5 bg-[#2fd0ff] origin-bottom" style="height:${dim * 0.4}px; transform:translateX(-50%) rotate(${deg}deg);"></div>
+                </div>
+                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
+                <input id="dawhe-val-${field}-${sk}" type="text" value="${s[field].toFixed(c.decimals)}" onclick="event.stopPropagation()" onchange="window.dawHeSetFromText('${key}','${field}', this.value)" class="w-12 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[7px] text-center neon-blue-text font-bold outline-none">
+            </div>`;
+        }
+
+        window.dawHeKnobDrag = function(e, key, field) {
+            e.preventDefault();
+            const c = DAW_HE_FIELDS[field];
+            const s = dawHeGetState(key);
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
+            const startVal = s[field];
+            const range = c.max - c.min;
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const deltaY = startY - clientY;
+                let newVal = startVal + deltaY * (range / 150);
+                newVal = Math.max(c.min, Math.min(c.max, newVal));
+                s[field] = newVal;
+                window.dawHeUpdateKnobVisual(key, field);
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
+        window.dawHeUpdateKnobVisual = function(key, field) {
+            const sk = eq8SafeKey(key);
+            const s = dawHeGetState(key);
+            const c = DAW_HE_FIELDS[field];
+            const pct = (s[field] - c.min) / (c.max - c.min);
+            const deg = -135 + pct * 270;
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawhe-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const ind = document.getElementById(`dawhe-knob-ind-${field}-${sk}`);
+            if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+            const val = document.getElementById(`dawhe-val-${field}-${sk}`);
+            if (val) val.value = s[field].toFixed(c.decimals);
+        };
+
+        window.dawHeSetFromText = function(key, field, text) {
+            const c = DAW_HE_FIELDS[field];
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            const s = dawHeGetState(key);
+            s[field] = Math.max(c.min, Math.min(c.max, num));
+            window.dawHeUpdateKnobVisual(key, field);
+        };
+
+        window.dawHeSetBand = function(key, i, value) {
+            const s = dawHeGetState(key);
+            const v = Math.max(-64, Math.min(64, parseFloat(value)));
+            s.bands[i] = v;
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawhe-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const val = document.getElementById(`dawhe-band-val-${i}-${sk}`);
+            if (val) val.value = Math.round(v);
+        };
+        window.dawHeSetBandFromText = function(key, i, text) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            window.dawHeSetBand(key, i, num);
+            const sk = eq8SafeKey(key);
+            const sl = document.getElementById(`dawhe-band-slider-${i}-${sk}`);
+            if (sl) sl.value = dawHeGetState(key).bands[i];
+        };
+
+        window.dawHeToggle = function(key, field) {
+            const s = dawHeGetState(key);
+            s[field] = !s[field];
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawhe-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            window.renderDawFxPicker();
+        };
+        window.dawHeSetMode = function(key, mode) {
+            const s = dawHeGetState(key);
+            s.viewMode = mode;
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawhe-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            window.renderDawFxPicker();
+        };
+
+        // --- Bar-style spectrum analyzer, redrawn continuously via
+        // window.requestAnimationFrame while the panel is open. Bar
+        // energy is loosely shaped by the harmonic band faders.
+        window.dawHeRafIds = window.dawHeRafIds || {};
+        const DAW_HE_SPEC_BARS = 56;
+        function dawHeSpectrumInner(s, t) {
+            let bars = '';
+            const w = 100 / DAW_HE_SPEC_BARS;
+            for (let i = 0; i < DAW_HE_SPEC_BARS; i++) {
+                const bandIdx = Math.floor((i / DAW_HE_SPEC_BARS) * s.bands.length);
+                const bandBoost = 1 + (s.bands[bandIdx] || 0) / 128;
+                const decay = 1 - i / (DAW_HE_SPEC_BARS * 1.6);
+                const n = Math.abs(Math.sin(i * 12.9898 + t / 260)) * Math.abs(Math.cos(i * 3.7 + t / 700));
+                const h = Math.max(3, Math.min(100, n * 92 * decay * bandBoost));
+                const x = (i * w).toFixed(2);
+                bars += `<rect x="${x}%" y="${(100 - h).toFixed(1)}%" width="${(w * 0.72).toFixed(2)}%" height="${h.toFixed(1)}%" fill="#2fd0ff" opacity="${(0.35 + (h / 100) * 0.55).toFixed(2)}"/>`;
+            }
+            return `<rect x="0" y="0" width="100%" height="100%" fill="#000"/>${bars}`;
+        }
+        window.dawHeAnimate = function(key) {
+            const sk = eq8SafeKey(key);
+            if (window.dawHeRafIds[sk]) return;
+            const step = (t) => {
+                const svg = document.getElementById(`dawhe-spectrum-${sk}`);
+                if (!svg) { delete window.dawHeRafIds[sk]; return; }
+                svg.innerHTML = dawHeSpectrumInner(dawHeGetState(key), t);
+                window.dawHeRafIds[sk] = window.requestAnimationFrame(step);
+            };
+            window.dawHeRafIds[sk] = window.requestAnimationFrame(step);
+        };
+
+        window.dawHePanel = function(key, plugin) {
+            const s = dawHeGetState(key);
+            const sk = eq8SafeKey(key);
+            try { window.dawHeAnimate(key); } catch (e) {}
+
+            const bandSliders = s.bands.map((v, i) => `
+                <div class="flex flex-col items-center gap-1 flex-1 min-w-0">
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${DAW_HE_BAND_LABELS[i]}</span>
+                    <div class="daw-fader-track" style="height:120px;">
+                        <input id="dawhe-band-slider-${i}-${sk}" type="range" min="-64" max="64" step="1" value="${v}" class="daw-fader-input eq8-fader-thumb"
+                            oninput="window.dawHeSetBand('${key}', ${i}, this.value)">
+                    </div>
+                    <input id="dawhe-band-val-${i}-${sk}" type="text" value="${Math.round(v)}" onchange="window.dawHeSetBandFromText('${key}', ${i}, this.value)" class="w-9 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-0.5 py-0.5 text-[7px] text-center neon-blue-text font-bold outline-none">
+                </div>`).join('');
+
+            const modeBtn = (mode) => `
+                <button onclick="window.dawHeSetMode('${key}','${mode}')" class="w-full text-left px-2.5 py-1.5 rounded text-[8px] font-black uppercase tracking-widest border transition-colors ${s.viewMode === mode ? 'bg-[#2fd0ff] text-black border-[#2fd0ff]' : 'text-gray-500 border-[rgba(47,208,255,0.3)] hover:text-[#2fd0ff]'}">${mode}</button>`;
+            const toggleBtn = (field, label) => `
+                <button onclick="window.dawHeToggle('${key}','${field}')" class="w-full text-left px-2.5 py-1.5 rounded text-[8px] font-black uppercase tracking-widest border transition-colors ${s[field] ? 'bg-[#2fd0ff] text-black border-[#2fd0ff]' : 'text-gray-500 border-[rgba(47,208,255,0.3)] hover:text-[#2fd0ff]'}">${label}</button>`;
+
+            return `
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button onclick="event.stopPropagation(); window.dawHeTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                        <span id="dawhe-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div id="dawhe-preset-menu-${sk}" class="hidden-section"></div>
+                </span>
+            </div>
+            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+
+            <div class="flex gap-2 mt-3">
+                <!-- vertical side label -->
+                <div class="flex-shrink-0 flex items-center justify-center" style="width:14px;">
+                    <span class="text-[8px] neon-blue-text font-black uppercase tracking-[0.3em]" style="writing-mode:vertical-rl; transform:rotate(180deg);">Harmonic Exciter</span>
+                </div>
+
+                <!-- left knob stack -->
+                <div class="flex flex-col justify-between flex-shrink-0 py-1">
+                    ${dawHeKnob(key, sk, 'lowPass', 'Low Pass', 36)}
+                    ${dawHeKnob(key, sk, 'highPass', 'High Pass', 36)}
+                    ${dawHeKnob(key, sk, 'input', 'Input', 36)}
+                </div>
+
+                <!-- center: spectrum + band faders -->
+                <div class="flex-1 min-w-0 flex flex-col gap-2">
+                    <div class="rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08); height:70px;">
+                        <svg id="dawhe-spectrum-${sk}" viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%; height:100%; display:block;">${dawHeSpectrumInner(s, 0)}</svg>
+                    </div>
+                    <div class="flex gap-1.5 rounded-lg p-2" style="border:1px solid rgba(47,208,255,0.2); background:rgba(0,0,0,0.3);">
+                        ${bandSliders}
+                    </div>
+                </div>
+
+                <!-- right: power/gain/output -->
+                <div class="flex flex-col items-center justify-between flex-shrink-0 py-1 gap-2">
+                    <button onclick="window.dawHeToggle('${key}','power')" title="Power" class="w-7 h-7 rounded flex items-center justify-center border-2 transition-colors ${s.power ? 'bg-[#2fd0ff] border-[#2fd0ff] text-black' : 'border-[rgba(47,208,255,0.4)] text-gray-500'}">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2v8"/><circle cx="12" cy="14" r="7"/></svg>
+                    </button>
+                    ${dawHeKnob(key, sk, 'gain', 'Gain', 36)}
+                    ${dawHeKnob(key, sk, 'output', 'Output', 36)}
+                </div>
+
+                <!-- far right: mode buttons -->
+                <div class="flex flex-col gap-1.5 flex-shrink-0" style="width:76px;">
+                    ${toggleBtn('enable', 'Enable')}
+                    ${toggleBtn('monitor', 'Monitor')}
+                    ${DAW_HE_MODES.map(modeBtn).join('')}
+                </div>
+            </div>`;
+        };
+
+        window.dawHeTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawhe-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawHeRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawHeRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawhe-preset-menu-${sk}`);
+            if (!el) return;
+            const userPresets = (window.dawFxUserPresets['harmonic-exciter'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawHeApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                <button onclick="window.dawHeApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
+                </button>
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawHeApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+
+        window.dawHeApplyPreset = function(key, presetIndex) {
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawHeState[key] = dawHeDefaultState();
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = (window.dawFxUserPresets['harmonic-exciter'] || [])[presetIndex];
+                if (preset) {
+                    window.dawHeState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
+            window.renderDawFxPicker();
+        };
+
+        // ============================================================
         // Unified top-menu (the "⋮" in the FX window title bar):
         // Remove from Chain / Preset / Save Preset — dispatches to
         // whichever plugin panel is currently open (generic, EQ-8, or
@@ -2935,6 +3229,7 @@
             else if (sel.plugin.id === 'master-limiter') window.dawLimiterTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'stereo-imager') window.dawImagerTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'bass-maximizer') window.dawBmTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'harmonic-exciter') window.dawHeTogglePresetMenu(sel.key);
             else window.dawFxTogglePresetMenu(sel.key);
         };
 
@@ -2955,6 +3250,8 @@
                 data = JSON.parse(JSON.stringify(dawImagerGetState(sel.key)));
             } else if (sel.plugin.id === 'bass-maximizer') {
                 data = JSON.parse(JSON.stringify(dawBmGetState(sel.key)));
+            } else if (sel.plugin.id === 'harmonic-exciter') {
+                data = JSON.parse(JSON.stringify(dawHeGetState(sel.key)));
             } else {
                 const choice = window.dawFxPresetChoice[sel.key];
                 data = { values: choice ? choice.values : sel.plugin.values };
@@ -2963,7 +3260,7 @@
             window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
             window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
             window.dawFxActivePresetLabel[sel.key] = label;
-            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer') {
+            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter') {
                 window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
             }
             window.renderDawFxPicker();
