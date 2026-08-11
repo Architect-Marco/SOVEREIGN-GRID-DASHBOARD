@@ -3435,11 +3435,11 @@
                 <!-- CENTER: taps viz + shape + fx -->
                 <div class="flex-1 min-w-0 flex flex-col gap-2">
                     <div class="flex gap-2">
-                        <div class="flex-1 min-w-0 rounded-lg overflow-hidden flex flex-col" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08); height:110px;">
+                        <div class="flex-1 min-w-0 rounded-lg overflow-hidden flex flex-col" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08); height:136px;">
                             <svg id="dawsd-tapsM-${sk}" viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%; height:50%; background:#000; display:block;"></svg>
                             <svg id="dawsd-tapsS-${sk}" viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%; height:50%; background:#050505; display:block;"></svg>
                         </div>
-                        <div class="flex flex-col items-center justify-center gap-1 flex-shrink-0" style="width:70px;">
+                        <div class="flex flex-col items-center justify-end gap-1 flex-shrink-0" style="width:64px; height:136px; padding-bottom:6px;">
                             <div class="flex items-center gap-1">
                                 <button onclick="window.dawSdSetTaps('${key}',-1)" class="text-gray-500 hover:text-[#2fd0ff] text-[10px]">◀</button>
                                 <span class="text-lg neon-blue-text font-black">${s.taps}</span>
