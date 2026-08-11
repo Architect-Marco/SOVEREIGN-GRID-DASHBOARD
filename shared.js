@@ -2212,7 +2212,7 @@
                     <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
                     ${dot}
                     <div class="flex items-end gap-1">
-                        <div class="daw-fader-track" style="width:12px; height:60px;"><input id="dawrev-fader-${field}-${sk}" type="range" min="0" max="100" value="${s[field]}" class="daw-fader-input" style="width:60px;" oninput="window.dawReverbSetFader('${key}','${field}', this.value)"></div>
+                        <div class="daw-fader-track" style="width:12px; height:130px;"><input id="dawrev-fader-${field}-${sk}" type="range" min="0" max="100" value="${s[field]}" class="daw-fader-input" style="width:130px;" oninput="window.dawReverbSetFader('${key}','${field}', this.value)"></div>
                     </div>
                     <span class="daw-mixer-value-field" id="dawrev-val-${field}-${sk}" style="font-size:6.5px; padding:1px 0; width:26px;">${s[field].toFixed(1)}</span>
                 </div>`;
@@ -2222,7 +2222,7 @@
             return `
                 <div class="flex flex-col items-center gap-1 flex-shrink-0">
                     <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
-                    <div class="daw-led-meter-single" id="dawrev-led-${field}-${sk}" style="width:7px; height:60px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                    <div class="daw-led-meter-single" id="dawrev-led-${field}-${sk}" style="width:7px; height:130px;"><div class="daw-led-mask" style="height:100%;"></div></div>
                     <span class="daw-mixer-value-field" id="dawrev-val-${field}-${sk}" style="font-size:6.5px; padding:1px 0; width:26px;">-Inf</span>
                 </div>`;
         }
@@ -2252,7 +2252,9 @@
                      the chain sidebar and padding are accounted for. -->
                 <div class="flex-1 min-w-0 flex flex-col gap-2">
 
-                    <!-- BOX 1 — Time Response (graph + buttons) -->
+                    <!-- BOX 1 — Time Response (graph + buttons). Kept to exactly the
+                         core params (9 fields total) so its height stays close to
+                         Box 3 (Gain/Output) on the right, keeping the grid aligned. -->
                     <div class="rounded-lg p-2.5" style="background:rgba(0,0,0,0.35); border:1px solid rgba(47,208,255,0.25);">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Time Response</span>
@@ -2271,51 +2273,23 @@
                             ${dawReverbParamBox('Room Size', s.roomSize, 'roomSize', key, sk)}
                             ${dawReverbParamBox('Distance', s.distance.toFixed(2), 'distance', key, sk)}
                             ${dawReverbParamBox('Balance', s.balance.toFixed(1), 'balance', key, sk)}
+                        </div>
+                        <div class="flex gap-2 flex-wrap mt-2">
                             ${dawReverbParamBox('Decay Time', s.decayTime.toFixed(1), 'decayTime', key, sk)}
                             ${dawReverbParamBox('Pre Delay', s.preDelay.toFixed(1), 'preDelay', key, sk)}
                             ${dawReverbParamBox('Density', s.density.toFixed(3), 'density', key, sk)}
                         </div>
 
-                        <div class="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
-                            <div class="flex items-center gap-1.5 flex-shrink-0">
-                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest w-14 flex-shrink-0">ER Lowcut</span>
-                                <button onclick="window.dawReverbSetField('${key}','erLowcutOn', ${!s.erLowcutOn})" class="w-4 h-4 rounded flex-shrink-0 border ${s.erLowcutOn ? 'bg-[#2fd0ff] border-[#2fd0ff]' : 'bg-black/50 border-white/20'}"></button>
-                                ${dawReverbParamBox('Freq', s.erLowcutFreq, 'erLowcutFreq', key, sk, 46)}
-                            </div>
-                            <div class="flex items-center gap-2.5 flex-shrink-0">
-                                <div class="flex flex-col items-center gap-1" style="width:46px;">
-                                    <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Rev Shelf</span>
-                                    <input id="dawrev-box-revShelf-${sk}" type="text" value="${s.revShelf.toFixed(1)}" onchange="window.dawReverbSetFieldFromText('${key}','revShelf', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
-                                </div>
-                                <div class="flex flex-col items-center gap-1" style="width:46px;">
-                                    <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">ER Absorb</span>
-                                    <input id="dawrev-box-erAbsorb-${sk}" type="text" value="${s.erAbsorb.toFixed(1)}" onchange="window.dawReverbSetFieldFromText('${key}','erAbsorb', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
-                                </div>
-                                <div class="flex flex-col items-center gap-1" style="width:46px;">
-                                    <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Hi Freq</span>
-                                    <input id="dawrev-box-hiFreq-${sk}" type="text" value="${s.hiFreq}" onchange="window.dawReverbSetFieldFromText('${key}','hiFreq', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
-                            <div class="flex items-center gap-2 flex-shrink-0">
-                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0">Reverb Damping</span>
-                                <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0">Low</span>
-                                ${dawReverbParamBox('', s.dampLowFreq, 'dampLowFreq', key, sk, 44)}
-                                ${dawReverbParamBox('', s.dampLowRatio.toFixed(2) + 'x', 'dampLowRatio', key, sk, 44)}
-                            </div>
-                            <div class="flex items-center gap-2 flex-shrink-0">
-                                <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0">High</span>
-                                ${dawReverbParamBox('', s.dampHighRatio.toFixed(2) + 'x', 'dampHighRatio', key, sk, 44)}
-                                ${dawReverbParamBox('', s.dampHighFreq, 'dampHighFreq', key, sk, 44)}
-                            </div>
+                        <div class="flex items-center gap-1.5 mt-2.5 flex-shrink-0">
+                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest w-14 flex-shrink-0">ER Lowcut</span>
+                            <button onclick="window.dawReverbSetField('${key}','erLowcutOn', ${!s.erLowcutOn})" class="w-4 h-4 rounded flex-shrink-0 border ${s.erLowcutOn ? 'bg-[#2fd0ff] border-[#2fd0ff]' : 'bg-black/50 border-white/20'}"></button>
+                            ${dawReverbParamBox('Freq', s.erLowcutFreq, 'erLowcutFreq', key, sk, 46)}
                         </div>
                     </div>
 
-                    <!-- BOX 2 — Frequency Response (graph). Header follows the same
-                         structure as Box 1: title row wrapped in flex/justify-between,
-                         sitting directly above the graph. -->
+                    <!-- BOX 2 — Frequency Response (graph), plus the remaining EQ/damping
+                         fields below it (Rev Shelf, ER Absorb, Hi Freq, Reverb Damping) —
+                         this is what gives Box 2 enough height to line up with Box 4. -->
                     <div class="rounded-lg p-2.5" style="background:rgba(0,0,0,0.35); border:1px solid rgba(47,208,255,0.25);">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Frequency Response</span>
@@ -2330,6 +2304,35 @@
                         <div class="flex justify-between mt-1 px-1">
                             <span class="text-[6px] text-gray-600 font-bold">62</span><span class="text-[6px] text-gray-600 font-bold">250</span><span class="text-[6px] text-gray-600 font-bold">1k</span><span class="text-[6px] text-gray-600 font-bold">4k</span><span class="text-[6px] text-gray-600 font-bold">16k</span>
                         </div>
+
+                        <div class="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
+                            <div class="flex flex-col items-center gap-1" style="width:46px;">
+                                <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Rev Shelf</span>
+                                <input id="dawrev-box-revShelf-${sk}" type="text" value="${s.revShelf.toFixed(1)}" onchange="window.dawReverbSetFieldFromText('${key}','revShelf', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
+                            </div>
+                            <div class="flex flex-col items-center gap-1" style="width:46px;">
+                                <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">ER Absorb</span>
+                                <input id="dawrev-box-erAbsorb-${sk}" type="text" value="${s.erAbsorb.toFixed(1)}" onchange="window.dawReverbSetFieldFromText('${key}','erAbsorb', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
+                            </div>
+                            <div class="flex flex-col items-center gap-1" style="width:46px;">
+                                <span class="text-[6.5px] text-gray-500 uppercase font-black tracking-widest text-center leading-tight">Hi Freq</span>
+                                <input id="dawrev-box-hiFreq-${sk}" type="text" value="${s.hiFreq}" onchange="window.dawReverbSetFieldFromText('${key}','hiFreq', this.value)" class="w-full bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8.5px] text-center neon-blue-text font-bold outline-none">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
+                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0">Reverb Damping</span>
+                                <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0">Low</span>
+                                ${dawReverbParamBox('', s.dampLowFreq, 'dampLowFreq', key, sk, 44)}
+                                ${dawReverbParamBox('', s.dampLowRatio.toFixed(2) + 'x', 'dampLowRatio', key, sk, 44)}
+                            </div>
+                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                                <span class="text-[6.5px] text-gray-600 uppercase font-black flex-shrink-0">High</span>
+                                ${dawReverbParamBox('', s.dampHighRatio.toFixed(2) + 'x', 'dampHighRatio', key, sk, 44)}
+                                ${dawReverbParamBox('', s.dampHighFreq, 'dampHighFreq', key, sk, 44)}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2342,7 +2345,7 @@
                     <div class="flex items-end gap-1.5 rounded-lg p-1.5" style="background:rgba(0,0,0,0.4); border:1px solid rgba(47,208,255,0.2);">
                         <div class="flex flex-col items-center gap-1 flex-shrink-0">
                             <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest">Gain</span>
-                            <div class="daw-fader-track" style="width:12px; height:60px;"><input id="dawrev-fader-gain-${sk}" type="range" min="0" max="100" value="${s.gain}" class="daw-fader-input" style="width:60px;" oninput="window.dawReverbSetFader('${key}','gain', this.value)"></div>
+                            <div class="daw-fader-track" style="width:12px; height:130px;"><input id="dawrev-fader-gain-${sk}" type="range" min="0" max="100" value="${s.gain}" class="daw-fader-input" style="width:130px;" oninput="window.dawReverbSetFader('${key}','gain', this.value)"></div>
                             <span class="daw-mixer-value-field" id="dawrev-val-gain-${sk}" style="font-size:6.5px; padding:1px 0; width:26px;">${s.gain.toFixed(1)}</span>
                         </div>
                         <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest self-center -mb-8">Output</span>
