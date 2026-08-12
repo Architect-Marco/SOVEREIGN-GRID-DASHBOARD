@@ -4151,7 +4151,7 @@
                 <div class="flex flex-col items-center gap-1.5 flex-1">
                     <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${dotColor}; box-shadow:0 0 4px ${dotColor};"></span>
                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
-                    <div class="daw-fader-track" style="height:120px;">
+                    <div class="daw-fader-track flex-shrink-0" style="height:120px; width:26px;">
                         <input id="dawar-slider-${field}-${sk}" type="range" min="0" max="100" step="0.1" value="${s[field]}" class="daw-fader-input eq8-fader-thumb"
                             oninput="window.dawArSliderInput('${key}','${field}', this.value)">
                     </div>
@@ -4248,21 +4248,23 @@
                         <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest self-start mb-1">Gain</span>
                         <div class="flex items-end gap-3">
                             <div class="flex flex-col items-center gap-1.5">
-                                <div class="daw-fader-track" style="height:110px;">
+                                <div class="daw-fader-track flex-shrink-0" style="height:110px; width:26px;">
                                     <input id="dawar-slider-output-${sk}" type="range" min="0" max="100" step="0.1" value="${s.output}" class="daw-fader-input eq8-fader-thumb"
                                         oninput="window.dawArSliderInput('${key}','output', this.value)">
                                 </div>
                                 <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Output</span>
                                 ${dawArBox(key, sk, 'output', 'w-12')}
                             </div>
-                            <div class="flex gap-2 items-end">
+                            <div class="flex gap-1.5 items-end">
                                 <div class="flex flex-col items-center gap-1.5">
-                                    <div class="daw-led-meter-single" id="dawar-led-L-${sk}" style="height:110px;"><div class="daw-led-mask" style="height:100%;"></div></div>
-                                    <span id="dawar-peak-L-${sk}" class="text-[7px] neon-blue-text font-bold">-Inf</span>
+                                    <div class="daw-led-meter-single flex-shrink-0" id="dawar-led-L-${sk}" style="height:110px; width:14px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">L</span>
+                                    <div id="dawar-peak-L-${sk}" class="w-10 bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold">-Inf</div>
                                 </div>
                                 <div class="flex flex-col items-center gap-1.5">
-                                    <div class="daw-led-meter-single" id="dawar-led-R-${sk}" style="height:110px;"><div class="daw-led-mask" style="height:100%;"></div></div>
-                                    <span id="dawar-peak-R-${sk}" class="text-[7px] neon-blue-text font-bold">-Inf</span>
+                                    <div class="daw-led-meter-single flex-shrink-0" id="dawar-led-R-${sk}" style="height:110px; width:14px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">R</span>
+                                    <div id="dawar-peak-R-${sk}" class="w-10 bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold">-Inf</div>
                                 </div>
                             </div>
                         </div>
