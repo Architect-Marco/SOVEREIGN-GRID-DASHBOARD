@@ -4217,11 +4217,10 @@
             </div>
             <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
 
-            <div class="flex gap-3 mt-3">
-                <div class="flex-1 min-w-0 flex flex-col gap-3">
+            <div class="grid gap-3 mt-3" style="grid-template-columns: 1fr 150px;">
 
-                    <!-- TIME RESPONSE -->
-                    <div class="rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.3);">
+                    <!-- TIME RESPONSE (box 1) -->
+                    <div class="rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.3); grid-column:1; grid-row:1;">
                         <div class="flex items-center justify-between px-2 pt-1.5">
                             <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest">Time Response</span>
                             <div class="flex items-center gap-2">
@@ -4251,8 +4250,32 @@
                         </div>
                     </div>
 
-                    <!-- DAMPING + FREQUENCY RESPONSE -->
-                    <div class="rounded-lg overflow-hidden p-2" style="border:1px solid rgba(47,208,255,0.3);">
+                    <!-- GAIN (box 3) - stretches to match box 1's height via grid row -->
+                    <div class="rounded-lg p-2 flex flex-col items-center" style="border:1px solid rgba(47,208,255,0.3); grid-column:2; grid-row:1;">
+                        <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest self-start mb-1">Gain</span>
+                        <div class="flex items-end gap-3">
+                            <div class="flex flex-col items-center gap-1.5">
+                                ${dawArVFader(key, sk, 'output', 110, 16)}
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Output</span>
+                                ${dawArBox(key, sk, 'output', 'w-12')}
+                            </div>
+                            <div class="flex gap-1.5 items-end">
+                                <div class="flex flex-col items-center gap-1.5">
+                                    <div class="daw-led-meter-single flex-shrink-0" id="dawar-led-L-${sk}" style="height:110px; width:14px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">L</span>
+                                    <div id="dawar-peak-L-${sk}" class="w-10 bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold">-Inf</div>
+                                </div>
+                                <div class="flex flex-col items-center gap-1.5">
+                                    <div class="daw-led-meter-single flex-shrink-0" id="dawar-led-R-${sk}" style="height:110px; width:14px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">R</span>
+                                    <div id="dawar-peak-R-${sk}" class="w-10 bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold">-Inf</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DAMPING + FREQUENCY RESPONSE (box 2) -->
+                    <div class="rounded-lg overflow-hidden p-2" style="border:1px solid rgba(47,208,255,0.3); grid-column:1; grid-row:2;">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-1.5">
                                 <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">ER Lowcut</span>
@@ -4283,35 +4306,10 @@
                             <svg id="dawar-freq-svg-${sk}" viewBox="0 0 ${DAW_AR_FG_W} ${DAW_AR_FG_H}" preserveAspectRatio="none" style="width:100%; height:110px; display:block; border:1px solid rgba(47,208,255,0.2); border-radius:6px;">${dawArFreqGraphInner(key)}</svg>
                         </div>
                     </div>
-                </div>
 
-                <!-- RIGHT: GAIN + DIRECT/EARLY REF/REVERB -->
-                <div class="flex-shrink-0 flex flex-col gap-3" style="width:150px;">
-                    <div class="rounded-lg p-2 flex flex-col items-center" style="border:1px solid rgba(47,208,255,0.3);">
-                        <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest self-start mb-1">Gain</span>
-                        <div class="flex items-end gap-3">
-                            <div class="flex flex-col items-center gap-1.5">
-                                ${dawArVFader(key, sk, 'output', 110, 16)}
-                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Output</span>
-                                ${dawArBox(key, sk, 'output', 'w-12')}
-                            </div>
-                            <div class="flex gap-1.5 items-end">
-                                <div class="flex flex-col items-center gap-1.5">
-                                    <div class="daw-led-meter-single flex-shrink-0" id="dawar-led-L-${sk}" style="height:110px; width:14px;"><div class="daw-led-mask" style="height:100%;"></div></div>
-                                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">L</span>
-                                    <div id="dawar-peak-L-${sk}" class="w-10 bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold">-Inf</div>
-                                </div>
-                                <div class="flex flex-col items-center gap-1.5">
-                                    <div class="daw-led-meter-single flex-shrink-0" id="dawar-led-R-${sk}" style="height:110px; width:14px;"><div class="daw-led-mask" style="height:100%;"></div></div>
-                                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">R</span>
-                                    <div id="dawar-peak-R-${sk}" class="w-10 bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold">-Inf</div>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- box 4 - empty, matches box 2's height via grid row -->
+                    <div class="rounded-lg p-2" style="border:1px solid rgba(47,208,255,0.3); grid-column:2; grid-row:2;">
                     </div>
-                    <div class="rounded-lg p-2 flex-1 flex flex-col" style="border:1px solid rgba(47,208,255,0.3);">
-                    </div>
-                </div>
             </div>`;
         };
 
