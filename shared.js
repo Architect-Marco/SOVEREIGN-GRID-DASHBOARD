@@ -3815,7 +3815,7 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 mt-2 flex-wrap">
+            <div class="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest">Crossover</span>
                 <span class="text-[7px] text-gray-500 uppercase font-black">Low</span>
                 <input type="text" value="${Math.round(s.xover.low)}" onchange="window.dawMbSetXover('${key}','low', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
@@ -3827,11 +3827,11 @@
                 <input type="text" value="${s.xover.q.toFixed(2)}" onchange="window.dawMbSetXover('${key}','q', this.value)" class="w-12 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
             </div>
 
-            <div class="flex gap-2 mt-3">
+            <div class="flex gap-2 mt-2">
                 <div class="flex flex-col justify-around text-[8px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0 py-8" style="height:150px;">
                     <span>Gain</span><span>Range</span><span>Attk</span><span>Rel</span>
                 </div>
-                <div class="flex gap-2 flex-1">
+                <div class="flex gap-2">
                     ${[0, 1, 2, 3].map(bandCol).join('')}
                 </div>
                 <div class="rounded-lg p-2.5 flex flex-col gap-2 flex-shrink-0" style="width:110px; border:1px solid rgba(47,208,255,0.25); background:rgba(0,0,0,0.3);">
