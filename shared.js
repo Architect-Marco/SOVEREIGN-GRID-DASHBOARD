@@ -4240,7 +4240,10 @@
                             ${fieldRow('Dimension', 'dimension')}
                             ${fieldRow('Room Size', 'roomSize')}
                             ${fieldRow('Distance', 'distance')}
-                            ${fieldRow('Balance', 'balance')}
+                            <div class="flex flex-col items-center gap-1">
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Balance</span>
+                                <div class="flex items-center gap-1">${swatchToggle('balanceOn')}${dawArBox(key, sk, 'balance', 'w-12')}</div>
+                            </div>
                             ${fieldRow('Decay Time', 'decayTime')}
                             ${fieldRow('Pre Delay', 'preDelay')}
                             ${fieldRow('Density', 'density')}
