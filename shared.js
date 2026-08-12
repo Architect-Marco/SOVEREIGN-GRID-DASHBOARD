@@ -3795,18 +3795,18 @@
 
             <div class="flex gap-2 mt-2">
                 <div class="flex-1 min-w-0 rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
-                    <svg id="dawmb-graph-${sk}" viewBox="0 0 ${DAW_MB_GRAPH_W} ${DAW_MB_GRAPH_H}" style="width:100%; height:158px; display:block;"
+                    <svg id="dawmb-graph-${sk}" viewBox="0 0 ${DAW_MB_GRAPH_W} ${DAW_MB_GRAPH_H}" preserveAspectRatio="none" style="width:100%; height:190px; display:block;"
                          onmousedown="window.dawMbNodeDrag(event,'${key}')" ontouchstart="window.dawMbNodeDrag(event,'${key}')">${dawMbGraphInner(key, s, 0)}</svg>
                 </div>
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:70px;">
-                    <div class="daw-fader-track" style="height:140px;">
+                    <div class="daw-fader-track" style="height:110px;">
                         <input id="dawmb-output-slider-${sk}" type="range" min="-18" max="18" step="0.1" value="${s.output}" class="daw-fader-input eq8-fader-thumb"
                             oninput="window.dawMbSetOutput('${key}', this.value)">
                     </div>
                     <input id="dawmb-output-val-${sk}" type="text" value="${s.output.toFixed(1)}" onchange="window.dawMbSetOutput('${key}', this.value)" class="w-12 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[7px] text-center neon-blue-text font-bold outline-none">
                     <div class="flex gap-1 mt-1">
-                        <div class="daw-led-meter-single" id="dawmb-led-L-${sk}" style="height:80px;"><div class="daw-led-mask" style="height:100%;"></div></div>
-                        <div class="daw-led-meter-single" id="dawmb-led-R-${sk}" style="height:80px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                        <div class="daw-led-meter-single" id="dawmb-led-L-${sk}" style="height:55px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                        <div class="daw-led-meter-single" id="dawmb-led-R-${sk}" style="height:55px;"><div class="daw-led-mask" style="height:100%;"></div></div>
                     </div>
                     <div class="flex gap-1">
                         <span id="dawmb-peak-L-${sk}" class="text-[6px] neon-blue-text font-bold">-Inf</span>
@@ -3834,7 +3834,7 @@
                 <div class="flex gap-2">
                     ${[0, 1, 2, 3].map(bandCol).join('')}
                 </div>
-                <div class="rounded-lg p-2.5 flex flex-col gap-2 flex-shrink-0" style="width:110px; border:1px solid rgba(47,208,255,0.25); background:rgba(0,0,0,0.3);">
+                <div class="rounded-lg p-2 flex flex-col gap-1.5 flex-shrink-0" style="width:110px; border:1px solid rgba(47,208,255,0.25); background:rgba(0,0,0,0.3);">
                     <span class="text-[9px] neon-blue-text font-black italic uppercase tracking-widest text-center border-b border-[rgba(47,208,255,0.2)] pb-1">Master</span>
                     ${masterStepper('thresh', 'Threshold')}
                     ${masterStepper('gain', 'Gain')}
