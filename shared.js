@@ -4010,8 +4010,9 @@
             const s = dawArGetState(key);
             const c = DAW_AR_FIELDS[field];
             const pct = (1 - (s[field] - c.min) / (c.max - c.min)) * 100;
+            const heightCss = typeof height === 'string' ? height : `${height}px`;
             return `
-            <div id="dawar-vftrack-${field}-${sk}" class="relative rounded flex-shrink-0" style="width:${trackWidth}px; height:${height}px; background:rgba(6,10,13,0.85); border:1px solid rgba(47,208,255,0.3); cursor:ns-resize;"
+            <div id="dawar-vftrack-${field}-${sk}" class="relative rounded flex-shrink-0" style="width:${trackWidth}px; height:${heightCss}; background:rgba(6,10,13,0.85); border:1px solid rgba(47,208,255,0.3); cursor:ns-resize;"
                  onmousedown="window.dawArFaderDrag(event,'${key}','${field}')" ontouchstart="window.dawArFaderDrag(event,'${key}','${field}')">
                 <div class="absolute rounded-full" style="left:50%; top:4px; bottom:4px; width:2px; background:rgba(47,208,255,0.18); transform:translateX(-50%);"></div>
                 <div id="dawar-vfthumb-${field}-${sk}" class="absolute rounded-sm" style="left:2px; right:2px; height:4px; top:${pct.toFixed(2)}%; transform:translateY(-50%); background:#2fd0ff; box-shadow:0 0 5px rgba(47,208,255,0.9);"></div>
@@ -4191,12 +4192,14 @@
                 <button id="dawar-swatch-${field}-${sk}" onclick="event.stopPropagation(); window.dawArToggle('${key}','${field}')" class="w-4 h-4 rounded-sm flex-shrink-0 border border-[rgba(47,208,255,0.5)]" style="background:${s[field] ? '#2fd0ff' : '#1a2530'};"></button>`;
 
             const miniFader = (field, dotColor, label) => `
-                <div class="flex flex-col items-center gap-1.5 flex-1">
+                <div class="flex flex-col items-center gap-1.5 flex-1 h-full">
                     <div class="flex flex-col items-center justify-start gap-1.5" style="height:22px;">
                         <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${dotColor}; box-shadow:0 0 4px ${dotColor};"></span>
                         <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest whitespace-nowrap">${label}</span>
                     </div>
-                    ${dawArVFader(key, sk, field, 120, 16)}
+                    <div class="flex-1 min-h-0 w-full flex justify-center">
+                        ${dawArVFader(key, sk, field, '100%', 16)}
+                    </div>
                     ${dawArBox(key, sk, field, 'w-12 mt-2.5')}
                 </div>`;
 
