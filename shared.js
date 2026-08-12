@@ -4192,12 +4192,11 @@
                 <button id="dawar-swatch-${field}-${sk}" onclick="event.stopPropagation(); window.dawArToggle('${key}','${field}')" class="w-4 h-4 rounded-sm flex-shrink-0 border border-[rgba(47,208,255,0.5)]" style="background:${s[field] ? '#2fd0ff' : '#1a2530'};"></button>`;
 
             const miniFader = (field, dotColor, label) => `
-                <div class="flex flex-col items-center gap-1.5 flex-1 h-full">
+                <div class="flex flex-col items-center justify-center gap-1.5 flex-1 h-full">
                     <div class="flex flex-col items-center justify-start gap-1.5" style="height:22px;">
                         <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${dotColor}; box-shadow:0 0 4px ${dotColor};"></span>
                         <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest whitespace-nowrap">${label}</span>
                     </div>
-                    <div class="flex-1 min-h-0"></div>
                     ${dawArVFader(key, sk, field, 120, 16)}
                     ${dawArBox(key, sk, field, 'w-12 mt-2.5')}
                 </div>`;
