@@ -4192,12 +4192,14 @@
                 <button id="dawar-swatch-${field}-${sk}" onclick="event.stopPropagation(); window.dawArToggle('${key}','${field}')" class="w-4 h-4 rounded-sm flex-shrink-0 border border-[rgba(47,208,255,0.5)]" style="background:${s[field] ? '#2fd0ff' : '#1a2530'};"></button>`;
 
             const miniFader = (field, dotColor, label) => `
-                <div class="flex flex-col items-center justify-center gap-1.5 flex-1 h-full">
+                <div class="flex flex-col items-center gap-1.5 flex-1 h-full">
                     <div class="flex flex-col items-center justify-start gap-1.5" style="height:22px;">
                         <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${dotColor}; box-shadow:0 0 4px ${dotColor};"></span>
                         <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest whitespace-nowrap">${label}</span>
                     </div>
-                    ${dawArVFader(key, sk, field, 120, 16)}
+                    <div class="flex-1 min-h-0 w-full flex justify-center">
+                        ${dawArVFader(key, sk, field, '100%', 16)}
+                    </div>
                     ${dawArBox(key, sk, field, 'w-12 mt-2.5')}
                 </div>`;
 
@@ -4251,22 +4253,22 @@
                     </div>
 
                     <!-- GAIN (box 3) - stretches to match box 1's height via grid row -->
-                    <div class="rounded-lg p-2 flex flex-col items-center" style="border:1px solid rgba(47,208,255,0.3); grid-column:2; grid-row:1;">
+                    <div class="rounded-lg p-2 flex flex-col items-center h-full" style="border:1px solid rgba(47,208,255,0.3); grid-column:2; grid-row:1;">
                         <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest self-start mb-1">Gain</span>
-                        <div class="flex items-end gap-3">
+                        <div class="flex items-stretch gap-3 flex-1 min-h-0 w-full justify-center">
                             <div class="flex flex-col items-center gap-1.5">
-                                ${dawArVFader(key, sk, 'output', 110, 16)}
+                                <div class="flex-1 min-h-0 flex justify-center">${dawArVFader(key, sk, 'output', '100%', 16)}</div>
                                 <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Output</span>
                                 ${dawArBox(key, sk, 'output', 'w-12')}
                             </div>
-                            <div class="flex gap-1.5 items-end">
+                            <div class="flex gap-1.5 items-stretch">
                                 <div class="flex flex-col items-center gap-1.5">
-                                    <div class="daw-led-meter-single flex-shrink-0" id="dawar-led-L-${sk}" style="height:110px; width:14px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                                    <div class="flex-1 min-h-0 daw-led-meter-single" id="dawar-led-L-${sk}" style="width:14px;"><div class="daw-led-mask" style="height:100%;"></div></div>
                                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">L</span>
                                     <div id="dawar-peak-L-${sk}" class="w-10 bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold">-Inf</div>
                                 </div>
                                 <div class="flex flex-col items-center gap-1.5">
-                                    <div class="daw-led-meter-single flex-shrink-0" id="dawar-led-R-${sk}" style="height:110px; width:14px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                                    <div class="flex-1 min-h-0 daw-led-meter-single" id="dawar-led-R-${sk}" style="width:14px;"><div class="daw-led-mask" style="height:100%;"></div></div>
                                     <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">R</span>
                                     <div id="dawar-peak-R-${sk}" class="w-10 bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[8px] text-center neon-blue-text font-bold">-Inf</div>
                                 </div>
@@ -4307,8 +4309,13 @@
                         </div>
                     </div>
 
-                    <!-- box 4 - empty, matches box 2's height via grid row -->
-                    <div class="rounded-lg p-2" style="border:1px solid rgba(47,208,255,0.3); grid-column:2; grid-row:2;">
+                    <!-- DIRECT/EARLY REF/REVERB (box 4) - matches box 2's height via grid row -->
+                    <div class="rounded-lg p-2 flex flex-col h-full" style="border:1px solid rgba(47,208,255,0.3); grid-column:2; grid-row:2;">
+                        <div class="flex gap-1 flex-1 min-h-0">
+                            ${miniFader('direct', '#ff4d4d', 'Direct')}
+                            ${miniFader('earlyRef', '#f5c518', 'Early Ref')}
+                            ${miniFader('reverb', '#2fd0ff', 'Reverb')}
+                        </div>
                     </div>
             </div>`;
         };
