@@ -4310,11 +4310,6 @@
                         </div>
                     </div>
                     <div class="rounded-lg p-2 flex-1 flex flex-col" style="border:1px solid rgba(47,208,255,0.3);">
-                        <div class="flex gap-1 flex-1">
-                            ${miniFader('direct', '#ff4d4d', 'Direct')}
-                            ${miniFader('earlyRef', '#f5c518', 'Early Ref')}
-                            ${miniFader('reverb', '#2fd0ff', 'Reverb')}
-                        </div>
                     </div>
                 </div>
             </div>`;
