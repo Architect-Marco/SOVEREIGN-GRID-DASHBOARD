@@ -3751,7 +3751,7 @@
                     <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest">Thresh</span>
                     <input id="dawmb-thresh-${i}-${sk}" type="text" value="${b.thresh.toFixed(1)}" onchange="window.dawMbSetBandField('${key}',${i},'thresh', this.value)" class="w-14 bg-black/50 border rounded px-1 py-0.5 text-[8px] text-center font-bold outline-none" style="border-color:${DAW_MB_COLORS[i]}77; color:${DAW_MB_COLORS[i]};">
                     <div class="flex items-end gap-1 mt-0.5 mb-2">
-                        <div class="daw-fader-track" style="height:90px;">
+                        <div class="daw-fader-track" style="height:115px;">
                             <input id="dawmb-threshslider-${i}-${sk}" type="range" min="-60" max="0" step="0.1" value="${b.thresh}" class="daw-fader-input eq8-fader-thumb"
                                 oninput="window.dawMbSetBandField('${key}',${i},'thresh', this.value)">
                         </div>
@@ -3795,11 +3795,11 @@
 
             <div class="flex gap-2 mt-2">
                 <div class="flex-1 min-w-0 rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
-                    <svg id="dawmb-graph-${sk}" viewBox="0 0 ${DAW_MB_GRAPH_W} ${DAW_MB_GRAPH_H}" style="width:100%; height:190px; display:block;"
+                    <svg id="dawmb-graph-${sk}" viewBox="0 0 ${DAW_MB_GRAPH_W} ${DAW_MB_GRAPH_H}" style="width:100%; height:158px; display:block;"
                          onmousedown="window.dawMbNodeDrag(event,'${key}')" ontouchstart="window.dawMbNodeDrag(event,'${key}')">${dawMbGraphInner(key, s, 0)}</svg>
                 </div>
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:70px;">
-                    <div class="daw-fader-track" style="height:170px;">
+                    <div class="daw-fader-track" style="height:140px;">
                         <input id="dawmb-output-slider-${sk}" type="range" min="-18" max="18" step="0.1" value="${s.output}" class="daw-fader-input eq8-fader-thumb"
                             oninput="window.dawMbSetOutput('${key}', this.value)">
                     </div>
@@ -3815,7 +3815,7 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+            <div class="flex items-center gap-2 mt-1 flex-wrap">
                 <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest">Crossover</span>
                 <span class="text-[7px] text-gray-500 uppercase font-black">Low</span>
                 <input type="text" value="${Math.round(s.xover.low)}" onchange="window.dawMbSetXover('${key}','low', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
@@ -3827,8 +3827,8 @@
                 <input type="text" value="${s.xover.q.toFixed(2)}" onchange="window.dawMbSetXover('${key}','q', this.value)" class="w-12 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
             </div>
 
-            <div class="flex gap-2 mt-2">
-                <div class="flex flex-col justify-around text-[8px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0 py-8" style="height:150px;">
+            <div class="flex gap-2 mt-1.5">
+                <div class="flex flex-col justify-around text-[8px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0 py-8" style="height:172px;">
                     <span>Gain</span><span>Range</span><span>Attk</span><span>Rel</span>
                 </div>
                 <div class="flex gap-2">
