@@ -4200,7 +4200,7 @@
                     <div class="flex-1 min-h-0 w-full flex justify-center">
                         ${dawArVFader(key, sk, field, '100%', 16)}
                     </div>
-                    ${dawArBox(key, sk, field, 'w-12 mt-2.5')}
+                    ${dawArBox(key, sk, field, 'w-10 !py-0.5 mt-2.5')}
                 </div>`;
 
             return `
