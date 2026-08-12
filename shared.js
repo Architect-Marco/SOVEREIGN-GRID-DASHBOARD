@@ -4242,7 +4242,10 @@
                             ${fieldRow('Distance', 'distance')}
                             <div class="flex flex-col items-center gap-1">
                                 <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Balance</span>
-                                <div class="flex items-center gap-1">${swatchToggle('balanceOn')}${dawArBox(key, sk, 'balance', 'w-12')}</div>
+                                <div class="relative flex items-center justify-center">
+                                    ${dawArBox(key, sk, 'balance', 'w-12')}
+                                    <div class="absolute right-full mr-1 top-1/2 -translate-y-1/2">${swatchToggle('balanceOn')}</div>
+                                </div>
                             </div>
                             ${fieldRow('Decay Time', 'decayTime')}
                             ${fieldRow('Pre Delay', 'preDelay')}
