@@ -3999,21 +3999,64 @@
                 window.dawArRedrawFreqGraph(key);
             }
             if (field === 'output' || field === 'direct' || field === 'earlyRef' || field === 'reverb') {
-                const sl = document.getElementById(`dawar-slider-${field}-${sk}`);
-                if (sl) sl.value = s[field];
+                window.dawArUpdateFaderVisual(key, field);
             }
         };
 
-        window.dawArSliderInput = function(key, field, value) {
-            const num = parseFloat(value);
-            if (isNaN(num)) return;
+        // --- Custom vertical faders (self-drawn, not a native <input
+        // type=range>) for Output/Direct/Early Ref/Reverb, so the thumb
+        // can never render wider than its own track.
+        function dawArVFader(key, sk, field, height, trackWidth) {
             const s = dawArGetState(key);
             const c = DAW_AR_FIELDS[field];
-            s[field] = Math.max(c.min, Math.min(c.max, num));
+            const pct = (1 - (s[field] - c.min) / (c.max - c.min)) * 100;
+            return `
+            <div id="dawar-vftrack-${field}-${sk}" class="relative rounded flex-shrink-0" style="width:${trackWidth}px; height:${height}px; background:rgba(6,10,13,0.85); border:1px solid rgba(47,208,255,0.3); cursor:ns-resize;"
+                 onmousedown="window.dawArFaderDrag(event,'${key}','${field}')" ontouchstart="window.dawArFaderDrag(event,'${key}','${field}')">
+                <div class="absolute rounded-full" style="left:50%; top:4px; bottom:4px; width:2px; background:rgba(47,208,255,0.18); transform:translateX(-50%);"></div>
+                <div id="dawar-vfthumb-${field}-${sk}" class="absolute rounded-sm" style="left:2px; right:2px; height:4px; top:${pct.toFixed(2)}%; transform:translateY(-50%); background:#2fd0ff; box-shadow:0 0 5px rgba(47,208,255,0.9);"></div>
+            </div>`;
+        }
+
+        window.dawArFaderDrag = function(e, key, field) {
+            e.preventDefault();
             const sk = eq8SafeKey(key);
+            const c = DAW_AR_FIELDS[field];
+            const track = document.getElementById(`dawar-vftrack-${field}-${sk}`);
+            if (!track) return;
+            const setFromEvent = (ev) => {
+                const rect = track.getBoundingClientRect();
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                let pct = (clientY - rect.top) / rect.height;
+                pct = Math.max(0, Math.min(1, pct));
+                const s = dawArGetState(key);
+                s[field] = c.max - pct * (c.max - c.min);
+                window.dawArUpdateFaderVisual(key, field);
+            };
+            setFromEvent(e);
+            const move = (ev) => setFromEvent(ev);
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
+        window.dawArUpdateFaderVisual = function(key, field) {
+            const sk = eq8SafeKey(key);
+            const s = dawArGetState(key);
+            const c = DAW_AR_FIELDS[field];
+            const pct = (1 - (s[field] - c.min) / (c.max - c.min)) * 100;
             delete window.dawFxActivePresetLabel[key];
             const badge = document.getElementById(`dawar-badge-${sk}`);
             if (badge) badge.innerText = 'factory preset';
+            const thumb = document.getElementById(`dawar-vfthumb-${field}-${sk}`);
+            if (thumb) thumb.style.top = pct.toFixed(2) + '%';
             const box = document.getElementById(`dawar-val-${field}-${sk}`);
             if (box) box.value = dawArFmtVal(field, s[field]);
         };
@@ -4149,13 +4192,12 @@
 
             const miniFader = (field, dotColor, label) => `
                 <div class="flex flex-col items-center gap-1.5 flex-1">
-                    <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${dotColor}; box-shadow:0 0 4px ${dotColor};"></span>
-                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
-                    <div class="daw-fader-track flex-shrink-0" style="height:120px; width:26px;">
-                        <input id="dawar-slider-${field}-${sk}" type="range" min="0" max="100" step="0.1" value="${s[field]}" class="daw-fader-input eq8-fader-thumb"
-                            oninput="window.dawArSliderInput('${key}','${field}', this.value)">
+                    <div class="flex flex-col items-center justify-start gap-1.5" style="height:22px;">
+                        <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${dotColor}; box-shadow:0 0 4px ${dotColor};"></span>
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest whitespace-nowrap">${label}</span>
                     </div>
-                    ${dawArBox(key, sk, field, 'w-12 mt-1')}
+                    ${dawArVFader(key, sk, field, 120, 16)}
+                    ${dawArBox(key, sk, field, 'w-12 mt-2.5')}
                 </div>`;
 
             return `
@@ -4248,10 +4290,7 @@
                         <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest self-start mb-1">Gain</span>
                         <div class="flex items-end gap-3">
                             <div class="flex flex-col items-center gap-1.5">
-                                <div class="daw-fader-track flex-shrink-0" style="height:110px; width:26px;">
-                                    <input id="dawar-slider-output-${sk}" type="range" min="0" max="100" step="0.1" value="${s.output}" class="daw-fader-input eq8-fader-thumb"
-                                        oninput="window.dawArSliderInput('${key}','output', this.value)">
-                                </div>
+                                ${dawArVFader(key, sk, 'output', 110, 16)}
                                 <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Output</span>
                                 ${dawArBox(key, sk, 'output', 'w-12')}
                             </div>
