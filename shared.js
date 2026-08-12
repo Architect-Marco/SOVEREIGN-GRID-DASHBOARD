@@ -1978,6 +1978,8 @@
                     detail.innerHTML = window.dawDsPanel(key, plugin);
                 } else if (plugin && plugin.id === 'vocal-rider') {
                     detail.innerHTML = window.dawVrPanel(key, plugin);
+                } else if (plugin && plugin.id === 'aether-reverb') {
+                    detail.innerHTML = window.dawArPanel(key, plugin);
                 } else {
                     detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
                 }
@@ -3917,6 +3919,407 @@
         };
 
         // ============================================================
+        // AETHER-REVERB — a "luxury space" reverb: a Time Response bar
+        // chart (impulse decay) with Decorrelation Evar/Rvar, a row of
+        // Dimension/Room Size/Distance/Balance/Decay Time/Pre Delay/
+        // Density fields, an ER Lowcut + Rev Shelf/ER Absorb/Hi Freq
+        // row, a Low/Reverb Damping/High row, a Frequency Response
+        // curve graph, and a right-hand Gain fader + Direct/Early Ref/
+        // Reverb 3-fader mixer.
+        // ============================================================
+        window.dawArState = window.dawArState || {};
+
+        function dawArDefaultState() {
+            return {
+                dimension: 3.00, roomSize: 1316, distance: 10.02,
+                balanceOn: true, balance: 3.0,
+                decayTime: 1.2, preDelay: 88.9, density: 0.850,
+                erLowcutOn: true, erLowcut: 16,
+                revShelf: -8.0, erAbsorb: -8.0, hiFreq: 5035,
+                lowFreq: 511, lowMult: 1.37, highMult: 0.40, highFreq: 7104,
+                output: 80.0, direct: 80.0, earlyRef: 80.0, reverb: 90.0,
+                evar: 0, rvar: 0
+            };
+        }
+        function dawArGetState(key) {
+            if (!window.dawArState[key]) window.dawArState[key] = dawArDefaultState();
+            return window.dawArState[key];
+        }
+
+        const DAW_AR_FIELDS = {
+            dimension: { min: 0, max: 10, decimals: 2 },
+            roomSize:  { min: 100, max: 3000, decimals: 0 },
+            distance:  { min: 0, max: 30, decimals: 2 },
+            balance:   { min: -10, max: 10, decimals: 1 },
+            decayTime: { min: 0.1, max: 10, decimals: 1 },
+            preDelay:  { min: 0, max: 250, decimals: 1 },
+            density:   { min: 0, max: 1, decimals: 3 },
+            erLowcut:  { min: 0, max: 100, decimals: 0 },
+            revShelf:  { min: -24, max: 0, decimals: 1 },
+            erAbsorb:  { min: -24, max: 0, decimals: 1 },
+            hiFreq:    { min: 200, max: 20000, decimals: 0 },
+            lowFreq:   { min: 20, max: 2000, decimals: 0 },
+            lowMult:   { min: 0, max: 3, decimals: 2, suffix: 'x' },
+            highMult:  { min: 0, max: 3, decimals: 2, suffix: 'x' },
+            highFreq:  { min: 2000, max: 20000, decimals: 0 },
+            output:    { min: 0, max: 100, decimals: 1 },
+            direct:    { min: 0, max: 100, decimals: 1 },
+            earlyRef:  { min: 0, max: 100, decimals: 1 },
+            reverb:    { min: 0, max: 100, decimals: 1 },
+            evar:      { min: -100, max: 100, decimals: 0 },
+            rvar:      { min: -100, max: 100, decimals: 0 }
+        };
+        const DAW_AR_GRAPH_FIELDS = ['dimension', 'roomSize', 'distance', 'decayTime', 'preDelay', 'density',
+            'erLowcut', 'erLowcutOn', 'revShelf', 'erAbsorb', 'hiFreq', 'lowFreq', 'lowMult', 'highMult', 'highFreq'];
+
+        function dawArFmtVal(field, v) {
+            const c = DAW_AR_FIELDS[field];
+            return v.toFixed(c.decimals) + (c.suffix || '');
+        }
+
+        function dawArBox(key, sk, field, extraClass) {
+            const s = dawArGetState(key);
+            return `<input id="dawar-val-${field}-${sk}" type="text" value="${dawArFmtVal(field, s[field])}" onclick="event.stopPropagation()" onchange="window.dawArSetField('${key}','${field}', this.value)" class="bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[9px] text-center neon-blue-text font-bold outline-none ${extraClass || 'w-16'}">`;
+        }
+
+        window.dawArSetField = function(key, field, text) {
+            const c = DAW_AR_FIELDS[field];
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            const s = dawArGetState(key);
+            s[field] = Math.max(c.min, Math.min(c.max, num));
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawar-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const box = document.getElementById(`dawar-val-${field}-${sk}`);
+            if (box) box.value = dawArFmtVal(field, s[field]);
+            if (DAW_AR_GRAPH_FIELDS.indexOf(field) !== -1) {
+                window.dawArRedrawTimeGraph(key);
+                window.dawArRedrawFreqGraph(key);
+            }
+            if (field === 'output' || field === 'direct' || field === 'earlyRef' || field === 'reverb') {
+                const sl = document.getElementById(`dawar-slider-${field}-${sk}`);
+                if (sl) sl.value = s[field];
+            }
+        };
+
+        window.dawArSliderInput = function(key, field, value) {
+            const num = parseFloat(value);
+            if (isNaN(num)) return;
+            const s = dawArGetState(key);
+            const c = DAW_AR_FIELDS[field];
+            s[field] = Math.max(c.min, Math.min(c.max, num));
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawar-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const box = document.getElementById(`dawar-val-${field}-${sk}`);
+            if (box) box.value = dawArFmtVal(field, s[field]);
+        };
+
+        window.dawArToggle = function(key, field) {
+            const s = dawArGetState(key);
+            s[field] = !s[field];
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawar-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const sw = document.getElementById(`dawar-swatch-${field}-${sk}`);
+            if (sw) sw.style.background = s[field] ? '#2fd0ff' : '#1a2530';
+            window.dawArRedrawFreqGraph(key);
+        };
+
+        // --- Time Response bar chart: a seeded-random impulse decay,
+        // enveloped by Decay Time / Density / Dimension, with one
+        // highlighted early-reflection tap.
+        const DAW_AR_TG_W = 560, DAW_AR_TG_H = 150;
+        function dawArSeeded(seedStr) {
+            let h = 0;
+            for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
+            return function() {
+                h = (h * 1664525 + 1013904223) >>> 0;
+                return (h >>> 8) / 16777216;
+            };
+        }
+        function dawArTimeGraphInner(key) {
+            const s = dawArGetState(key);
+            const rand = dawArSeeded('aether-' + key);
+            const N = 46;
+            const baseY = DAW_AR_TG_H - 6;
+            const decayK = 3.2 / Math.max(0.15, s.decayTime);
+            const peakIdx = Math.max(2, Math.round(N * Math.min(0.9, 0.10 + s.distance / 60)));
+            const gapW = DAW_AR_TG_W / N;
+            let bars = '';
+            for (let i = 0; i < N; i++) {
+                const t = i / N;
+                const envelope = Math.exp(-t * decayK);
+                const noise = 0.35 + rand() * 0.65;
+                const h = Math.max(2, envelope * noise * (DAW_AR_TG_H - 24) * (0.35 + s.density * 0.8) * (0.6 + s.dimension / 14));
+                const x = i * gapW + gapW * 0.18;
+                const w = gapW * 0.64;
+                const isPeak = i === peakIdx;
+                const color = isPeak ? '#f5a524' : (i % 5 === 0 ? '#7fb8d4' : '#3f6f8a');
+                bars += `<rect x="${x.toFixed(1)}" y="${(baseY - h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="0.5" fill="${color}"/>`;
+            }
+            return `<rect x="0" y="0" width="${DAW_AR_TG_W}" height="${DAW_AR_TG_H}" fill="#050a0d"/>
+                <line x1="0" y1="${baseY}" x2="${DAW_AR_TG_W}" y2="${baseY}" stroke="rgba(47,208,255,0.2)" stroke-width="1"/>
+                ${bars}`;
+        }
+        window.dawArRedrawTimeGraph = function(key) {
+            const sk = eq8SafeKey(key);
+            const svg = document.getElementById(`dawar-time-svg-${sk}`);
+            if (svg) svg.innerHTML = dawArTimeGraphInner(key);
+        };
+
+        // --- Frequency Response graph: two smooth shelf-shaped curves
+        // (reverb-tail damping, and early-reflection lowcut/absorb).
+        const DAW_AR_FG_W = 560, DAW_AR_FG_H = 110;
+        const DAW_AR_FREQ_TICKS = [62, 250, 1000, 4000, 16000];
+        const DAW_AR_FREQ_LABELS = { 62: '62', 250: '250', 1000: '1k', 4000: '4k', 16000: '16k' };
+        function dawArFreqToX(f) {
+            return ((Math.log10(f) - Math.log10(20)) / (Math.log10(20000) - Math.log10(20))) * DAW_AR_FG_W;
+        }
+        function dawArShelfDb(f, breakFreq, gainDb, mode) {
+            const logf = Math.log10(f), logb = Math.log10(Math.max(20, breakFreq));
+            let t = mode === 'high' ? (logf - logb) / 1.3 : (logb - logf) / 1.3;
+            t = Math.max(0, Math.min(1, t));
+            const eased = 1 - Math.cos(t * Math.PI / 2);
+            return gainDb * eased;
+        }
+        function dawArReverbDb(f, s) {
+            let db = 0;
+            db += dawArShelfDb(f, s.lowFreq, 20 * Math.log10(Math.max(0.05, s.lowMult)), 'low');
+            db += dawArShelfDb(f, s.highFreq, 20 * Math.log10(Math.max(0.05, s.highMult)), 'high');
+            db += dawArShelfDb(f, s.hiFreq, s.revShelf, 'high');
+            return db;
+        }
+        function dawArEarlyDb(f, s) {
+            let db = 0;
+            if (s.erLowcutOn) db += dawArShelfDb(f, 40 + s.erLowcut * 8, -18, 'low');
+            db += dawArShelfDb(f, s.hiFreq, s.erAbsorb, 'high');
+            return db;
+        }
+        function dawArFreqGraphInner(key) {
+            const s = dawArGetState(key);
+            const SAMPLES = 90;
+            const midY = DAW_AR_FG_H * 0.38;
+            const scale = 2.6;
+            let ptsRev = [], ptsEarly = [];
+            for (let i = 0; i <= SAMPLES; i++) {
+                const logf = Math.log10(20) + (i / SAMPLES) * (Math.log10(20000) - Math.log10(20));
+                const f = Math.pow(10, logf);
+                const x = dawArFreqToX(f);
+                const yRev = Math.max(4, Math.min(DAW_AR_FG_H - 4, midY - dawArReverbDb(f, s) * scale));
+                const yEarly = Math.max(4, Math.min(DAW_AR_FG_H - 4, midY - dawArEarlyDb(f, s) * scale + 4));
+                ptsRev.push(`${x.toFixed(1)},${yRev.toFixed(1)}`);
+                ptsEarly.push(`${x.toFixed(1)},${yEarly.toFixed(1)}`);
+            }
+            const fillPts = `0,${DAW_AR_FG_H} ${ptsRev.join(' ')} ${DAW_AR_FG_W},${DAW_AR_FG_H}`;
+            const grid = DAW_AR_FREQ_TICKS.map(f => {
+                const x = dawArFreqToX(f).toFixed(1);
+                return `<line x1="${x}" y1="0" x2="${x}" y2="${DAW_AR_FG_H}" stroke="rgba(47,208,255,0.12)" stroke-width="1"/>
+                    <text x="${x}" y="${DAW_AR_FG_H - 3}" font-size="9" fill="#6b8a9a" text-anchor="middle">${DAW_AR_FREQ_LABELS[f]}</text>`;
+            }).join('');
+            return `<rect x="0" y="0" width="${DAW_AR_FG_W}" height="${DAW_AR_FG_H}" fill="#050a0d"/>
+                ${grid}
+                <polygon points="${fillPts}" fill="rgba(47,120,150,0.35)"/>
+                <polyline points="${ptsRev.join(' ')}" fill="none" stroke="#2fd0ff" stroke-width="1.5"/>
+                <polyline points="${ptsEarly.join(' ')}" fill="none" stroke="#f5c518" stroke-width="1.5"/>`;
+        }
+        window.dawArRedrawFreqGraph = function(key) {
+            const sk = eq8SafeKey(key);
+            const svg = document.getElementById(`dawar-freq-svg-${sk}`);
+            if (svg) svg.innerHTML = dawArFreqGraphInner(key);
+        };
+
+        window.dawArPanel = function(key, plugin) {
+            const s = dawArGetState(key);
+            const sk = eq8SafeKey(key);
+            try { window.dawStartMeterLoop(); } catch (e) {}
+
+            const fieldRow = (label, field, extraClass) => `
+                <div class="flex flex-col items-center gap-1">
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
+                    ${dawArBox(key, sk, field, extraClass)}
+                </div>`;
+
+            const swatchToggle = (field) => `
+                <button id="dawar-swatch-${field}-${sk}" onclick="event.stopPropagation(); window.dawArToggle('${key}','${field}')" class="w-4 h-4 rounded-sm flex-shrink-0 border border-[rgba(47,208,255,0.5)]" style="background:${s[field] ? '#2fd0ff' : '#1a2530'};"></button>`;
+
+            const miniFader = (field, dotColor, label) => `
+                <div class="flex flex-col items-center gap-1.5 flex-1">
+                    <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${dotColor}; box-shadow:0 0 4px ${dotColor};"></span>
+                    <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
+                    <div class="daw-fader-track" style="height:120px;">
+                        <input id="dawar-slider-${field}-${sk}" type="range" min="0" max="100" step="0.1" value="${s[field]}" class="daw-fader-input eq8-fader-thumb"
+                            oninput="window.dawArSliderInput('${key}','${field}', this.value)">
+                    </div>
+                    ${dawArBox(key, sk, field, 'w-12 mt-1')}
+                </div>`;
+
+            return `
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button onclick="event.stopPropagation(); window.dawArTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                        <span id="dawar-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div id="dawar-preset-menu-${sk}" class="hidden-section"></div>
+                </span>
+            </div>
+            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+
+            <div class="flex gap-3 mt-3">
+                <div class="flex-1 min-w-0 flex flex-col gap-3">
+
+                    <!-- TIME RESPONSE -->
+                    <div class="rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.3);">
+                        <div class="flex items-center justify-between px-2 pt-1.5">
+                            <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest">Time Response</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Decorrelation</span>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-[7px] text-gray-500 font-bold">EVar:</span>
+                                    ${dawArBox(key, sk, 'evar', 'w-9 !py-0.5')}
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-[7px] text-gray-500 font-bold">RVar:</span>
+                                    ${dawArBox(key, sk, 'rvar', 'w-9 !py-0.5')}
+                                </div>
+                            </div>
+                        </div>
+                        <svg id="dawar-time-svg-${sk}" viewBox="0 0 ${DAW_AR_TG_W} ${DAW_AR_TG_H}" preserveAspectRatio="none" style="width:100%; height:150px; display:block; margin-top:4px;">${dawArTimeGraphInner(key)}</svg>
+                        <div class="grid grid-cols-7 gap-1 px-2 py-2" style="border-top:1px solid rgba(47,208,255,0.15);">
+                            ${fieldRow('Dimension', 'dimension')}
+                            ${fieldRow('Room Size', 'roomSize')}
+                            ${fieldRow('Distance', 'distance')}
+                            <div class="flex flex-col items-center gap-1">
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Balance</span>
+                                <div class="flex items-center gap-1">${swatchToggle('balanceOn')}${dawArBox(key, sk, 'balance', 'w-12')}</div>
+                            </div>
+                            ${fieldRow('Decay Time', 'decayTime')}
+                            ${fieldRow('Pre Delay', 'preDelay')}
+                            ${fieldRow('Density', 'density')}
+                        </div>
+                    </div>
+
+                    <!-- DAMPING + FREQUENCY RESPONSE -->
+                    <div class="rounded-lg overflow-hidden p-2" style="border:1px solid rgba(47,208,255,0.3);">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">ER Lowcut</span>
+                                ${swatchToggle('erLowcutOn')}
+                                ${dawArBox(key, sk, 'erLowcut', 'w-12')}
+                            </div>
+                            <div class="flex items-center gap-3">
+                                ${fieldRow('Rev Shelf', 'revShelf')}
+                                ${fieldRow('ER Absorb', 'erAbsorb')}
+                                ${fieldRow('Hi Freq', 'hiFreq')}
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between mt-3">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Low</span>
+                                ${dawArBox(key, sk, 'lowFreq', 'w-14')}
+                                ${dawArBox(key, sk, 'lowMult', 'w-12')}
+                            </div>
+                            <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest">Reverb Damping</span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">High</span>
+                                ${dawArBox(key, sk, 'highMult', 'w-12')}
+                                ${dawArBox(key, sk, 'highFreq', 'w-14')}
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-1">Frequency Response</div>
+                            <svg id="dawar-freq-svg-${sk}" viewBox="0 0 ${DAW_AR_FG_W} ${DAW_AR_FG_H}" preserveAspectRatio="none" style="width:100%; height:110px; display:block; border:1px solid rgba(47,208,255,0.2); border-radius:6px;">${dawArFreqGraphInner(key)}</svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: GAIN + DIRECT/EARLY REF/REVERB -->
+                <div class="flex-shrink-0 flex flex-col gap-3" style="width:150px;">
+                    <div class="rounded-lg p-2 flex flex-col items-center" style="border:1px solid rgba(47,208,255,0.3);">
+                        <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest self-start mb-1">Gain</span>
+                        <div class="flex items-end gap-3">
+                            <div class="flex flex-col items-center gap-1.5">
+                                <div class="daw-fader-track" style="height:110px;">
+                                    <input id="dawar-slider-output-${sk}" type="range" min="0" max="100" step="0.1" value="${s.output}" class="daw-fader-input eq8-fader-thumb"
+                                        oninput="window.dawArSliderInput('${key}','output', this.value)">
+                                </div>
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Output</span>
+                                ${dawArBox(key, sk, 'output', 'w-12')}
+                            </div>
+                            <div class="flex gap-1 items-end">
+                                <div class="daw-led-meter-single" id="dawar-led-L-${sk}" style="height:80px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                                <div class="daw-led-meter-single" id="dawar-led-R-${sk}" style="height:80px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 mt-1" style="margin-left:52px;">
+                            <span id="dawar-peak-L-${sk}" class="text-[7px] neon-blue-text font-bold">-Inf</span>
+                            <span id="dawar-peak-R-${sk}" class="text-[7px] neon-blue-text font-bold">-Inf</span>
+                        </div>
+                    </div>
+                    <div class="rounded-lg p-2 flex-1 flex flex-col" style="border:1px solid rgba(47,208,255,0.3);">
+                        <div class="flex gap-1 flex-1">
+                            ${miniFader('direct', '#ff4d4d', 'Direct')}
+                            ${miniFader('earlyRef', '#f5c518', 'Early Ref')}
+                            ${miniFader('reverb', '#2fd0ff', 'Reverb')}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        };
+
+        window.dawArTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawar-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawArRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawArRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawar-preset-menu-${sk}`);
+            if (!el) return;
+            const userPresets = (window.dawFxUserPresets['aether-reverb'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawArApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                <button onclick="window.dawArApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
+                </button>
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawArApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+
+        window.dawArApplyPreset = function(key, presetIndex) {
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawArState[key] = dawArDefaultState();
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = (window.dawFxUserPresets['aether-reverb'] || [])[presetIndex];
+                if (preset) {
+                    window.dawArState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
+            window.renderDawFxPicker();
+        };
+
+        // ============================================================
         // SOVEREIGN DELAY — a "Cluster Delay"-style panel: Timing (note
         // division + Analog/Sync + Feedback/Spread/Crossfeed), an
         // animated dual-row (Mid/Side) tap visualizer with tap count &
@@ -4715,6 +5118,7 @@
             else if (sel.plugin.id === 'multiband-comp') window.dawMbTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'vocal-deesser') window.dawDsTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'vocal-rider') window.dawVrTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'aether-reverb') window.dawArTogglePresetMenu(sel.key);
             else window.dawFxTogglePresetMenu(sel.key);
         };
 
@@ -4745,6 +5149,8 @@
                 data = JSON.parse(JSON.stringify(dawDsGetState(sel.key)));
             } else if (sel.plugin.id === 'vocal-rider') {
                 data = JSON.parse(JSON.stringify(dawVrGetState(sel.key)));
+            } else if (sel.plugin.id === 'aether-reverb') {
+                data = JSON.parse(JSON.stringify(dawArGetState(sel.key)));
             } else {
                 const choice = window.dawFxPresetChoice[sel.key];
                 data = { values: choice ? choice.values : sel.plugin.values };
@@ -4753,7 +5159,7 @@
             window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
             window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
             window.dawFxActivePresetLabel[sel.key] = label;
-            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider') {
+            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'aether-reverb') {
                 window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
             }
             window.renderDawFxPicker();
@@ -5662,6 +6068,20 @@
                         window.dawUpdateLed('dawmb-led-R-' + msk, rVal);
                         const lText = document.getElementById('dawmb-peak-L-' + msk);
                         const rText = document.getElementById('dawmb-peak-R-' + msk);
+                        if (lText) lText.innerText = lVal > 0.5 ? (Math.round(20 * Math.log10(lVal / 100) * 10) / 10) : '-Inf';
+                        if (rText) rText.innerText = rVal > 0.5 ? (Math.round(20 * Math.log10(rVal / 100) * 10) / 10) : '-Inf';
+                    }
+                    // Same pattern for an open Aether-Reverb panel — drive its
+                    // Output L/R meters off the selected track's channel level.
+                    if (pPlugin && pPlugin.id === 'aether-reverb') {
+                        const ask = eq8SafeKey(`${pCtx.trackId}::${pCtx.selectedIndex}`);
+                        const base = window.dawMeterPeaks[pCtx.trackId === 'master' ? 'master' : ('t-' + pCtx.trackId)] || 0;
+                        const lVal = base;
+                        const rVal = Math.max(0, Math.min(100, base * (0.88 + Math.random() * 0.18)));
+                        window.dawUpdateLed('dawar-led-L-' + ask, lVal);
+                        window.dawUpdateLed('dawar-led-R-' + ask, rVal);
+                        const lText = document.getElementById('dawar-peak-L-' + ask);
+                        const rText = document.getElementById('dawar-peak-R-' + ask);
                         if (lText) lText.innerText = lVal > 0.5 ? (Math.round(20 * Math.log10(lVal / 100) * 10) / 10) : '-Inf';
                         if (rText) rText.innerText = rVal > 0.5 ? (Math.round(20 * Math.log10(rVal / 100) * 10) / 10) : '-Inf';
                     }
