@@ -4255,14 +4255,16 @@
                                 <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Output</span>
                                 ${dawArBox(key, sk, 'output', 'w-12')}
                             </div>
-                            <div class="flex gap-1 items-end">
-                                <div class="daw-led-meter-single" id="dawar-led-L-${sk}" style="height:80px;"><div class="daw-led-mask" style="height:100%;"></div></div>
-                                <div class="daw-led-meter-single" id="dawar-led-R-${sk}" style="height:80px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                            <div class="flex gap-2 items-end">
+                                <div class="flex flex-col items-center gap-1.5">
+                                    <div class="daw-led-meter-single" id="dawar-led-L-${sk}" style="height:110px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                                    <span id="dawar-peak-L-${sk}" class="text-[7px] neon-blue-text font-bold">-Inf</span>
+                                </div>
+                                <div class="flex flex-col items-center gap-1.5">
+                                    <div class="daw-led-meter-single" id="dawar-led-R-${sk}" style="height:110px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                                    <span id="dawar-peak-R-${sk}" class="text-[7px] neon-blue-text font-bold">-Inf</span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="flex gap-3 mt-1" style="margin-left:52px;">
-                            <span id="dawar-peak-L-${sk}" class="text-[7px] neon-blue-text font-bold">-Inf</span>
-                            <span id="dawar-peak-R-${sk}" class="text-[7px] neon-blue-text font-bold">-Inf</span>
                         </div>
                     </div>
                     <div class="rounded-lg p-2 flex-1 flex flex-col" style="border:1px solid rgba(47,208,255,0.3);">
