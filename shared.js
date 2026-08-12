@@ -3795,7 +3795,7 @@
 
             <div class="flex gap-2 mt-2">
                 <div class="flex-1 min-w-0 rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
-                    <svg id="dawmb-graph-${sk}" viewBox="0 0 ${DAW_MB_GRAPH_W} ${DAW_MB_GRAPH_H}" preserveAspectRatio="none" style="width:100%; height:190px; display:block;"
+                    <svg id="dawmb-graph-${sk}" viewBox="0 0 ${DAW_MB_GRAPH_W} ${DAW_MB_GRAPH_H}" preserveAspectRatio="none" style="width:100%; height:205px; display:block;"
                          onmousedown="window.dawMbNodeDrag(event,'${key}')" ontouchstart="window.dawMbNodeDrag(event,'${key}')">${dawMbGraphInner(key, s, 0)}</svg>
                 </div>
                 <div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:70px;">
@@ -3815,7 +3815,7 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 mt-1 flex-wrap">
+            <div class="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest">Crossover</span>
                 <span class="text-[7px] text-gray-500 uppercase font-black">Low</span>
                 <input type="text" value="${Math.round(s.xover.low)}" onchange="window.dawMbSetXover('${key}','low', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold outline-none">
