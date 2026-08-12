@@ -4197,9 +4197,8 @@
                         <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${dotColor}; box-shadow:0 0 4px ${dotColor};"></span>
                         <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest whitespace-nowrap">${label}</span>
                     </div>
-                    <div class="flex-1 min-h-0 w-full flex justify-center">
-                        ${dawArVFader(key, sk, field, '100%', 16)}
-                    </div>
+                    <div class="flex-1 min-h-0"></div>
+                    ${dawArVFader(key, sk, field, 120, 16)}
                     ${dawArBox(key, sk, field, 'w-12 mt-2.5')}
                 </div>`;
 
