@@ -1453,6 +1453,502 @@
         }
 
         // ============================================================
+        // SOVEREIGN DYNAMICS — a VOX PRO-style vocal channel strip: four
+        // macro modules (Dynamics / Tone / Space / SFX), each with a
+        // browsable "type" carousel, laid out as its own mini plugin
+        // chrome (logo, undo/redo, preset name field, bypass) inside the
+        // FX detail box. Modules are cosmetic style variants; the knobs/
+        // sliders/meters underneath are all live and draggable.
+        // ============================================================
+        window.dawDynState = window.dawDynState || {}; // key -> full strip state
+
+        const DAWDYN_MODULES = {
+            dynamics: { label: 'DYNAMICS', color: '#f4366b', types: ['SMOOTH', 'PUNCH', 'VOCAL RIDE', 'GLUE', 'BRICKWALL'] },
+            tone:     { label: 'TONE',     color: '#2fd0ff', types: ['NYC', 'LA WARM', 'SURGICAL', 'AIR LIFT', 'VINTAGE'] },
+            space:    { label: 'SPACE',    color: '#a78bfa', types: ['MASSIVE', 'PLATE', 'HALL', 'SLAP TAPE', 'AMBIENT'] },
+            sfx:      { label: 'SFX',      color: '#fbbf24', types: ['TAPE SAT XL', 'LO-FI CRUSH', 'CHORUS WIDE', 'VINYL DUST', 'RADIO FX'] }
+        };
+        const DAWDYN_RATES = ['1/4', '1/4d', '1/8', '1/8d', '1/8t', '1/16'];
+        const DAWDYN_SCALE = [0, -3, -6, -12, -24, -48, -96];
+
+        function dawDynDefaultState() {
+            return {
+                bypass: false,
+                presetLabel: null,
+                modules: {
+                    dynamics: { typeIndex: 0, on: true },
+                    tone: { typeIndex: 0, on: true },
+                    space: { typeIndex: 0, on: true },
+                    sfx: { typeIndex: 0, on: true }
+                },
+                dyn: { gate: -90, comp: 45, color: 127, deess: 35, focus: 5.2 },
+                tone: { low: 40, mid: 58, high: 62, air: 35, lowcut: 12, highcut: 88 },
+                space: { reverb: 55, delay: 30, time: 2.3, rateIndex: 3, vrbDuck: 32, dlyDuck: 17 },
+                sfx: { sfx: 40, enhancer: 58, spcPost: true, fltPost: false }
+            };
+        }
+        function dawDynGetState(key) {
+            if (!window.dawDynState[key]) window.dawDynState[key] = dawDynDefaultState();
+            return window.dawDynState[key];
+        }
+        function dawDynFmtPct(v) { return Math.round(v) + '%'; }
+
+        // ---- generic rotary knob (visual-only readout, no numeric label) ----
+        function dawDynKnobHtml(key, sk, group, param, label, min, max, value, color, size) {
+            const pct = Math.max(0, Math.min(1, (value - min) / (max - min)));
+            const deg = -135 + pct * 270;
+            const id = `dawdyn-knob-${group}-${param}-${sk}`;
+            const stick = Math.max(8, Math.round(size * 0.34));
+            return `
+            <div class="flex flex-col items-center gap-1 flex-shrink-0">
+                <div id="${id}" title="${label}: ${Math.round(value)}" class="relative rounded-full bg-black cursor-ns-resize select-none"
+                    style="width:${size}px;height:${size}px;border:2px solid ${color}88; box-shadow:0 0 10px ${color}40, inset 0 0 6px rgba(0,0,0,0.7);"
+                    onmousedown="window.dawDynKnobDrag(event,'${key}','${group}','${param}',${min},${max})"
+                    ontouchstart="window.dawDynKnobDrag(event,'${key}','${group}','${param}',${min},${max})">
+                    <div id="${id}-ind" style="position:absolute; top:3px; left:50%; width:2px; height:${stick}px; background:${color}; border-radius:2px; transform-origin:50% ${Math.round(size / 2 - 3)}px; transform:translateX(-50%) rotate(${deg}deg); box-shadow:0 0 4px ${color};"></div>
+                </div>
+                <span class="text-[6.5px] font-black uppercase tracking-widest" style="color:${color}cc">${label}</span>
+            </div>`;
+        }
+        window.dawDynKnobDrag = function(e, key, group, param, min, max) {
+            e.preventDefault();
+            const s = dawDynGetState(key);
+            if (s.modules[group] && s.modules[group].on === false) return;
+            if (s.bypass) return;
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
+            const startVal = s[group][param];
+            const range = max - min;
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const deltaY = startY - clientY;
+                let newVal = startVal + deltaY * (range / 130);
+                newVal = Math.max(min, Math.min(max, newVal));
+                s[group][param] = newVal;
+                dawDynClearPreset(key);
+                window.dawDynUpdateKnobVisual(key, group, param, newVal, min, max);
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+        window.dawDynUpdateKnobVisual = function(key, group, param, value, min, max) {
+            const sk = eq8SafeKey(key);
+            const pct = Math.max(0, Math.min(1, (value - min) / (max - min)));
+            const deg = -135 + pct * 270;
+            const ind = document.getElementById(`dawdyn-knob-${group}-${param}-${sk}-ind`);
+            if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+            const knob = document.getElementById(`dawdyn-knob-${group}-${param}-${sk}`);
+            if (knob) knob.title = `${param}: ${Math.round(value)}`;
+        };
+
+        function dawDynClearPreset(key) {
+            delete window.dawFxActivePresetLabel[key];
+            const s = dawDynGetState(key);
+            s.presetLabel = null;
+            const badge = document.getElementById(`dawdyn-badge-${eq8SafeKey(key)}`);
+            if (badge) badge.innerText = 'Custom';
+        }
+
+        window.dawDynToggleModule = function(key, group) {
+            const s = dawDynGetState(key);
+            s.modules[group].on = !s.modules[group].on;
+            window.renderDawFxPicker();
+        };
+        window.dawDynCycleType = function(key, group, dir) {
+            const s = dawDynGetState(key);
+            const meta = DAWDYN_MODULES[group];
+            s.modules[group].typeIndex = (s.modules[group].typeIndex + dir + meta.types.length) % meta.types.length;
+            window.renderDawFxPicker();
+        };
+        window.dawDynToggleBypass = function(key) {
+            const s = dawDynGetState(key);
+            s.bypass = !s.bypass;
+            window.renderDawFxPicker();
+        };
+        window.dawDynSetField = function(key, group, field, value) {
+            const s = dawDynGetState(key);
+            s[group][field] = value;
+            dawDynClearPreset(key);
+        };
+        window.dawDynSetFieldFromText = function(key, group, field, text, min, max) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            const s = dawDynGetState(key);
+            s[group][field] = Math.max(min, Math.min(max, num));
+            dawDynClearPreset(key);
+            window.renderDawFxPicker();
+        };
+        window.dawDynCycleRate = function(key) {
+            const s = dawDynGetState(key);
+            s.space.rateIndex = (s.space.rateIndex + 1) % DAWDYN_RATES.length;
+            dawDynClearPreset(key);
+            window.renderDawFxPicker();
+        };
+        window.dawDynTogglePill = function(key, field) {
+            const s = dawDynGetState(key);
+            s.sfx[field] = !s.sfx[field];
+            dawDynClearPreset(key);
+            window.renderDawFxPicker();
+        };
+        window.dawDynSetTone = function(key, field, text) {
+            const s = dawDynGetState(key);
+            s.tone[field] = Math.max(0, Math.min(100, Number(text)));
+            dawDynClearPreset(key);
+            const sk = eq8SafeKey(key);
+            const svg = document.getElementById(`dawdyn-analyzer-${sk}`);
+            if (svg) svg.innerHTML = dawDynAnalyzerInner(s, performance.now());
+        };
+
+        // ---- TONE analyzer curve (derived from Low/Mid/High/Air sliders) ----
+        const DAWDYN_AN_W = 260, DAWDYN_AN_H = 150;
+        function dawDynAnalyzerInner(s, t) {
+            const pts = [
+                [0, DAWDYN_AN_H - (s.tone.low / 100) * DAWDYN_AN_H],
+                [DAWDYN_AN_W * 0.35, DAWDYN_AN_H - (s.tone.mid / 100) * DAWDYN_AN_H],
+                [DAWDYN_AN_W * 0.68, DAWDYN_AN_H - (s.tone.high / 100) * DAWDYN_AN_H],
+                [DAWDYN_AN_W, DAWDYN_AN_H - (s.tone.air / 100) * DAWDYN_AN_H]
+            ];
+            const N = 48;
+            const curve = [];
+            for (let i = 0; i <= N; i++) {
+                const x = (i / N) * DAWDYN_AN_W;
+                let seg = 0;
+                while (seg < pts.length - 2 && x > pts[seg + 1][0]) seg++;
+                const p0 = pts[Math.max(0, seg - 1)], p1 = pts[seg], p2 = pts[Math.min(pts.length - 1, seg + 1)], p3 = pts[Math.min(pts.length - 1, seg + 2)];
+                const span = Math.max(1, p2[0] - p1[0]);
+                const tt = Math.max(0, Math.min(1, (x - p1[0]) / span));
+                const y = 0.5 * ((2 * p1[1]) + (p2[1] - p0[1]) * tt + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * tt * tt + (3 * p1[1] - p0[1] - 3 * p2[1] + p3[1]) * tt * tt * tt);
+                const jitter = Math.sin(t / 500 + i * 0.7) * 1.4;
+                curve.push([x, y + jitter]);
+            }
+            const line = curve.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+            const fillPts = `0,${DAWDYN_AN_H} ${line} ${DAWDYN_AN_W},${DAWDYN_AN_H}`;
+            const dots = curve.filter((_, i) => i === 8 || i === 30).map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="#2fd0ff"/>`).join('');
+            const gridY = [0, DAWDYN_AN_H / 2, DAWDYN_AN_H].map((y, i) => `
+                <line x1="0" y1="${y}" x2="${DAWDYN_AN_W}" y2="${y}" stroke="rgba(47,208,255,0.10)" stroke-width="1"/>
+                <text x="4" y="${y - 3}" font-size="7" fill="#4a5568">${['12', '0', '-12'][i]}</text>`).join('');
+            const gridX = [0.15, 0.42, 0.78].map((f, i) => `<text x="${(f * DAWDYN_AN_W).toFixed(0)}" y="${DAWDYN_AN_H - 4}" font-size="7" fill="#4a5568" text-anchor="middle">${['250Hz', '1kHz', '10kHz'][i]}</text>`).join('');
+            return `
+                <rect x="0" y="0" width="${DAWDYN_AN_W}" height="${DAWDYN_AN_H}" fill="#000"/>
+                ${gridY}${gridX}
+                <polygon points="${fillPts}" fill="rgba(47,208,255,0.14)"/>
+                <polyline points="${line}" fill="none" stroke="#2fd0ff" stroke-width="1.8"/>
+                ${dots}
+                <text x="6" y="${DAWDYN_AN_H - 4}" font-size="7" fill="#2fd0ff" font-weight="900" letter-spacing="1">ANALYZER</text>`;
+        }
+
+        // ---- self-driven animation loop: analyzer jitter + GR/DS/space meters ----
+        window.dawDynRafIds = window.dawDynRafIds || {};
+        window.dawDynAnimate = function(key) {
+            const sk = eq8SafeKey(key);
+            if (window.dawDynRafIds[sk]) return;
+            const step = (t) => {
+                const s = window.dawDynState[key];
+                if (!s) { delete window.dawDynRafIds[sk]; return; }
+                const svg = document.getElementById(`dawdyn-analyzer-${sk}`);
+                if (!svg) { delete window.dawDynRafIds[sk]; return; }
+                const active = !s.bypass;
+                svg.innerHTML = dawDynAnalyzerInner(s, t);
+                const jit = () => 0.85 + Math.random() * 0.3;
+                const dynOn = active && s.modules.dynamics.on;
+                window.dawUpdateLed(`dawdyn-gr-${sk}`, dynOn ? Math.min(100, s.dyn.comp * jit()) : 0);
+                window.dawUpdateLed(`dawdyn-ds-${sk}`, dynOn ? Math.min(100, s.dyn.deess * 0.6 * jit()) : 0);
+                const spcOn = active && s.modules.space.on;
+                window.dawUpdateLed(`dawdyn-rvmeter-${sk}`, spcOn ? Math.min(100, s.space.reverb * jit()) : 0);
+                window.dawUpdateLed(`dawdyn-dlmeter-${sk}`, spcOn ? Math.min(100, s.space.delay * jit()) : 0);
+                window.dawDynRafIds[sk] = window.requestAnimationFrame(step);
+            };
+            window.dawDynRafIds[sk] = window.requestAnimationFrame(step);
+        };
+
+        // ---- preset menu (factory presets converted to strip state + user presets) ----
+        function dawDynPresetToState(preset) {
+            const map = {};
+            (preset.values || []).forEach(([k, v]) => { map[k] = parseFloat(v); });
+            const base = dawDynDefaultState();
+            if (!isNaN(map.THRESH)) base.dyn.gate = Math.max(-96, Math.min(0, map.THRESH));
+            if (!isNaN(map.RATIO)) base.dyn.comp = Math.max(0, Math.min(100, map.RATIO * 22));
+            if (!isNaN(map.ATTACK)) base.dyn.focus = Math.max(0.5, Math.min(20, map.ATTACK / 7));
+            if (!isNaN(map.RELEASE)) base.dyn.color = Math.max(0, Math.min(200, map.RELEASE / 2));
+            return base;
+        }
+        window.dawDynTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawdyn-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawDynRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+        window.dawDynRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawdyn-preset-menu-${sk}`);
+            if (!el) return;
+            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.id === 'sovereign-dynamics');
+            const factory = (plugin && plugin.presets) || [];
+            const userPresets = (window.dawFxUserPresets['sovereign-dynamics'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full left-0 mt-1.5 w-52 z-30 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:240px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawDynApplyFactoryPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                ${factory.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- Factory Presets ----</div>` : ''}
+                ${factory.map((p, i) => `
+                <button onclick="window.dawDynApplyFactoryPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)] border-t border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawDynApplyUserPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+        window.dawDynApplyFactoryPreset = function(key, presetIndex) {
+            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.id === 'sovereign-dynamics');
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawDynState[key] = dawDynDefaultState();
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = plugin && plugin.presets && plugin.presets[presetIndex];
+                if (preset) {
+                    window.dawDynState[key] = dawDynPresetToState(preset);
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
+            window.renderDawFxPicker();
+        };
+        window.dawDynCyclePreset = function(key, dir) {
+            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.id === 'sovereign-dynamics');
+            const factory = (plugin && plugin.presets) || [];
+            if (!factory.length) return;
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            let idx = factory.findIndex(p => p.name === activeLabel);
+            idx = (idx + dir + factory.length) % factory.length;
+            window.dawDynApplyFactoryPreset(key, idx);
+        };
+        window.dawDynApplyUserPreset = function(key, presetIndex) {
+            const preset = (window.dawFxUserPresets['sovereign-dynamics'] || [])[presetIndex];
+            if (preset) {
+                window.dawDynState[key] = JSON.parse(JSON.stringify(preset.data));
+                window.dawFxActivePresetLabel[key] = preset.name;
+            }
+            window.renderDawFxPicker();
+        };
+
+        // ---- shared bits ----
+        function dawDynCarousel(key, sk, group, iconSvg) {
+            const meta = DAWDYN_MODULES[group];
+            const s = dawDynGetState(key);
+            const idx = s.modules[group].typeIndex;
+            const dots = meta.types.map((_, i) => `<span class="inline-block rounded-full mx-[1px]" style="width:${i === idx ? 4 : 3}px; height:${i === idx ? 4 : 3}px; background:${i === idx ? meta.color : meta.color + '40'};"></span>`).join('');
+            return `
+            <div class="flex items-center justify-center gap-1.5 mt-1">
+                <button onclick="window.dawDynCycleType('${key}','${group}',-1)" class="text-gray-600 hover:text-white transition-colors px-0.5">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <div class="flex flex-col items-center gap-1 py-1" style="color:${meta.color};">${iconSvg}</div>
+                <button onclick="window.dawDynCycleType('${key}','${group}',1)" class="text-gray-600 hover:text-white transition-colors px-0.5">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+            </div>
+            <div class="text-center text-[8.5px] font-black uppercase tracking-widest mt-0.5" style="color:${meta.color};">${meta.types[idx]}</div>
+            <div class="flex items-center justify-center mt-1 mb-2">${dots}</div>`;
+        }
+        function dawDynModuleHeader(key, sk, group, label) {
+            const meta = DAWDYN_MODULES[group];
+            const s = dawDynGetState(key);
+            const on = s.modules[group].on;
+            return `
+            <div class="flex items-center justify-between px-1">
+                <button onclick="window.dawDynToggleModule('${key}','${group}')" title="Power" class="transition-colors" style="color:${on ? meta.color : '#4a5568'};">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2v8"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg>
+                </button>
+                <span class="text-[9px] font-black uppercase tracking-[0.15em]" style="color:${meta.color};">${label}</span>
+                <span class="text-gray-700"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+            </div>`;
+        }
+        function dawDynVSlider(key, sk, group, field, value, height, color) {
+            return `
+            <div class="daw-fader-track" style="height:${height}px;">
+                <input id="dawdyn-${field}-${sk}" type="range" min="0" max="100" step="1" value="${value}" class="daw-fader-input eq8-fader-thumb"
+                    oninput="window.dawDynSetField('${key}','${group}','${field}', Number(this.value)); ${group === 'tone' ? `window.dawDynSetTone('${key}','${field}', this.value);` : ''}">
+            </div>`;
+        }
+
+        const ICON_DYNAMICS = '<svg width="30" height="20" viewBox="0 0 30 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M0 10 L4 10 L6 3 L9 17 L12 6 L14 14 L17 10 L20 10 L22 4 L24 16 L26 10 L30 10"/></svg>';
+        const ICON_TONE = '<svg width="26" height="22" viewBox="0 0 26 22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2c-6 0-9 4-9 9s3 9 9 9"/><circle cx="13" cy="11" r="3.4"/></svg>';
+        const ICON_SPACE = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="2.4"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>';
+        const ICON_SFX = '<svg width="28" height="20" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="4" width="26" height="12" rx="2"/><circle cx="7" cy="10" r="3"/><circle cx="21" cy="10" r="3"/><path d="M14 10h0"/></svg>';
+
+        window.dawDynPanel = function(key, plugin) {
+            const s = dawDynGetState(key);
+            const sk = eq8SafeKey(key);
+            try { window.dawDynAnimate(key); } catch (e) {}
+            const bypassed = s.bypass;
+            const presetLabel = window.dawFxActivePresetLabel[key] || 'Custom';
+
+            const dimClass = (on) => (bypassed || !on) ? 'opacity-30 pointer-events-none' : '';
+
+            // ----- DYNAMICS column -----
+            const dynOn = s.modules.dynamics.on;
+            const dynCol = `
+            <div class="rounded-lg p-2 flex-shrink-0" style="width:150px; border:1px solid ${DAWDYN_MODULES.dynamics.color}33; background:rgba(244,54,107,0.03);">
+                ${dawDynModuleHeader(key, sk, 'dynamics', 'DYNAMICS')}
+                ${dawDynCarousel(key, sk, 'dynamics', ICON_DYNAMICS)}
+                <div class="flex gap-2 ${dimClass(dynOn)}">
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="flex gap-1.5 items-end">
+                            <div class="flex flex-col items-center gap-0.5">
+                                <span class="text-[6px] text-gray-500 font-black">GATE</span>
+                                <div class="daw-fader-scale" style="font-size:5px;">${DAWDYN_SCALE.map(v => `<span style="color:#4a5568;">${v}</span>`).join('')}</div>
+                            </div>
+                            <div class="daw-fader-track" style="height:118px;">
+                                <input id="dawdyn-gate-${sk}" type="range" min="-96" max="0" step="1" value="${s.dyn.gate}" class="daw-fader-input eq8-fader-thumb"
+                                    oninput="window.dawDynSetField('${key}','dyn','gate', Number(this.value))">
+                            </div>
+                            <div class="flex flex-col items-center gap-0.5">
+                                <span class="text-[6px] text-gray-500 font-black">GR</span>
+                                <div class="daw-led-meter-single" id="dawdyn-gr-${sk}" style="height:118px; width:5px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                            </div>
+                            <div class="flex flex-col items-center gap-0.5">
+                                <span class="text-[6px] text-gray-500 font-black">DS</span>
+                                <div class="daw-led-meter-single" id="dawdyn-ds-${sk}" style="height:118px; width:5px;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col items-center gap-2 mt-2 ${dimClass(dynOn)}">
+                    ${dawDynKnobHtml(key, sk, 'dyn', 'comp', 'COMP', 0, 100, s.dyn.comp, DAWDYN_MODULES.dynamics.color, 46)}
+                    <input type="text" value="${dawDynFmtPct(s.dyn.color)}" onchange="window.dawDynSetFieldFromText('${key}','dyn','color', this.value, 0, 200)" class="w-full bg-black/50 border border-[rgba(244,54,107,0.35)] rounded px-1 py-1 text-[8px] text-center font-bold outline-none" style="color:${DAWDYN_MODULES.dynamics.color};">
+                    <span class="text-[6px] text-gray-500 font-black -mt-1.5">COLOR</span>
+                    ${dawDynKnobHtml(key, sk, 'dyn', 'deess', 'DE-ESS', 0, 100, s.dyn.deess, DAWDYN_MODULES.dynamics.color, 40)}
+                    <input type="text" value="${s.dyn.focus.toFixed(1)} khz" onchange="window.dawDynSetFieldFromText('${key}','dyn','focus', this.value, 0.5, 20)" class="w-full bg-black/50 border border-[rgba(244,54,107,0.35)] rounded px-1 py-1 text-[8px] text-center font-bold outline-none" style="color:${DAWDYN_MODULES.dynamics.color};">
+                    <span class="text-[6px] text-gray-500 font-black -mt-1.5">FOCUS</span>
+                </div>
+            </div>`;
+
+            // ----- TONE column -----
+            const toneOn = s.modules.tone.on;
+            const toneCol = `
+            <div class="rounded-lg p-2 flex-shrink-0" style="width:150px; border:1px solid ${DAWDYN_MODULES.tone.color}33; background:rgba(47,208,255,0.03);">
+                ${dawDynModuleHeader(key, sk, 'tone', 'TONE')}
+                ${dawDynCarousel(key, sk, 'tone', ICON_TONE)}
+                <div class="${dimClass(toneOn)}">
+                    <div class="rounded overflow-hidden mb-2" style="border:1px solid rgba(47,208,255,0.3);">
+                        <svg id="dawdyn-analyzer-${sk}" viewBox="0 0 ${DAWDYN_AN_W} ${DAWDYN_AN_H}" preserveAspectRatio="none" style="width:100%; height:88px; display:block;">${dawDynAnalyzerInner(s, 0)}</svg>
+                    </div>
+                    <div class="flex justify-between gap-1">
+                        ${dawDynVSlider(key, sk, 'tone', 'low', s.tone.low, 78, DAWDYN_MODULES.tone.color)}
+                        ${dawDynVSlider(key, sk, 'tone', 'mid', s.tone.mid, 78, DAWDYN_MODULES.tone.color)}
+                        ${dawDynVSlider(key, sk, 'tone', 'high', s.tone.high, 78, DAWDYN_MODULES.tone.color)}
+                        ${dawDynVSlider(key, sk, 'tone', 'air', s.tone.air, 78, DAWDYN_MODULES.tone.color)}
+                    </div>
+                    <div class="flex justify-between text-[6px] font-black text-gray-500 tracking-wide mt-1">
+                        <span>LOW</span><span>MID</span><span>HIGH</span><span>AIR+</span>
+                    </div>
+                    <div class="flex items-center gap-1 mt-2">
+                        <input type="range" min="0" max="100" value="${s.tone.lowcut}" style="accent-color:#2fd0ff;" class="flex-1 h-1" oninput="window.dawDynSetField('${key}','tone','lowcut', Number(this.value))">
+                        <input type="range" min="0" max="100" value="${s.tone.highcut}" style="accent-color:#2fd0ff;" class="flex-1 h-1" oninput="window.dawDynSetField('${key}','tone','highcut', Number(this.value))">
+                    </div>
+                </div>
+            </div>`;
+
+            // ----- SPACE column -----
+            const spaceOn = s.modules.space.on;
+            const spaceCol = `
+            <div class="rounded-lg p-2 flex-shrink-0" style="width:150px; border:1px solid ${DAWDYN_MODULES.space.color}33; background:rgba(167,139,250,0.03);">
+                ${dawDynModuleHeader(key, sk, 'space', 'SPACE')}
+                ${dawDynCarousel(key, sk, 'space', ICON_SPACE)}
+                <div class="${dimClass(spaceOn)}">
+                    <div class="flex justify-between gap-2 mb-2">
+                        <div class="flex-1 flex flex-col items-center gap-1 rounded p-1" style="border:1px solid rgba(167,139,250,0.3); background:#000;">
+                            <span class="text-[6px] font-black tracking-widest" style="color:${DAWDYN_MODULES.space.color};">REVERB</span>
+                            <div class="daw-led-meter-single" id="dawdyn-rvmeter-${sk}" style="height:26px; width:80%;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                            <input type="text" value="${s.space.vrbDuck}%" onchange="window.dawDynSetFieldFromText('${key}','space','vrbDuck', this.value, 0, 100)" class="w-full bg-transparent text-[6.5px] text-center font-bold outline-none" style="color:${DAWDYN_MODULES.space.color};">
+                        </div>
+                        <div class="flex-1 flex flex-col items-center gap-1 rounded p-1" style="border:1px solid rgba(167,139,250,0.3); background:#000;">
+                            <span class="text-[6px] font-black tracking-widest" style="color:${DAWDYN_MODULES.space.color};">DELAY</span>
+                            <div class="daw-led-meter-single" id="dawdyn-dlmeter-${sk}" style="height:26px; width:80%;"><div class="daw-led-mask" style="height:100%;"></div></div>
+                            <input type="text" value="${s.space.dlyDuck}%" onchange="window.dawDynSetFieldFromText('${key}','space','dlyDuck', this.value, 0, 100)" class="w-full bg-transparent text-[6.5px] text-center font-bold outline-none" style="color:${DAWDYN_MODULES.space.color};">
+                        </div>
+                    </div>
+                    <div class="flex justify-center gap-3">
+                        ${dawDynKnobHtml(key, sk, 'space', 'reverb', 'REVERB', 0, 100, s.space.reverb, DAWDYN_MODULES.space.color, 44)}
+                        ${dawDynKnobHtml(key, sk, 'space', 'delay', 'DELAY', 0, 100, s.space.delay, DAWDYN_MODULES.space.color, 44)}
+                    </div>
+                    <div class="flex gap-1.5 mt-2">
+                        <input type="text" value="${s.space.time.toFixed(1)}s" onchange="window.dawDynSetFieldFromText('${key}','space','time', this.value, 0.1, 5)" class="flex-1 bg-black/50 border border-[rgba(167,139,250,0.35)] rounded px-1 py-1 text-[7.5px] text-center font-bold outline-none" style="color:${DAWDYN_MODULES.space.color};">
+                        <button onclick="window.dawDynCycleRate('${key}')" class="flex-1 bg-black/50 border border-[rgba(167,139,250,0.35)] rounded px-1 py-1 text-[7.5px] text-center font-bold" style="color:${DAWDYN_MODULES.space.color};">${DAWDYN_RATES[s.space.rateIndex]}</button>
+                    </div>
+                    <div class="flex justify-between text-[6px] font-black text-gray-500 tracking-wide mt-0.5"><span>TIME</span><span>RATE</span></div>
+                </div>
+            </div>`;
+
+            // ----- SFX column -----
+            const sfxOn = s.modules.sfx.on;
+            const sfxCol = `
+            <div class="rounded-lg p-2 flex-shrink-0" style="width:150px; border:1px solid ${DAWDYN_MODULES.sfx.color}33; background:rgba(251,191,36,0.03);">
+                ${dawDynModuleHeader(key, sk, 'sfx', 'SFX')}
+                ${dawDynCarousel(key, sk, 'sfx', ICON_SFX)}
+                <div class="flex items-center justify-between mb-2 ${dimClass(sfxOn)}">
+                    <button onclick="window.dawDynTogglePill('${key}','spcPost')" class="text-[6px] font-black uppercase px-1.5 py-1 rounded border transition-colors ${s.sfx.spcPost ? 'border-[#fbbf24] text-[#fbbf24] bg-[#fbbf24]/10' : 'border-white/10 text-gray-600'}">SPC POST</button>
+                    <button onclick="window.dawDynTogglePill('${key}','fltPost')" class="text-[6px] font-black uppercase px-1.5 py-1 rounded border transition-colors ${s.sfx.fltPost ? 'border-[#fbbf24] text-[#fbbf24] bg-[#fbbf24]/10' : 'border-white/10 text-gray-600'}">FLT POST</button>
+                </div>
+                <div class="flex flex-col items-center gap-3 ${dimClass(sfxOn)}">
+                    ${dawDynKnobHtml(key, sk, 'sfx', 'sfx', 'SFX', 0, 100, s.sfx.sfx, DAWDYN_MODULES.sfx.color, 58)}
+                    ${dawDynKnobHtml(key, sk, 'sfx', 'enhancer', 'ENHANCER', 0, 100, s.sfx.enhancer, DAWDYN_MODULES.sfx.color, 58)}
+                </div>
+                <div class="flex justify-end mt-1 opacity-40" style="color:${DAWDYN_MODULES.sfx.color};">
+                    <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="2" cy="2" r="1" fill="currentColor"/><circle cx="8" cy="2" r="1" fill="currentColor"/><circle cx="14" cy="2" r="1" fill="currentColor"/><circle cx="2" cy="8" r="1" fill="currentColor"/><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="14" cy="8" r="1" fill="currentColor"/><circle cx="2" cy="14" r="1" fill="currentColor"/><circle cx="8" cy="14" r="1" fill="currentColor"/><circle cx="14" cy="14" r="1" fill="currentColor"/></svg>
+                </div>
+            </div>`;
+
+            return `
+            <div style="min-width:642px;">
+                <!-- VOX-PRO style plugin chrome -->
+                <div class="flex items-center justify-between gap-3 pb-2 mb-2 border-b border-[rgba(47,208,255,0.15)]">
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <span class="w-5 h-5 rounded flex items-center justify-center bg-[#2fd0ff] text-black font-black text-[10px]">X</span>
+                        <span class="neon-blue-text font-black italic text-[11px] tracking-tight">SOVEREIGN</span>
+                        <span class="text-[6.5px] font-black uppercase bg-white/10 text-gray-300 rounded px-1 py-0.5">DYN</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <button title="Undo" class="text-gray-600 hover:text-white transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg></button>
+                        <button title="Redo" class="text-gray-600 hover:text-white transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 15-6.7L21 13"/></svg></button>
+                    </div>
+                    <div class="flex items-center gap-1 flex-1 min-w-0 justify-center relative">
+                        <button onclick="window.dawDynCyclePreset('${key}', -1)" class="text-gray-600 hover:text-white flex-shrink-0"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M15 18l-6-6 6-6"/></svg></button>
+                        <button onclick="event.stopPropagation(); window.dawDynTogglePresetMenu('${key}')" class="truncate text-[10px] font-bold text-gray-300 bg-black/40 border border-white/10 rounded px-2 py-1 max-w-[180px]" id="dawdyn-badge-${sk}">${presetLabel}${bypassed ? ' *' : ''}</button>
+                        <button onclick="window.dawDynCyclePreset('${key}', 1)" class="text-gray-600 hover:text-white flex-shrink-0"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18l6-6-6-6"/></svg></button>
+                        <button onclick="window.dawFxTopMenuSavePreset ? window.dawFxTopMenuSavePreset() : null" title="Save preset" class="w-5 h-5 rounded border border-white/10 text-gray-500 hover:text-[#2fd0ff] hover:border-[#2fd0ff] flex items-center justify-center flex-shrink-0"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg></button>
+                        <div id="dawdyn-preset-menu-${sk}" class="hidden-section" style="position:absolute; top:100%; left:50%; transform:translateX(-50%);"></div>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <button title="Notes" class="text-gray-600 hover:text-white transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+                        <button onclick="window.dawDynToggleBypass('${key}')" class="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border transition-colors ${bypassed ? 'bg-red-500 text-black border-red-500' : 'border-white/15 text-gray-400 hover:border-[#2fd0ff] hover:text-[#2fd0ff]'}">Bypass</button>
+                    </div>
+                </div>
+
+                <!-- Four module columns -->
+                <div class="flex gap-2 overflow-x-auto slick-scroll pb-1">${dynCol}${toneCol}${spaceCol}${sfxCol}</div>
+
+                <!-- Footer strip -->
+                <div class="flex items-center justify-between mt-2 pt-2 border-t border-[rgba(47,208,255,0.1)]">
+                    <span class="text-[7px] font-black uppercase tracking-widest text-gray-600">Input</span>
+                    <span class="text-[8px] font-black uppercase tracking-[0.3em] neon-blue-text opacity-50">&#8776; Sovereign Grid</span>
+                    <span class="text-[7px] font-black uppercase tracking-widest text-gray-600">Output</span>
+                </div>
+            </div>`;
+        };
+
+        // ============================================================
         // SURGICAL EQ-8 — a REAPER ReaEQ-style graphical band editor.
         // Draggable nodes on a log-frequency graph, band tabs, and
         // Frequency/Gain/Bandwidth sliders styled like the DAW mixer
@@ -1960,7 +2456,9 @@
             } else if (canRemove) {
                 const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === fxList[ctx.selectedIndex]);
                 const key = `${ctx.trackId}::${ctx.selectedIndex}`;
-                if (plugin && plugin.id === 'surgical-eq8') {
+                if (plugin && plugin.id === 'sovereign-dynamics') {
+                    detail.innerHTML = window.dawDynPanel(key, plugin);
+                } else if (plugin && plugin.id === 'surgical-eq8') {
                     detail.innerHTML = window.dawEqPanel(key, plugin);
                 } else if (plugin && plugin.id === 'master-limiter') {
                     detail.innerHTML = window.dawLimiterPanel(key, plugin);
@@ -5153,7 +5651,8 @@
             const sel = dawFxCurrentSelection();
             window.dawFxCloseTopMenu();
             if (!sel) return;
-            if (sel.plugin.id === 'surgical-eq8') window.dawEqTogglePresetMenu(sel.key);
+            if (sel.plugin.id === 'sovereign-dynamics') window.dawDynTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'surgical-eq8') window.dawEqTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'master-limiter') window.dawLimiterTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'stereo-imager') window.dawImagerTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'bass-maximizer') window.dawBmTogglePresetMenu(sel.key);
@@ -5174,7 +5673,9 @@
             if (!label) return;
 
             let data;
-            if (sel.plugin.id === 'surgical-eq8') {
+            if (sel.plugin.id === 'sovereign-dynamics') {
+                data = JSON.parse(JSON.stringify(dawDynGetState(sel.key)));
+            } else if (sel.plugin.id === 'surgical-eq8') {
                 const st = dawEqGetState(sel.key);
                 data = { bands: JSON.parse(JSON.stringify(st.bands)), outputGain: st.outputGain };
             } else if (sel.plugin.id === 'master-limiter') {
@@ -5203,7 +5704,7 @@
             window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
             window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
             window.dawFxActivePresetLabel[sel.key] = label;
-            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'aether-reverb') {
+            if (sel.plugin.id !== 'sovereign-dynamics' && sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'aether-reverb') {
                 window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
             }
             window.renderDawFxPicker();
