@@ -3618,9 +3618,9 @@
             return `
             <div class="flex flex-col items-center gap-1.5">
                 <div id="dawvr-knob-${field}-${sk}" class="relative rounded-full cursor-ns-resize select-none flex-shrink-0"
-                     style="width:56px; height:56px; background:radial-gradient(circle at 35% 30%, #e8e8ec, #b8b8c0 60%, #98989f); box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.5);"
+                     style="width:56px; height:56px; background:radial-gradient(circle at 35% 30%, #111, #000 70%); border:2px solid rgba(47,208,255,0.55); box-shadow: 0 0 8px rgba(47,208,255,0.25), inset 0 0 6px rgba(0,0,0,0.8);"
                      onmousedown="event.stopPropagation(); window.dawVrKnobDrag(event,'${key}','${field}')" ontouchstart="event.stopPropagation(); window.dawVrKnobDrag(event,'${key}','${field}')">
-                    <div id="dawvr-knob-ind-${field}-${sk}" class="absolute top-1 left-1/2 rounded-full" style="width:4px; height:9px; background:#2a2a30; transform-origin: 2px 24px; transform:translateX(-50%) rotate(${deg}deg);"></div>
+                    <div id="dawvr-knob-ind-${field}-${sk}" class="absolute top-1 left-1/2 rounded-full" style="width:4px; height:9px; background:#2fd0ff; box-shadow:0 0 4px rgba(47,208,255,0.9); transform-origin: 2px 24px; transform:translateX(-50%) rotate(${deg}deg);"></div>
                 </div>
                 <span class="text-[8px] text-gray-300 font-black uppercase tracking-widest">${label}</span>
                 <input id="dawvr-knobval-${field}-${sk}" type="text" value="${fmt(s[field])}" onclick="event.stopPropagation()" onchange="window.dawVrSetKnobFromText('${key}','${field}', this.value)" class="w-12 bg-black/40 border border-[rgba(47,208,255,0.3)] rounded px-1 py-0.5 text-[7px] text-center neon-blue-text font-bold outline-none">
