@@ -5124,11 +5124,23 @@
             window.renderDawFxPicker();
         };
 
-        function dawVcBarsInner(s) {
+        // Each band renders as a stack of small LED segments (with
+        // gaps between them, like the picture's grid) instead of one
+        // solid block. Dragging a column up/down sets that band's
+        // level directly — nothing moves on its own.
+        const DAW_VC_LED_SEGS = 14;
+        function dawVcBarsInner(s, key) {
             return s.bands.map((v, i) => {
-                const h = Math.max(4, Math.min(100, v * 100));
+                const level = Math.max(0, Math.min(1, v));
+                const filled = Math.round(level * DAW_VC_LED_SEGS);
                 const lit = i === 2;
-                return `<div class="flex-1" style="height:${h.toFixed(1)}%; background:${lit ? '#e8ecf7' : 'rgba(120,140,220,0.55)'}; border-radius:1px;"></div>`;
+                let segsHtml = '';
+                for (let seg = DAW_VC_LED_SEGS - 1; seg >= 0; seg--) {
+                    const on = seg < filled;
+                    const color = on ? (lit ? '#e8ecf7' : '#8fa3e8') : 'rgba(90,105,160,0.18)';
+                    segsHtml += `<div style="flex:1; margin-bottom:1px; background:${color}; border-radius:1px;"></div>`;
+                }
+                return `<div class="flex-1 h-full flex flex-col justify-end" style="cursor:ns-resize;" onmousedown="window.dawVcBandDrag(event,'${key}',${i})" ontouchstart="window.dawVcBandDrag(event,'${key}',${i})">${segsHtml}</div>`;
             }).join('');
         }
 
@@ -5145,34 +5157,42 @@
             return `<polyline points="${pts}" fill="none" stroke="#e8ecf7" stroke-width="1" opacity="0.8" vector-effect="non-scaling-stroke"/>`;
         }
 
-        // Functional live animation for the band display — runs while
-        // the panel is open, pauses while Hold is engaged.
-        window.dawVcRafIds = window.dawVcRafIds || {};
-        window.dawVcAnimate = function(key) {
+        window.dawVcBandDrag = function(e, key, i) {
+            e.preventDefault();
+            e.stopPropagation();
             const sk = eq8SafeKey(key);
-            if (window.dawVcRafIds[sk]) return;
-            const step = (t) => {
+            const s = dawVcGetState(key);
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
+            const startVal = s.bands[i];
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const deltaY = startY - clientY;
+                let newVal = startVal + deltaY / 100;
+                newVal = Math.max(0, Math.min(1, newVal));
+                s.bands[i] = newVal;
+                delete window.dawFxActivePresetLabel[key];
+                const badge = document.getElementById(`dawvc-badge-${sk}`);
+                if (badge) badge.innerText = 'factory preset';
                 const barsEl = document.getElementById(`dawvc-bars-${sk}`);
-                if (!barsEl) { delete window.dawVcRafIds[sk]; return; }
-                const s = dawVcGetState(key);
-                if (!s.hold) {
-                    s.bands = s.bands.map((v, i) => {
-                        if (i === 2) return 0.65 + Math.abs(Math.sin(t / 260)) * 0.3;
-                        return 0.14 + Math.abs(Math.sin(i * 0.7 + t / 550)) * 0.35 * (1 - i / 30);
-                    });
-                    barsEl.innerHTML = dawVcBarsInner(s);
-                    const envEl = document.getElementById(`dawvc-envelope-${sk}`);
-                    if (envEl) envEl.innerHTML = dawVcEnvelopeLine(s);
-                }
-                window.dawVcRafIds[sk] = window.requestAnimationFrame(step);
+                if (barsEl) barsEl.innerHTML = dawVcBarsInner(s, key);
+                const envEl = document.getElementById(`dawvc-envelope-${sk}`);
+                if (envEl) envEl.innerHTML = dawVcEnvelopeLine(s);
             };
-            window.dawVcRafIds[sk] = window.requestAnimationFrame(step);
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
         };
 
         window.dawVcPanel = function(key, plugin) {
             const s = dawVcGetState(key);
             const sk = eq8SafeKey(key);
-            try { window.dawVcAnimate(key); } catch (e) {}
 
             const litToggle = (field, label) => `
                 <button onclick="window.dawVcToggle('${key}','${field}')" class="w-6 h-4 rounded-sm text-[7px] font-black flex items-center justify-center border transition-colors ${s[field] ? 'bg-[#ff9a3d] border-[#ff9a3d] text-black' : 'bg-black/50 border-[rgba(47,208,255,0.3)] text-gray-500'}">${label}</button>`;
@@ -5266,7 +5286,7 @@
                 </div>
                 <div class="relative rounded" style="height:110px; background:rgba(20,25,45,0.6); border:1px solid rgba(47,208,255,0.2);">
                     <div id="dawvc-bars-${sk}" class="absolute inset-0 flex items-end gap-0.5">
-                        ${dawVcBarsInner(s)}
+                        ${dawVcBarsInner(s, key)}
                     </div>
                     <svg id="dawvc-envelope-${sk}" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 pointer-events-none" style="width:100%; height:100%;">${dawVcEnvelopeLine(s)}</svg>
                 </div>
