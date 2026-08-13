@@ -3563,10 +3563,11 @@
 
         const DAW_VR_NODE_COLORS = ['#fb3a5d', '#38bdf8', '#fb923c', '#e879f9'];
         const DAW_VR_NODE_FIELDS = ['fund', 'second', 'third', 'nth'];
-        const DAW_VR_NODE_FREQS = [180, 900, 3200]; // fixed formant positions for 1st/2nd/3rd; "nth" uses its own Hz knob
+        const DAW_VR_NODE_FREQ_FIELDS = ['fundFreq', 'secondFreq', 'thirdFreq', 'nthPos'];
+        const DAW_VR_NODE_FREQ_RANGE = [[40, 600], [300, 3000], [1200, 9000], [200, 12000]];
 
         function dawVrDefaultState() {
-            return { fund: -6, second: 4, third: -3, nthPos: 3000, nth: 2, gain: 0, q: 68, outVol: -4 };
+            return { fund: -6, second: 4, third: -3, fundFreq: 180, secondFreq: 900, thirdFreq: 3200, nthPos: 3000, nth: 2, gain: 0, q: 68, outVol: -4 };
         }
         function dawVrGetState(key) {
             if (!window.dawVrState[key]) window.dawVrState[key] = dawVrDefaultState();
@@ -3603,7 +3604,7 @@
         function dawVrNodePositions(key) {
             const s = dawVrGetState(key);
             const gains = [s.fund, s.second, s.third, s.gain];
-            const freqs = [DAW_VR_NODE_FREQS[0], DAW_VR_NODE_FREQS[1], DAW_VR_NODE_FREQS[2], s.nthPos];
+            const freqs = DAW_VR_NODE_FREQ_FIELDS.map(f => s[f]);
             return freqs.map((f, i) => ({ x: dawVrFreqToX(Math.max(DAW_VR_FREQ_MIN, Math.min(DAW_VR_FREQ_MAX, f))), y: dawVrDbToY(gains[i]), color: DAW_VR_NODE_COLORS[i], field: DAW_VR_NODE_FIELDS[i] }));
         }
 
@@ -3638,24 +3639,35 @@
             e.preventDefault();
             const target = e.target.closest('.dawvr-node');
             if (!target) return;
-            const field = target.getAttribute('data-field');
+            const nodeIdx = DAW_VR_NODE_FIELDS.indexOf(target.getAttribute('data-field'));
+            const field = DAW_VR_NODE_FIELDS[nodeIdx];
+            const freqField = DAW_VR_NODE_FREQ_FIELDS[nodeIdx];
+            const [freqMin, freqMax] = DAW_VR_NODE_FREQ_RANGE[nodeIdx];
             const sk = eq8SafeKey(key);
             const svg = document.getElementById(`dawvr-graph-${sk}`);
             if (!svg) return;
             const s = dawVrGetState(key);
             const move = (ev) => {
+                const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
                 const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
                 const rect = svg.getBoundingClientRect();
+                const scaleX = DAW_VR_GRAPH_W / rect.width;
                 const scaleY = DAW_VR_GRAPH_H / rect.height;
+                let x = (clientX - rect.left) * scaleX;
                 let y = (clientY - rect.top) * scaleY;
+                x = Math.max(0, Math.min(DAW_VR_GRAPH_W, x));
                 y = Math.max(0, Math.min(DAW_VR_GRAPH_H, y));
                 const db = Math.max(-DAW_VR_DB_RANGE, Math.min(DAW_VR_DB_RANGE, dawVrYToDb(y)));
+                const freq = Math.max(freqMin, Math.min(freqMax, dawVrXToFreq(x)));
                 if (field === 'fund') s.fund = db;
                 else if (field === 'second') s.second = db;
                 else if (field === 'third') s.third = db;
                 else if (field === 'nth') s.gain = db;
+                s[freqField] = freq;
                 dawVrClearBadge(key);
                 window.dawVrUpdateKnobVisual(key, field === 'nth' ? 'gain' : field);
+                if (DAW_VR_KNOB_CFG[freqField]) window.dawVrUpdateKnobVisual(key, freqField);
+                svg.innerHTML = dawVrGraphInner(key, performance.now());
             };
             const up = () => {
                 document.removeEventListener('mousemove', move);
@@ -3692,6 +3704,16 @@
             outVol: { min: -24, max: 24, fmt: v => (v >= 0 ? '+' : '') + v.toFixed(0) + 'dB', color: '#9ca3af' }
         };
 
+        function dawVrKnobLedBar(pct, color, sk, field) {
+            const segs = 8;
+            const lit = Math.round(pct * segs);
+            let bars = '';
+            for (let i = 0; i < segs; i++) {
+                bars += `<div class="dawvr-led-seg" style="flex:1; height:4px; border-radius:1px; background:${i < lit ? color : 'rgba(255,255,255,0.08)'}; box-shadow:${i < lit ? `0 0 3px ${color}` : 'none'};"></div>`;
+            }
+            return `<div id="dawvr-ledbar-${field}-${sk}" class="flex gap-0.5 w-full" style="margin-top:2px;">${bars}</div>`;
+        }
+
         function dawVrKnob(key, sk, field, label) {
             const s = dawVrGetState(key);
             const c = DAW_VR_KNOB_CFG[field];
@@ -3705,6 +3727,7 @@
                     <div id="dawvr-knob-ind-${field}-${sk}" class="absolute top-1 left-1/2 rounded-full" style="width:3px; height:14px; background:${c.color}; transform-origin: 1.5px 17px; transform:translateX(-50%) rotate(${deg}deg); box-shadow:0 0 3px ${c.color};"></div>
                 </div>
                 <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
+                ${dawVrKnobLedBar(pct, c.color, sk, field)}
                 <input id="dawvr-knobval-${field}-${sk}" type="text" value="${c.fmt(s[field])}" onclick="event.stopPropagation()" onchange="window.dawVrSetKnobFromText('${key}','${field}', this.value)" class="w-11 bg-black/50 border border-[rgba(47,208,255,0.3)] rounded px-1 py-0.5 text-[7px] text-center neon-blue-text font-bold outline-none">
             </div>`;
         }
@@ -3747,6 +3770,8 @@
             if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
             const val = document.getElementById(`dawvr-knobval-${field}-${sk}`);
             if (val) val.value = c.fmt(s[field]);
+            const ledbar = document.getElementById(`dawvr-ledbar-${field}-${sk}`);
+            if (ledbar) ledbar.outerHTML = dawVrKnobLedBar(pct, c.color, sk, field);
         };
 
         window.dawVrSetKnobFromText = function(key, field, text) {
