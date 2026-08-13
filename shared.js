@@ -4827,26 +4827,60 @@
             if (badge) badge.innerText = 'factory preset';
         }
 
-        // Stable pseudo-random curve, seeded per instance so it doesn't reshuffle on re-render
+        // Stable per-instance base shape (seeded), animated live via t (ms) so the
+        // curve continuously wobbles instead of sitting static — driven by a
+        // window.requestAnimationFrame loop while the panel is open.
         function dawSpSeededRand(seedStr) {
             let h = 0;
             for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
             return function() { h = (h * 1664525 + 1013904223) >>> 0; return h / 4294967296; };
         }
-        function dawSpCurvePoints(key) {
+        function dawSpCurvePoints(key, t) {
             const rand = dawSpSeededRand('sp-' + key);
             const n = 90;
             const pts = [];
             for (let i = 0; i < n; i++) {
                 const x = (i / (n - 1)) * DAW_SP_GRAPH_W;
-                const t = i / (n - 1);
-                const ramp = Math.min(1, t / 0.08) * Math.min(1, (1 - t) / 0.12);
-                const jag = (rand() - 0.5) * 26;
-                const y = DAW_SP_GRAPH_H - (ramp * (150 + jag * 0.4) + 8);
+                const tt = i / (n - 1);
+                const ramp = Math.min(1, tt / 0.08) * Math.min(1, (1 - tt) / 0.12);
+                const baseJag = (rand() - 0.5) * 26;
+                const liveJag = Math.sin(t / 260 + i * 0.7) * 10 + Math.sin(t / 130 + i * 1.3) * 6;
+                const y = DAW_SP_GRAPH_H - (ramp * (150 + (baseJag + liveJag) * 0.4) + 8);
                 pts.push([x, Math.max(6, Math.min(DAW_SP_GRAPH_H - 4, y))]);
             }
             return pts;
         }
+        function dawSpGraphInner(key, t) {
+            const gridDb = [0, -10, -20, -30, -40, -50, -60];
+            const gridLines = gridDb.map(db => {
+                const y = ((0 - db) / 60) * DAW_SP_GRAPH_H;
+                return `<line x1="0" y1="${y.toFixed(1)}" x2="${DAW_SP_GRAPH_W}" y2="${y.toFixed(1)}" stroke="rgba(47,208,255,0.08)" stroke-width="1"/>
+                        <text x="4" y="${(y - 3).toFixed(1)}" fill="#2fd0ff" opacity="0.5" font-size="8" font-family="monospace">${db}</text>`;
+            }).join('');
+            const curvePts = dawSpCurvePoints(key, t);
+            const curveStr = curvePts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+            const fillStr = `0,${DAW_SP_GRAPH_H} ${curveStr} ${DAW_SP_GRAPH_W},${DAW_SP_GRAPH_H}`;
+            return `
+                <rect x="0" y="0" width="${DAW_SP_GRAPH_W}" height="${DAW_SP_GRAPH_H}" fill="#050505"/>
+                ${gridLines}
+                <polygon points="${fillStr}" fill="rgba(47,208,255,0.16)"/>
+                <polyline points="${curveStr}" fill="none" stroke="#2fd0ff" stroke-width="1.5" style="filter: drop-shadow(0 0 3px rgba(47,208,255,0.6));"/>`;
+        }
+
+        window.dawSpRafIds = window.dawSpRafIds || {};
+        window.dawSpAnimate = function(key) {
+            const sk = eq8SafeKey(key);
+            if (window.dawSpRafIds[sk]) return;
+            const step = (t) => {
+                const svg = document.getElementById(`dawsp-graph-${sk}`);
+                if (!svg) { delete window.dawSpRafIds[sk]; return; }
+                svg.innerHTML = dawSpGraphInner(key, t);
+                const line = document.getElementById(`dawsp-gainline-${sk}`);
+                if (line) line.style.top = (38 + Math.sin(t / 480) * 6 + Math.sin(t / 190) * 2).toFixed(1) + '%';
+                window.dawSpRafIds[sk] = window.requestAnimationFrame(step);
+            };
+            window.dawSpRafIds[sk] = window.requestAnimationFrame(step);
+        };
 
         const DAW_SP_KNOB_CFG = {
             thr: { min: -60, max: 0, fmt: v => Math.round(v) },
@@ -4945,17 +4979,7 @@
         window.dawSpPanel = function(key, plugin) {
             const s = dawSpGetState(key);
             const sk = eq8SafeKey(key);
-
-            const gridDb = [0, -10, -20, -30, -40, -50, -60];
-            const gridLines = gridDb.map(db => {
-                const y = ((0 - db) / 60) * DAW_SP_GRAPH_H;
-                return `<line x1="0" y1="${y.toFixed(1)}" x2="${DAW_SP_GRAPH_W}" y2="${y.toFixed(1)}" stroke="rgba(47,208,255,0.08)" stroke-width="1"/>
-                        <text x="4" y="${(y - 3).toFixed(1)}" fill="#2fd0ff" opacity="0.5" font-size="8" font-family="monospace">${db}</text>`;
-            }).join('');
-
-            const curvePts = dawSpCurvePoints(key);
-            const curveStr = curvePts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-            const fillStr = `0,${DAW_SP_GRAPH_H} ${curveStr} ${DAW_SP_GRAPH_W},${DAW_SP_GRAPH_H}`;
+            try { window.dawSpAnimate(key); } catch (e) {}
 
             const gainTicks = [0, 6, 12, 18, 24, 30, 36, 48, 60];
             const meterH = 210, meterTopPad = 6, meterBotPad = 6;
@@ -4965,7 +4989,7 @@
                     <span class="text-[6px] text-gray-500 font-mono" style="width:14px;">${v}</span>
                     <span class="text-[6px] text-gray-500 font-mono text-right" style="width:14px;">${v}</span>
                 </div>`).join('');
-            const gainLevelPct = 40; // decorative current-level marker (~24 on the 0-60 scale)
+            const gainLevelPct = 40; // initial paint; the RAF loop animates this live once mounted
 
             return `
             <div class="flex items-start justify-between gap-2 mb-1">
@@ -4985,12 +5009,7 @@
 
             <div class="flex gap-2 mt-2">
                 <div class="flex-1 min-w-0 rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
-                    <svg viewBox="0 0 ${DAW_SP_GRAPH_W} ${DAW_SP_GRAPH_H}" style="width:100%; height:${meterH}px; display:block;">
-                        <rect x="0" y="0" width="${DAW_SP_GRAPH_W}" height="${DAW_SP_GRAPH_H}" fill="#050505"/>
-                        ${gridLines}
-                        <polygon points="${fillStr}" fill="rgba(47,208,255,0.16)"/>
-                        <polyline points="${curveStr}" fill="none" stroke="#2fd0ff" stroke-width="1.5" style="filter: drop-shadow(0 0 3px rgba(47,208,255,0.6));"/>
-                    </svg>
+                    <svg id="dawsp-graph-${sk}" viewBox="0 0 ${DAW_SP_GRAPH_W} ${DAW_SP_GRAPH_H}" preserveAspectRatio="none" style="width:100%; height:${meterH}px; display:block;">${dawSpGraphInner(key, performance.now())}</svg>
                 </div>
 
                 <div class="flex flex-col items-center flex-shrink-0" style="width:90px;">
@@ -5000,7 +5019,7 @@
                         <div class="absolute rounded-sm" style="left:22px; right:22px; top:${meterTopPad}px; bottom:${meterBotPad}px; background:rgba(47,208,255,0.06); border-left:1px solid rgba(47,208,255,0.15); border-right:1px solid rgba(47,208,255,0.15);"></div>
                         <div class="absolute rounded-sm" style="left:24px; width:16px; top:${meterTopPad}px; bottom:${meterBotPad}px; background:linear-gradient(180deg, rgba(47,208,255,0.05), rgba(47,208,255,0.35));"></div>
                         <div class="absolute rounded-sm" style="right:24px; width:16px; top:${meterTopPad}px; bottom:${meterBotPad}px; background:linear-gradient(180deg, rgba(47,208,255,0.05), rgba(47,208,255,0.35));"></div>
-                        <div class="absolute" style="left:22px; right:22px; top:${gainLevelPct}%; height:2px; background:#2fd0ff; box-shadow:0 0 6px rgba(47,208,255,0.9);"></div>
+                        <div id="dawsp-gainline-${sk}" class="absolute" style="left:22px; right:22px; top:${gainLevelPct}%; height:2px; background:#2fd0ff; box-shadow:0 0 6px rgba(47,208,255,0.9);"></div>
                     </div>
                     <input id="dawsp-gainval-${sk}" type="text" value="0.0" onchange="window.dawSpSetKnobFromText('${key}','out', this.value)" class="w-full mt-1.5 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[8px] text-center neon-blue-text font-bold outline-none">
                 </div>
