@@ -1875,15 +1875,28 @@
         };
 
         // ---------------- Mastering (single-slot) picker ----------------
+        // ---------------- Mastering-slot picker: uses the SAME rich chain+detail
+        // experience as the DAW FX picker below, treating each slot as a
+        // single-item chain (0 or 1 plugin) ----------------
+        function mfxSlotRef(presetId, slotIndex) {
+            const preset = window.masteringPresets.find(p => p.id === presetId);
+            return preset ? preset.slots[slotIndex] : null;
+        }
+        function mfxListFor(presetId, slotIndex) {
+            const slot = mfxSlotRef(presetId, slotIndex);
+            if (!slot || !slot.pluginId) return [];
+            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.id === slot.pluginId);
+            return plugin ? [plugin.name] : [];
+        }
+
         window.openPluginPicker = function(presetId, slotIndex) {
-            window.activePluginPickerContext = { type: 'mastering', presetId, slotIndex };
-            ppSetChrome('The Sovereign 12', 'Choose a plugin for this slot');
-            document.getElementById('plugin-picker-chain-box').classList.add('hidden-section');
-            document.getElementById('plugin-picker-clear-wrap').classList.remove('hidden-section');
-            document.getElementById('plugin-picker-clear-btn').innerText = 'Clear This Slot';
-            const detail = document.getElementById('plugin-picker-detail');
-            detail.innerHTML = `<div class="grid grid-cols-2 gap-2">${window.SOVEREIGN_12_PLUGINS.map(p =>
-                ppBrowseCard(p, false, `choosePluginForSlot('${p.id}')`)).join('')}</div>`;
+            window.activePluginPickerContext = { type: 'mastering-chain', presetId, slotIndex, mode: 'list', selectedIndex: null, presetMenuOpen: null };
+            ppSetChrome(`FX: Slot ${slotIndex + 1}`, 'Select a plugin in the chain, or tap Add');
+            document.getElementById('plugin-picker-chain-box').classList.remove('hidden-section');
+            document.getElementById('plugin-picker-clear-wrap').classList.add('hidden-section');
+            const fxList = mfxListFor(presetId, slotIndex);
+            if (fxList.length) window.activePluginPickerContext.selectedIndex = 0;
+            window.renderDawFxPicker();
             document.getElementById('plugin-picker-modal').classList.remove('hidden-section');
             document.getElementById('plugin-picker-backdrop').classList.remove('hidden-section');
         };
@@ -1927,8 +1940,8 @@
         // Renders BOTH boxes for the DAW context, based on ctx.mode / ctx.selectedIndex
         window.renderDawFxPicker = function() {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || ctx.type !== 'daw') return;
-            const fxList = dawFxListFor(ctx.trackId) || [];
+            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
+            const fxList = (ctx.type === 'mastering-chain' ? mfxListFor(ctx.presetId, ctx.slotIndex) : dawFxListFor(ctx.trackId)) || [];
 
             // LEFT — chain list
             const chainEl = document.getElementById('plugin-picker-chain-list');
@@ -1966,7 +1979,7 @@
                         ppBrowseCard(p, fxList.includes(p.name), `window.dawFxAddPluginToChain('${p.id}')`)).join('')}</div>`;
             } else if (canRemove) {
                 const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === fxList[ctx.selectedIndex]);
-                const key = `${ctx.trackId}::${ctx.selectedIndex}`;
+                const key = ctx.type === 'mastering-chain' ? `mfx:${ctx.presetId}:${ctx.slotIndex}` : `${ctx.trackId}::${ctx.selectedIndex}`;
                 if (plugin && plugin.id === 'surgical-eq8') {
                     detail.innerHTML = window.dawEqPanel(key, plugin);
                 } else if (plugin && plugin.id === 'master-limiter') {
@@ -2001,7 +2014,8 @@
 
         window.dawFxToggleAddMode = function() {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || ctx.type !== 'daw') return;
+            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
+            if (ctx.type === 'mastering-chain' && ctx.mode !== 'browse' && mfxListFor(ctx.presetId, ctx.slotIndex).length >= 1) return; // slot full — remove first
             ctx.mode = ctx.mode === 'browse' ? 'list' : 'browse';
             ctx.presetMenuOpen = null;
             window.renderDawFxPicker();
@@ -2009,7 +2023,7 @@
 
         window.dawFxSelectChainItem = function(index) {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || ctx.type !== 'daw') return;
+            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
             ctx.mode = 'list';
             ctx.selectedIndex = index;
             ctx.presetMenuOpen = null;
@@ -2018,10 +2032,22 @@
 
         window.dawFxAddPluginToChain = function(pluginId) {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || ctx.type !== 'daw') return;
-            const fxList = dawFxListFor(ctx.trackId);
+            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
             const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.id === pluginId);
-            if (!fxList || !plugin || fxList.includes(plugin.name) || fxList.length >= 12) return;
+            if (!plugin) return;
+            if (ctx.type === 'mastering-chain') {
+                const slot = mfxSlotRef(ctx.presetId, ctx.slotIndex);
+                if (!slot || slot.pluginId) return; // slot already filled — remove first
+                slot.pluginId = plugin.id;
+                slot.on = true;
+                ctx.mode = 'list';
+                ctx.selectedIndex = 0;
+                window.updatePresetCard(ctx.presetId);
+                window.renderDawFxPicker();
+                return;
+            }
+            const fxList = dawFxListFor(ctx.trackId);
+            if (!fxList || fxList.includes(plugin.name) || fxList.length >= 12) return;
             fxList.push(plugin.name);
             ctx.mode = 'list';
             ctx.selectedIndex = fxList.length - 1;
@@ -2031,7 +2057,19 @@
 
         window.dawFxRemoveSelected = function() {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || ctx.type !== 'daw' || ctx.selectedIndex === null) return;
+            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain') || ctx.selectedIndex === null) return;
+            if (ctx.type === 'mastering-chain') {
+                const slot = mfxSlotRef(ctx.presetId, ctx.slotIndex);
+                if (!slot || !slot.pluginId) return;
+                delete window.dawFxPresetChoice[`mfx:${ctx.presetId}:${ctx.slotIndex}`];
+                slot.pluginId = null;
+                slot.on = false;
+                ctx.selectedIndex = null;
+                ctx.presetMenuOpen = null;
+                window.updatePresetCard(ctx.presetId);
+                window.renderDawFxPicker();
+                return;
+            }
             const fxList = dawFxListFor(ctx.trackId);
             if (!fxList || fxList[ctx.selectedIndex] === undefined) return;
             delete window.dawFxPresetChoice[`${ctx.trackId}::${ctx.selectedIndex}`];
@@ -2042,21 +2080,21 @@
             window.renderDawFxPicker();
         };
 
-        // Factory-preset dropdown (per plugin instance, DAW chain only)
+        // Factory-preset dropdown (per plugin instance, DAW chain + mastering slots)
         window.dawFxTogglePresetMenu = function(key) {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || ctx.type !== 'daw') return;
+            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
             ctx.presetMenuOpen = ctx.presetMenuOpen === key ? null : key;
             window.renderDawFxPicker();
         };
 
         window.dawFxChoosePreset = function(key, presetIndex) {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || ctx.type !== 'daw') return;
+            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
             if (presetIndex === null || presetIndex === undefined) {
                 delete window.dawFxPresetChoice[key];
             } else {
-                const fxList = dawFxListFor(ctx.trackId) || [];
+                const fxList = (ctx.type === 'mastering-chain' ? mfxListFor(ctx.presetId, ctx.slotIndex) : dawFxListFor(ctx.trackId)) || [];
                 const name = fxList[ctx.selectedIndex];
                 const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === name);
                 const preset = plugin && plugin.presets && plugin.presets[presetIndex];
@@ -2068,7 +2106,7 @@
 
         window.dawFxClosePresetMenuIfOpen = function() {
             const ctx = window.activePluginPickerContext;
-            if (ctx && ctx.type === 'daw' && ctx.presetMenuOpen) {
+            if (ctx && (ctx.type === 'daw' || ctx.type === 'mastering-chain') && ctx.presetMenuOpen) {
                 ctx.presetMenuOpen = null;
                 window.renderDawFxPicker();
             }
@@ -5601,12 +5639,13 @@
 
         function dawFxCurrentSelection() {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || ctx.type !== 'daw' || ctx.selectedIndex === null) return null;
-            const fxList = dawFxListFor(ctx.trackId);
+            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain') || ctx.selectedIndex === null) return null;
+            const fxList = ctx.type === 'mastering-chain' ? mfxListFor(ctx.presetId, ctx.slotIndex) : dawFxListFor(ctx.trackId);
             const name = fxList && fxList[ctx.selectedIndex];
             const plugin = name && window.SOVEREIGN_12_PLUGINS.find(p => p.name === name);
             if (!plugin) return null;
-            return { ctx, plugin, key: `${ctx.trackId}::${ctx.selectedIndex}` };
+            const key = ctx.type === 'mastering-chain' ? `mfx:${ctx.presetId}:${ctx.slotIndex}` : `${ctx.trackId}::${ctx.selectedIndex}`;
+            return { ctx, plugin, key };
         }
 
         window.dawFxToggleTopMenu = function(event) {
