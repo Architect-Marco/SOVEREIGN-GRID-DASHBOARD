@@ -916,7 +916,7 @@
                 { name: 'sovereign: coreless', values: [['DIV','1/64 T'],['TAPS','8'],['MODE','Mid/Side'],['FX','Chorus']] },
                 { name: 'sovereign: tape cluster', values: [['DIV','1/8'],['TAPS','5'],['MODE','Stereo'],['FX','Wobble']] }
               ] },
-            { id: 'fruity-vocoder', name: 'Fruity Vocoder', tagline: 'Talking Synth', category: 'COLOR',
+            { id: 'fruity-vocoder', name: 'Alien-Link Vocoder', tagline: 'Talking Synth', category: 'COLOR',
               values: [['BANDS','32'],['FILTER','2'],['WET','85%'],['CAR','70%']],
               presets: [
                 { name: 'sovereign: robot voice', values: [['BANDS','16'],['FILTER','1'],['WET','100%'],['CAR','80%']] },
@@ -5132,9 +5132,47 @@
             }).join('');
         }
 
+        // Envelope line connecting the top of each band bar, drawn in
+        // a 0-100 percentage viewBox so it overlays the flex bar row
+        // regardless of the container's actual pixel size.
+        function dawVcEnvelopeLine(s) {
+            const n = s.bands.length;
+            const pts = s.bands.map((v, i) => {
+                const x = ((i + 0.5) / n) * 100;
+                const y = 100 - Math.max(4, Math.min(100, v * 100));
+                return `${x.toFixed(2)},${y.toFixed(2)}`;
+            }).join(' ');
+            return `<polyline points="${pts}" fill="none" stroke="#e8ecf7" stroke-width="1" opacity="0.8" vector-effect="non-scaling-stroke"/>`;
+        }
+
+        // Functional live animation for the band display — runs while
+        // the panel is open, pauses while Hold is engaged.
+        window.dawVcRafIds = window.dawVcRafIds || {};
+        window.dawVcAnimate = function(key) {
+            const sk = eq8SafeKey(key);
+            if (window.dawVcRafIds[sk]) return;
+            const step = (t) => {
+                const barsEl = document.getElementById(`dawvc-bars-${sk}`);
+                if (!barsEl) { delete window.dawVcRafIds[sk]; return; }
+                const s = dawVcGetState(key);
+                if (!s.hold) {
+                    s.bands = s.bands.map((v, i) => {
+                        if (i === 2) return 0.65 + Math.abs(Math.sin(t / 260)) * 0.3;
+                        return 0.14 + Math.abs(Math.sin(i * 0.7 + t / 550)) * 0.35 * (1 - i / 30);
+                    });
+                    barsEl.innerHTML = dawVcBarsInner(s);
+                    const envEl = document.getElementById(`dawvc-envelope-${sk}`);
+                    if (envEl) envEl.innerHTML = dawVcEnvelopeLine(s);
+                }
+                window.dawVcRafIds[sk] = window.requestAnimationFrame(step);
+            };
+            window.dawVcRafIds[sk] = window.requestAnimationFrame(step);
+        };
+
         window.dawVcPanel = function(key, plugin) {
             const s = dawVcGetState(key);
             const sk = eq8SafeKey(key);
+            try { window.dawVcAnimate(key); } catch (e) {}
 
             const litToggle = (field, label) => `
                 <button onclick="window.dawVcToggle('${key}','${field}')" class="w-6 h-4 rounded-sm text-[7px] font-black flex items-center justify-center border transition-colors ${s[field] ? 'bg-[#ff9a3d] border-[#ff9a3d] text-black' : 'bg-black/50 border-[rgba(47,208,255,0.3)] text-gray-500'}">${label}</button>`;
@@ -5223,11 +5261,14 @@
             <!-- BOTTOM: band display -->
             <div class="rounded-lg p-2 mt-3" style="border:1px solid rgba(47,208,255,0.3);">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-[9px] neon-blue-text font-black italic uppercase tracking-widest">Fruity Vocoder</span>
+                    <span class="text-[9px] neon-blue-text font-black italic uppercase tracking-widest">Alien-Link Vocoder</span>
                     <button onclick="window.dawVcToggle('${key}','hold')" class="px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border transition-colors ${s.hold ? 'bg-[#2fd0ff] text-black border-[#2fd0ff]' : 'text-gray-500 border-[rgba(47,208,255,0.3)]'}">Hold</button>
                 </div>
-                <div class="flex items-end gap-0.5 rounded" style="height:110px; background:rgba(20,25,45,0.6); border:1px solid rgba(47,208,255,0.2); padding:4px;">
-                    ${dawVcBarsInner(s)}
+                <div class="relative rounded" style="height:110px; background:rgba(20,25,45,0.6); border:1px solid rgba(47,208,255,0.2);">
+                    <div id="dawvc-bars-${sk}" class="absolute inset-0 flex items-end gap-0.5">
+                        ${dawVcBarsInner(s)}
+                    </div>
+                    <svg id="dawvc-envelope-${sk}" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 pointer-events-none" style="width:100%; height:100%;">${dawVcEnvelopeLine(s)}</svg>
                 </div>
                 <div class="flex items-center justify-between mt-2">
                     <div class="flex items-center gap-2">
