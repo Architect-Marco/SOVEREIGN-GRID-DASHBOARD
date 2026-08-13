@@ -5133,28 +5133,15 @@
             return s.bands.map((v, i) => {
                 const level = Math.max(0, Math.min(1, v));
                 const filled = Math.round(level * DAW_VC_LED_SEGS);
-                const lit = i === 2;
                 let segsHtml = '';
                 for (let seg = DAW_VC_LED_SEGS - 1; seg >= 0; seg--) {
                     const on = seg < filled;
-                    const color = on ? (lit ? '#e8ecf7' : '#8fa3e8') : 'rgba(90,105,160,0.18)';
-                    segsHtml += `<div style="flex:1; margin-bottom:1px; background:${color}; border-radius:1px;"></div>`;
+                    const color = on ? '#2fd0ff' : 'rgba(47,208,255,0.15)';
+                    const glow = on ? 'box-shadow:0 0 4px rgba(47,208,255,0.7);' : '';
+                    segsHtml += `<div style="flex:1; margin-bottom:1px; background:${color}; border-radius:1px; ${glow}"></div>`;
                 }
                 return `<div class="flex-1 h-full flex flex-col justify-end" style="cursor:ns-resize;" onmousedown="window.dawVcBandDrag(event,'${key}',${i})" ontouchstart="window.dawVcBandDrag(event,'${key}',${i})">${segsHtml}</div>`;
             }).join('');
-        }
-
-        // Envelope line connecting the top of each band bar, drawn in
-        // a 0-100 percentage viewBox so it overlays the flex bar row
-        // regardless of the container's actual pixel size.
-        function dawVcEnvelopeLine(s) {
-            const n = s.bands.length;
-            const pts = s.bands.map((v, i) => {
-                const x = ((i + 0.5) / n) * 100;
-                const y = 100 - Math.max(4, Math.min(100, v * 100));
-                return `${x.toFixed(2)},${y.toFixed(2)}`;
-            }).join(' ');
-            return `<polyline points="${pts}" fill="none" stroke="#e8ecf7" stroke-width="1" opacity="0.8" vector-effect="non-scaling-stroke"/>`;
         }
 
         window.dawVcBandDrag = function(e, key, i) {
@@ -5175,8 +5162,6 @@
                 if (badge) badge.innerText = 'factory preset';
                 const barsEl = document.getElementById(`dawvc-bars-${sk}`);
                 if (barsEl) barsEl.innerHTML = dawVcBarsInner(s, key);
-                const envEl = document.getElementById(`dawvc-envelope-${sk}`);
-                if (envEl) envEl.innerHTML = dawVcEnvelopeLine(s);
             };
             const up = () => {
                 document.removeEventListener('mousemove', move);
@@ -5288,7 +5273,6 @@
                     <div id="dawvc-bars-${sk}" class="absolute inset-0 flex items-end gap-0.5">
                         ${dawVcBarsInner(s, key)}
                     </div>
-                    <svg id="dawvc-envelope-${sk}" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 pointer-events-none" style="width:100%; height:100%;">${dawVcEnvelopeLine(s)}</svg>
                 </div>
                 <div class="flex items-center justify-between mt-2">
                     <div class="flex items-center gap-2">
