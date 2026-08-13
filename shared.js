@@ -839,12 +839,13 @@
         const KNOB_ICON = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 12 12 6"/></svg>';
 
         window.SOVEREIGN_12_PLUGINS = [
-            { id: 'spectral-dynamics', name: 'Spectral Dynamics', tagline: 'The Glue', category: 'DYNAMICS',
-              values: [['THR','-43d'],['RAT','4.1:1'],['MIX','72%'],['OUT','-5d']],
+            { id: 'sovereign-dynamics', name: 'Sovereign Dynamics', tagline: 'The Glue', category: 'DYNAMICS',
+              values: [['THRESH','-25.0d'],['RATIO','1.8:1'],['ATTACK','35ms'],['RELEASE','250ms']],
               presets: [
-                { name: 'sovereign: vocal glue', values: [['THR','-18d'],['RAT','2.5:1'],['MIX','60%'],['OUT','0d']] },
-                { name: 'sovereign: drum bus punch', values: [['THR','-14d'],['RAT','6.0:1'],['MIX','100%'],['OUT','-3d']] },
-                { name: 'sovereign: master bus smooth', values: [['THR','-28d'],['RAT','1.8:1'],['MIX','45%'],['OUT','0d']] }
+                { name: 'sovereign: vocal glue', values: [['THRESH','-18.0d'],['RATIO','2.5:1'],['ATTACK','15ms'],['RELEASE','180ms']] },
+                { name: 'sovereign: drum bus punch', values: [['THRESH','-14.0d'],['RATIO','4.0:1'],['ATTACK','8ms'],['RELEASE','90ms']] },
+                { name: 'sovereign: master bus smooth', values: [['THRESH','-28.0d'],['RATIO','1.5:1'],['ATTACK','45ms'],['RELEASE','400ms']] },
+                { name: 'sovereign: gentle leveling', values: [['THRESH','-22.0d'],['RATIO','1.3:1'],['ATTACK','60ms'],['RELEASE','300ms']] }
               ] },
             { id: 'master-limiter', name: 'Master Limiter', tagline: 'The Ceiling', category: 'DYNAMICS',
               values: [['CEILING','-0.5d'],['RELEASE','80ms'],['SOFT-CLIP','15%'],['GAIN','+2.0d']],
@@ -860,12 +861,11 @@
                 { name: 'sovereign: hardness remover', values: [['LOW-THR','-16d'],['MID-THR','-10d'],['HIGH-THR','-20d'],['XOVER','300Hz']] },
                 { name: 'sovereign: supersolid bass', values: [['LOW-THR','-22d'],['MID-THR','-12d'],['HIGH-THR','-14d'],['XOVER','180Hz']] }
               ] },
-            { id: 'vocal-rider', name: 'Vocal Rider', tagline: 'Auto Level Rider', category: 'DYNAMICS',
-              values: [['TARGET','-6.0d'],['MAX RNG','+8.7d'],['MIN RNG','-5.5d'],['SENS','82%']],
+            { id: 'vocal-rider', name: 'Vocal Rider', tagline: 'Automatic Vocal Leveler', category: 'DYNAMICS',
+              values: [['TARGET','-8.0d'],['RANGE','12.0d'],['SENS-V','0'],['SENS-M','0']],
               presets: [
-                { name: 'sovereign: gentle vocal ride', values: [['TARGET','-6.0d'],['MAX RNG','+8.7d'],['MIN RNG','-5.5d'],['SENS','82%']] },
-                { name: 'sovereign: tight pocket', values: [['TARGET','-8.0d'],['MAX RNG','+4.0d'],['MIN RNG','-3.0d'],['SENS','65%']] },
-                { name: 'sovereign: wide dynamic', values: [['TARGET','-4.0d'],['MAX RNG','+12.0d'],['MIN RNG','-10.0d'],['SENS','95%']] }
+                { name: 'sovereign: lead vocal', values: [['TARGET','-6.0d'],['RANGE','10.0d'],['SENS-V','2'],['SENS-M','-2']] },
+                { name: 'sovereign: podcast dialog', values: [['TARGET','-12.0d'],['RANGE','8.0d'],['SENS-V','0'],['SENS-M','0']] }
               ] },
             { id: 'surgical-eq8', name: 'Surgical EQ-8', tagline: 'High-End Clarity', category: 'EQ',
               values: [['LOW-CUT','80Hz'],['MID-GAIN','-1.5d'],['HI-SHELF','8kHz'],['HI-GAIN','+2.5d']],
@@ -1874,28 +1874,15 @@
         };
 
         // ---------------- Mastering (single-slot) picker ----------------
-        // ---------------- Mastering-slot picker: uses the SAME rich chain+detail
-        // experience as the DAW FX picker below, treating each slot as a
-        // single-item chain (0 or 1 plugin) ----------------
-        function mfxSlotRef(presetId, slotIndex) {
-            const preset = window.masteringPresets.find(p => p.id === presetId);
-            return preset ? preset.slots[slotIndex] : null;
-        }
-        function mfxListFor(presetId, slotIndex) {
-            const slot = mfxSlotRef(presetId, slotIndex);
-            if (!slot || !slot.pluginId) return [];
-            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.id === slot.pluginId);
-            return plugin ? [plugin.name] : [];
-        }
-
         window.openPluginPicker = function(presetId, slotIndex) {
-            window.activePluginPickerContext = { type: 'mastering-chain', presetId, slotIndex, mode: 'list', selectedIndex: null, presetMenuOpen: null };
-            ppSetChrome(`FX: Slot ${slotIndex + 1}`, 'Select a plugin in the chain, or tap Add');
-            document.getElementById('plugin-picker-chain-box').classList.remove('hidden-section');
-            document.getElementById('plugin-picker-clear-wrap').classList.add('hidden-section');
-            const fxList = mfxListFor(presetId, slotIndex);
-            if (fxList.length) window.activePluginPickerContext.selectedIndex = 0;
-            window.renderDawFxPicker();
+            window.activePluginPickerContext = { type: 'mastering', presetId, slotIndex };
+            ppSetChrome('The Sovereign 12', 'Choose a plugin for this slot');
+            document.getElementById('plugin-picker-chain-box').classList.add('hidden-section');
+            document.getElementById('plugin-picker-clear-wrap').classList.remove('hidden-section');
+            document.getElementById('plugin-picker-clear-btn').innerText = 'Clear This Slot';
+            const detail = document.getElementById('plugin-picker-detail');
+            detail.innerHTML = `<div class="grid grid-cols-2 gap-2">${window.SOVEREIGN_12_PLUGINS.map(p =>
+                ppBrowseCard(p, false, `choosePluginForSlot('${p.id}')`)).join('')}</div>`;
             document.getElementById('plugin-picker-modal').classList.remove('hidden-section');
             document.getElementById('plugin-picker-backdrop').classList.remove('hidden-section');
         };
@@ -1939,8 +1926,8 @@
         // Renders BOTH boxes for the DAW context, based on ctx.mode / ctx.selectedIndex
         window.renderDawFxPicker = function() {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
-            const fxList = (ctx.type === 'mastering-chain' ? mfxListFor(ctx.presetId, ctx.slotIndex) : dawFxListFor(ctx.trackId)) || [];
+            if (!ctx || ctx.type !== 'daw') return;
+            const fxList = dawFxListFor(ctx.trackId) || [];
 
             // LEFT — chain list
             const chainEl = document.getElementById('plugin-picker-chain-list');
@@ -1978,7 +1965,7 @@
                         ppBrowseCard(p, fxList.includes(p.name), `window.dawFxAddPluginToChain('${p.id}')`)).join('')}</div>`;
             } else if (canRemove) {
                 const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === fxList[ctx.selectedIndex]);
-                const key = ctx.type === 'mastering-chain' ? `mfx:${ctx.presetId}:${ctx.slotIndex}` : `${ctx.trackId}::${ctx.selectedIndex}`;
+                const key = `${ctx.trackId}::${ctx.selectedIndex}`;
                 if (plugin && plugin.id === 'surgical-eq8') {
                     detail.innerHTML = window.dawEqPanel(key, plugin);
                 } else if (plugin && plugin.id === 'master-limiter') {
@@ -1999,12 +1986,12 @@
                     detail.innerHTML = window.dawDsPanel(key, plugin);
                 } else if (plugin && plugin.id === 'vocal-rider') {
                     detail.innerHTML = window.dawVrPanel(key, plugin);
-                } else if (plugin && plugin.id === 'spectral-dynamics') {
-                    detail.innerHTML = window.dawSpPanel(key, plugin);
                 } else if (plugin && plugin.id === 'aether-reverb') {
                     detail.innerHTML = window.dawArPanel(key, plugin);
                 } else if (plugin && plugin.id === 'resonator-528') {
                     detail.innerHTML = window.dawRzPanel(key, plugin);
+                } else if (plugin && plugin.id === 'luxury-saturation') {
+                    detail.innerHTML = window.dawLsPanel(key, plugin);
                 } else {
                     detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
                 }
@@ -2015,8 +2002,7 @@
 
         window.dawFxToggleAddMode = function() {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
-            if (ctx.type === 'mastering-chain' && ctx.mode !== 'browse' && mfxListFor(ctx.presetId, ctx.slotIndex).length >= 1) return; // slot full — remove first
+            if (!ctx || ctx.type !== 'daw') return;
             ctx.mode = ctx.mode === 'browse' ? 'list' : 'browse';
             ctx.presetMenuOpen = null;
             window.renderDawFxPicker();
@@ -2024,7 +2010,7 @@
 
         window.dawFxSelectChainItem = function(index) {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
+            if (!ctx || ctx.type !== 'daw') return;
             ctx.mode = 'list';
             ctx.selectedIndex = index;
             ctx.presetMenuOpen = null;
@@ -2033,22 +2019,10 @@
 
         window.dawFxAddPluginToChain = function(pluginId) {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
-            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.id === pluginId);
-            if (!plugin) return;
-            if (ctx.type === 'mastering-chain') {
-                const slot = mfxSlotRef(ctx.presetId, ctx.slotIndex);
-                if (!slot || slot.pluginId) return; // slot already filled — remove first
-                slot.pluginId = plugin.id;
-                slot.on = true;
-                ctx.mode = 'list';
-                ctx.selectedIndex = 0;
-                window.updatePresetCard(ctx.presetId);
-                window.renderDawFxPicker();
-                return;
-            }
+            if (!ctx || ctx.type !== 'daw') return;
             const fxList = dawFxListFor(ctx.trackId);
-            if (!fxList || fxList.includes(plugin.name) || fxList.length >= 12) return;
+            const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.id === pluginId);
+            if (!fxList || !plugin || fxList.includes(plugin.name) || fxList.length >= 12) return;
             fxList.push(plugin.name);
             ctx.mode = 'list';
             ctx.selectedIndex = fxList.length - 1;
@@ -2058,19 +2032,7 @@
 
         window.dawFxRemoveSelected = function() {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain') || ctx.selectedIndex === null) return;
-            if (ctx.type === 'mastering-chain') {
-                const slot = mfxSlotRef(ctx.presetId, ctx.slotIndex);
-                if (!slot || !slot.pluginId) return;
-                delete window.dawFxPresetChoice[`mfx:${ctx.presetId}:${ctx.slotIndex}`];
-                slot.pluginId = null;
-                slot.on = false;
-                ctx.selectedIndex = null;
-                ctx.presetMenuOpen = null;
-                window.updatePresetCard(ctx.presetId);
-                window.renderDawFxPicker();
-                return;
-            }
+            if (!ctx || ctx.type !== 'daw' || ctx.selectedIndex === null) return;
             const fxList = dawFxListFor(ctx.trackId);
             if (!fxList || fxList[ctx.selectedIndex] === undefined) return;
             delete window.dawFxPresetChoice[`${ctx.trackId}::${ctx.selectedIndex}`];
@@ -2081,21 +2043,21 @@
             window.renderDawFxPicker();
         };
 
-        // Factory-preset dropdown (per plugin instance, DAW chain + mastering slots)
+        // Factory-preset dropdown (per plugin instance, DAW chain only)
         window.dawFxTogglePresetMenu = function(key) {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
+            if (!ctx || ctx.type !== 'daw') return;
             ctx.presetMenuOpen = ctx.presetMenuOpen === key ? null : key;
             window.renderDawFxPicker();
         };
 
         window.dawFxChoosePreset = function(key, presetIndex) {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain')) return;
+            if (!ctx || ctx.type !== 'daw') return;
             if (presetIndex === null || presetIndex === undefined) {
                 delete window.dawFxPresetChoice[key];
             } else {
-                const fxList = (ctx.type === 'mastering-chain' ? mfxListFor(ctx.presetId, ctx.slotIndex) : dawFxListFor(ctx.trackId)) || [];
+                const fxList = dawFxListFor(ctx.trackId) || [];
                 const name = fxList[ctx.selectedIndex];
                 const plugin = window.SOVEREIGN_12_PLUGINS.find(p => p.name === name);
                 const preset = plugin && plugin.presets && plugin.presets[presetIndex];
@@ -2107,7 +2069,7 @@
 
         window.dawFxClosePresetMenuIfOpen = function() {
             const ctx = window.activePluginPickerContext;
-            if (ctx && (ctx.type === 'daw' || ctx.type === 'mastering-chain') && ctx.presetMenuOpen) {
+            if (ctx && ctx.type === 'daw' && ctx.presetMenuOpen) {
                 ctx.presetMenuOpen = null;
                 window.renderDawFxPicker();
             }
@@ -3579,101 +3541,70 @@
         };
 
         // ============================================================
-        // VOCAL RIDER — a Nuro Audio "X Rider"-style panel: a big dB
-        // graph with three draggable reference lines (Max Range /
-        // Target Level / Min Range), a TrueGain curve, a filled
-        // realtime-waveform histogram, a Sensitivity readout, and a
-        // narrow control strip with Speed + Output knobs.
+        // VOCAL RIDER — an automatic vocal-level "rider" panel: a
+        // horizontal Target bar, Ride/Idle + Fast/Slow mode selectors,
+        // Vocal/Music Sensitivity knobs, a three-fader deck (dual-handle
+        // Range, a chunky central Rider fader, and Output), and an
+        // Automation Off/Write/Read selector.
         // ============================================================
         window.dawVrState = window.dawVrState || {};
 
-        const DAW_VR_GRAPH_W = 620, DAW_VR_GRAPH_H = 260;
-        const DAW_VR_DB_TOP = 6, DAW_VR_DB_BOTTOM = -36;
-
         function dawVrDefaultState() {
             return {
-                target: -6.0, rangeAbove: 8.7, rangeBelow: 5.5,
-                sensitivity: 82, speed: 45, output: 0
+                target: 68, mode: 'ride', speed: 'fast',
+                sensVocal: 0, sensMusic: 0,
+                rangeTop: 9.0, rangeBottom: -3.0,
+                rider: 3.9, output: 3.5,
+                automation: 'off', active: true
             };
         }
         function dawVrGetState(key) {
             if (!window.dawVrState[key]) window.dawVrState[key] = dawVrDefaultState();
             return window.dawVrState[key];
         }
-        function dawVrClearBadge(key) {
-            const sk = eq8SafeKey(key);
-            delete window.dawFxActivePresetLabel[key];
-            const badge = document.getElementById(`dawvr-badge-${sk}`);
-            if (badge) badge.innerText = 'factory preset';
-        }
-        function dawVrDbToY(db) {
-            return ((DAW_VR_DB_TOP - db) / (DAW_VR_DB_TOP - DAW_VR_DB_BOTTOM)) * DAW_VR_GRAPH_H;
-        }
-        function dawVrYToDb(y) {
-            return DAW_VR_DB_TOP - (y / DAW_VR_GRAPH_H) * (DAW_VR_DB_TOP - DAW_VR_DB_BOTTOM);
+
+        const DAW_VR_FIELDS = {
+            target:      { min: 0, max: 100, decimals: 0 },
+            sensVocal:   { min: -10, max: 10, decimals: 0 },
+            sensMusic:   { min: -10, max: 10, decimals: 0 },
+            rangeTop:    { min: 0, max: 12, decimals: 1 },
+            rangeBottom: { min: -12, max: 0, decimals: 1 },
+            rider:       { min: -12, max: 12, decimals: 1 },
+            output:      { min: -12, max: 12, decimals: 1 }
+        };
+        const DAW_VR_TICKS = [12, 6, 0, -6, -12];
+
+        function dawVrTicksColumn() {
+            return DAW_VR_TICKS.map(v => {
+                const pct = ((12 - v) / 24) * 100;
+                const label = (v > 0 ? '+' : '') + v;
+                return `<span class="absolute text-[8px] text-gray-500 font-bold" style="top:${pct}%; transform:translateY(-50%); left:0;">${label}</span>`;
+            }).join('');
         }
 
-        // Stable pseudo-random "realtime waveform" + "TrueGain" curve —
-        // seeded per track/slot key so it doesn't reshuffle on re-render.
-        function dawVrSeededRand(seedStr) {
-            let h = 0;
-            for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
-            return function() { h = (h * 1664525 + 1013904223) >>> 0; return h / 4294967296; };
-        }
-        function dawVrWaveformPoints(key) {
-            const rand = dawVrSeededRand('vrwave-' + key);
-            const n = 64;
-            const pts = [];
-            for (let i = 0; i < n; i++) {
-                const x = (i / (n - 1)) * DAW_VR_GRAPH_W;
-                const t = i / (n - 1);
-                let db = -32 + rand() * 6;
-                if (t > 0.18 && t < 0.30) db = -14 + rand() * 16;
-                if (t > 0.58 && t < 0.68) db = -34 + rand() * 8;
-                if (t > 0.78 && t < 0.94) db = -2 + rand() * 4;
-                if (t > 0.90 && t < 0.94) db = 2 + rand() * 4;
-                pts.push([x, dawVrDbToY(db)]);
-            }
-            return pts;
-        }
-        function dawVrTrueGainPoints(key) {
-            const rand = dawVrSeededRand('vrgain-' + key);
-            const n = 40;
-            const pts = [];
-            for (let i = 0; i < n; i++) {
-                const x = (i / (n - 1)) * DAW_VR_GRAPH_W;
-                const t = i / (n - 1);
-                let db = -1 + Math.sin(t * 3.2) * 1.5 + (rand() - 0.5) * 0.6;
-                if (t > 0.72 && t < 0.9) db = -9 + (rand() - 0.5) * 1.5;
-                pts.push([x, dawVrDbToY(db)]);
-            }
-            return pts;
-        }
-
-        function dawVrKnob(key, sk, field, label, min, max, fmt) {
+        // --- rotary Sensitivity knobs (Vocal / Music), -10..+10, centered at 0
+        function dawVrKnob(key, sk, field, label) {
             const s = dawVrGetState(key);
-            const pct = (s[field] - min) / (max - min);
+            const c = DAW_VR_FIELDS[field];
+            const pct = (s[field] - c.min) / (c.max - c.min);
             const deg = -135 + pct * 270;
             return `
             <div class="flex flex-col items-center gap-1.5">
-                <div id="dawvr-knob-${field}-${sk}" class="relative rounded-full cursor-ns-resize select-none flex-shrink-0"
-                     style="width:56px; height:56px; background:radial-gradient(circle at 35% 30%, #111, #000 70%); border:2px solid rgba(47,208,255,0.55); box-shadow: 0 0 8px rgba(47,208,255,0.25), inset 0 0 6px rgba(0,0,0,0.8);"
-                     onmousedown="event.stopPropagation(); window.dawVrKnobDrag(event,'${key}','${field}')" ontouchstart="event.stopPropagation(); window.dawVrKnobDrag(event,'${key}','${field}')">
-                    <div id="dawvr-knob-ind-${field}-${sk}" class="absolute top-1 left-1/2 rounded-full" style="width:4px; height:9px; background:#2fd0ff; box-shadow:0 0 4px rgba(47,208,255,0.9); transform-origin: 2px 24px; transform:translateX(-50%) rotate(${deg}deg);"></div>
+                <div class="flex items-center gap-2 text-[8px] text-gray-500 font-bold">
+                    <span>-</span><span class="neon-blue-text">0</span><span>+</span>
                 </div>
-                <span class="text-[8px] text-gray-300 font-black uppercase tracking-widest">${label}</span>
-                <input id="dawvr-knobval-${field}-${sk}" type="text" value="${fmt(s[field])}" onclick="event.stopPropagation()" onchange="window.dawVrSetKnobFromText('${key}','${field}', this.value)" class="w-12 bg-black/40 border border-[rgba(47,208,255,0.3)] rounded px-1 py-0.5 text-[7px] text-center neon-blue-text font-bold outline-none">
+                <div id="dawvr-knob-${field}-${sk}" class="relative rounded-full bg-black border-2 border-[rgba(47,208,255,0.45)] cursor-ns-resize select-none flex-shrink-0"
+                     style="width:52px; height:52px; box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 0 6px rgba(47,208,255,0.15);"
+                     onmousedown="event.stopPropagation(); window.dawVrKnobDrag(event,'${key}','${field}')" ontouchstart="event.stopPropagation(); window.dawVrKnobDrag(event,'${key}','${field}')">
+                    <div id="dawvr-knob-ind-${field}-${sk}" class="absolute top-1 left-1/2 w-0.5 bg-[#2fd0ff] origin-bottom rounded-full" style="height:20px; transform:translateX(-50%) rotate(${deg}deg); box-shadow:0 0 4px rgba(47,208,255,0.8);"></div>
+                </div>
+                <span class="text-[9px] neon-blue-text uppercase font-black tracking-widest">${label}</span>
             </div>`;
         }
 
-        const DAW_VR_KNOB_CFG = {
-            speed: { min: 0, max: 100, fmt: v => Math.round(v) + '%' },
-            output: { min: -12, max: 12, fmt: v => (v >= 0 ? '+' : '') + v.toFixed(1) }
-        };
-
         window.dawVrKnobDrag = function(e, key, field) {
             e.preventDefault();
-            const c = DAW_VR_KNOB_CFG[field];
+            const c = DAW_VR_FIELDS[field];
             const s = dawVrGetState(key);
             const startY = e.touches ? e.touches[0].clientY : e.clientY;
             const startVal = s[field];
@@ -3681,11 +3612,9 @@
             const move = (ev) => {
                 const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
                 const deltaY = startY - clientY;
-                let newVal = startVal + deltaY * (range / 130);
-                newVal = Math.max(c.min, Math.min(c.max, newVal));
-                s[field] = newVal;
-                dawVrClearBadge(key);
-                window.dawVrUpdateKnobVisual(key, field);
+                let newVal = startVal + deltaY * (range / 150);
+                s[field] = Math.max(c.min, Math.min(c.max, newVal));
+                window.dawVrUpdateVisual(key, field);
             };
             const up = () => {
                 document.removeEventListener('mousemove', move);
@@ -3699,115 +3628,147 @@
             document.addEventListener('touchend', up);
         };
 
-        window.dawVrUpdateKnobVisual = function(key, field) {
+        window.dawVrUpdateVisual = function(key, field) {
             const sk = eq8SafeKey(key);
             const s = dawVrGetState(key);
-            const c = DAW_VR_KNOB_CFG[field];
-            const pct = (s[field] - c.min) / (c.max - c.min);
-            const deg = -135 + pct * 270;
-            const ind = document.getElementById(`dawvr-knob-ind-${field}-${sk}`);
-            if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
-            const val = document.getElementById(`dawvr-knobval-${field}-${sk}`);
-            if (val) val.value = c.fmt(s[field]);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawvr-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+
+            if (field === 'sensVocal' || field === 'sensMusic') {
+                const c = DAW_VR_FIELDS[field];
+                const pct = (s[field] - c.min) / (c.max - c.min);
+                const deg = -135 + pct * 270;
+                const ind = document.getElementById(`dawvr-knob-ind-${field}-${sk}`);
+                if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+                return;
+            }
+            if (field === 'rangeTop' || field === 'rangeBottom') {
+                const top = document.getElementById(`dawvr-range-top-${sk}`); if (top) top.value = s.rangeTop;
+                const bot = document.getElementById(`dawvr-range-bottom-${sk}`); if (bot) bot.value = s.rangeBottom;
+                window.dawVrUpdateRangeFill(key);
+                const val = document.getElementById(`dawvr-range-val-${sk}`);
+                if (val) val.value = (s.rangeTop - s.rangeBottom).toFixed(1);
+                return;
+            }
+            if (field === 'rider') {
+                const sl = document.getElementById(`dawvr-rider-slider-${sk}`); if (sl) sl.value = s.rider;
+                const val = document.getElementById(`dawvr-rider-val-${sk}`); if (val) val.value = s.rider.toFixed(1);
+                return;
+            }
+            if (field === 'output') {
+                const sl = document.getElementById(`dawvr-output-slider-${sk}`); if (sl) sl.value = s.output;
+                const val = document.getElementById(`dawvr-output-val-${sk}`); if (val) val.value = s.output.toFixed(1);
+                return;
+            }
         };
 
-        window.dawVrSetKnobFromText = function(key, field, text) {
-            const c = DAW_VR_KNOB_CFG[field];
+        window.dawVrSetFromText = function(key, field, text) {
+            const c = DAW_VR_FIELDS[field];
             const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
             if (isNaN(num)) return;
             const s = dawVrGetState(key);
             s[field] = Math.max(c.min, Math.min(c.max, num));
-            dawVrClearBadge(key);
-            window.dawVrUpdateKnobVisual(key, field);
+            window.dawVrUpdateVisual(key, field);
         };
 
-        // Draggable Max Range / Target Level / Min Range lines
-        window.dawVrLineDrag = function(e, key, which) {
-            e.preventDefault(); e.stopPropagation();
-            const sk = eq8SafeKey(key);
-            const svg = document.getElementById(`dawvr-graph-${sk}`);
-            if (!svg) return;
-            const move = (ev) => {
-                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
-                const rect = svg.getBoundingClientRect();
-                const scaleY = DAW_VR_GRAPH_H / rect.height;
-                let y = (clientY - rect.top) * scaleY;
-                y = Math.max(0, Math.min(DAW_VR_GRAPH_H, y));
-                const db = dawVrYToDb(y);
-                const s = dawVrGetState(key);
-                if (which === 'target') {
-                    s.target = Math.max(DAW_VR_DB_BOTTOM + 2, Math.min(DAW_VR_DB_TOP - 1, db));
-                } else if (which === 'max') {
-                    s.rangeAbove = Math.max(0.5, Math.min(20, db - s.target));
-                } else if (which === 'min') {
-                    s.rangeBelow = Math.max(0.5, Math.min(20, s.target - db));
-                }
-                dawVrClearBadge(key);
-                window.dawVrRedrawLines(key);
-            };
-            const up = () => {
-                document.removeEventListener('mousemove', move);
-                document.removeEventListener('mouseup', up);
-                document.removeEventListener('touchmove', move);
-                document.removeEventListener('touchend', up);
-            };
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', up);
-            document.addEventListener('touchmove', move);
-            document.addEventListener('touchend', up);
-        };
-
-        window.dawVrRedrawLines = function(key) {
-            const sk = eq8SafeKey(key);
+        window.dawVrRangeInput = function(key, field, value) {
             const s = dawVrGetState(key);
-            const set = (id, y) => { const el = document.getElementById(id); if (el) { el.setAttribute('y1', y.toFixed(1)); el.setAttribute('y2', y.toFixed(1)); } };
-            const setPill = (id, y, textId, text) => {
-                const el = document.getElementById(id); if (el) el.setAttribute('transform', `translate(0, ${y.toFixed(1)})`);
-                const t = document.getElementById(textId); if (t) t.textContent = text;
-            };
-            const yT = dawVrDbToY(s.target), yMax = dawVrDbToY(s.target + s.rangeAbove), yMin = dawVrDbToY(s.target - s.rangeBelow);
-            set(`dawvr-line-target-${sk}`, yT);
-            set(`dawvr-line-max-${sk}`, yMax);
-            set(`dawvr-line-min-${sk}`, yMin);
-            setPill(`dawvr-pill-target-${sk}`, yT, `dawvr-pilltxt-target-${sk}`, s.target.toFixed(1) + ' dB');
-            setPill(`dawvr-pill-max-${sk}`, yMax, `dawvr-pilltxt-max-${sk}`, '+' + s.rangeAbove.toFixed(1));
-            setPill(`dawvr-pill-min-${sk}`, yMin, `dawvr-pilltxt-min-${sk}`, '-' + s.rangeBelow.toFixed(1));
+            const num = parseFloat(value);
+            if (isNaN(num)) return;
+            if (field === 'rangeTop') s.rangeTop = Math.max(0, Math.min(12, num));
+            else s.rangeBottom = Math.max(-12, Math.min(0, num));
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawvr-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            window.dawVrUpdateRangeFill(key);
+            const val = document.getElementById(`dawvr-range-val-${sk}`);
+            if (val) val.value = (s.rangeTop - s.rangeBottom).toFixed(1);
         };
 
-        window.dawVrSetSensitivity = function(key, text) {
+        window.dawVrSetRangeSpanFromText = function(key, text) {
             const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
             if (isNaN(num)) return;
+            const span = Math.max(0, Math.min(24, num));
             const s = dawVrGetState(key);
-            s.sensitivity = Math.max(0, Math.min(100, num));
-            dawVrClearBadge(key);
+            s.rangeTop = Math.min(12, span / 2);
+            s.rangeBottom = Math.max(-12, -span / 2);
+            window.dawVrUpdateVisual(key, 'rangeTop');
+        };
+
+        window.dawVrUpdateRangeFill = function(key) {
+            const sk = eq8SafeKey(key);
+            const s = dawVrGetState(key);
+            const fill = document.getElementById(`dawvr-range-fill-${sk}`);
+            if (!fill) return;
+            const topPct = ((12 - s.rangeTop) / 24) * 100;
+            const botPct = ((12 - s.rangeBottom) / 24) * 100;
+            fill.style.top = topPct + '%';
+            fill.style.height = (botPct - topPct) + '%';
+        };
+
+        window.dawVrSetMode = function(key, mode) {
+            const s = dawVrGetState(key);
+            s.mode = mode;
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawvr-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
             window.renderDawFxPicker();
+        };
+        window.dawVrSetSpeed = function(key, speed) {
+            const s = dawVrGetState(key);
+            s.speed = speed;
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawvr-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            window.renderDawFxPicker();
+        };
+        window.dawVrSetAutomation = function(key, mode) {
+            const s = dawVrGetState(key);
+            s.automation = mode;
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawvr-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            window.renderDawFxPicker();
+        };
+        window.dawVrToggleActive = function(key) {
+            const s = dawVrGetState(key);
+            s.active = !s.active;
+            window.renderDawFxPicker();
+        };
+        window.dawVrTargetDrag = function(key, value) {
+            const s = dawVrGetState(key);
+            const num = parseFloat(value);
+            if (isNaN(num)) return;
+            s.target = Math.max(0, Math.min(100, num));
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawvr-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
         };
 
         window.dawVrPanel = function(key, plugin) {
             const s = dawVrGetState(key);
             const sk = eq8SafeKey(key);
+            const rangeTopPct = ((12 - s.rangeTop) / 24) * 100;
+            const rangeBotPct = ((12 - s.rangeBottom) / 24) * 100;
 
-            const gridDb = [6, 0, -6, -12, -18, -24, -30, -36];
-            const gridLines = gridDb.map(db => {
-                const y = dawVrDbToY(db);
-                return `<line x1="0" y1="${y.toFixed(1)}" x2="${DAW_VR_GRAPH_W}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
-                        <text x="6" y="${(y - 3).toFixed(1)}" fill="#666" font-size="9" font-family="monospace">${db > 0 ? '+' + db : db}</text>`;
-            }).join('');
+            const modeBtn = (mode, label, color) => `
+                <button onclick="window.dawVrSetMode('${key}','${mode}')" class="flex items-center gap-1.5 text-left">
+                    <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${s.mode === mode ? color : '#333'}; box-shadow:${s.mode === mode ? `0 0 6px ${color}` : 'none'};"></span>
+                    <span class="text-[9px] font-bold uppercase tracking-wide ${s.mode === mode ? 'neon-blue-text' : 'text-gray-500'}">${label}</span>
+                </button>`;
 
-            const wavePts = dawVrWaveformPoints(key);
-            const waveTop = wavePts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-            const waveFill = `0,${DAW_VR_GRAPH_H} ${waveTop} ${DAW_VR_GRAPH_W},${DAW_VR_GRAPH_H}`;
+            const speedBtn = (speed, label) => `
+                <button onclick="window.dawVrSetSpeed('${key}','${speed}')" class="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest rounded border transition-colors ${s.speed === speed ? 'bg-[#2fd0ff] text-black border-[#2fd0ff]' : 'text-gray-500 border-[rgba(47,208,255,0.3)] hover:text-[#2fd0ff]'}">${label}</button>`;
 
-            const gainPts = dawVrTrueGainPoints(key);
-            const gainStr = gainPts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-
-            const yT = dawVrDbToY(s.target), yMax = dawVrDbToY(s.target + s.rangeAbove), yMin = dawVrDbToY(s.target - s.rangeBelow);
-
-            const pill = (id, txtId, y, text, color, which) => `
-                <g id="${id}" transform="translate(0, ${y.toFixed(1)})" style="cursor:ns-resize;" onmousedown="window.dawVrLineDrag(event,'${key}','${which}')" ontouchstart="window.dawVrLineDrag(event,'${key}','${which}')">
-                    <rect x="4" y="-9" width="52" height="18" rx="9" fill="#0a0a0a" stroke="${color}" stroke-width="1.5"/>
-                    <text id="${txtId}" x="30" y="4" fill="${color}" font-size="9" font-family="monospace" font-weight="bold" text-anchor="middle">${text}</text>
-                </g>`;
+            const autoColors = { off: '#c9a227', write: '#a33232', read: '#2f8f46' };
+            const autoBtn = (mode, label) => `
+                <button onclick="window.dawVrSetAutomation('${key}','${mode}')" class="flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded border transition-colors" style="${s.automation === mode ? `background:${autoColors[mode]}; color:#0a0a0a; border-color:${autoColors[mode]};` : `color:${autoColors[mode]}; border-color:rgba(47,208,255,0.25); background:rgba(0,0,0,0.4);`}">${label}</button>`;
 
             return `
             <div class="flex items-start justify-between gap-2 mb-1">
@@ -3825,31 +3786,105 @@
             </div>
             <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
 
-            <div class="flex gap-2 mt-2">
-                <div class="flex-1 min-w-0 relative rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
-                    <div class="absolute top-2 right-3 z-10 flex items-center gap-1.5">
-                        <span class="text-[8px] neon-blue-text uppercase font-black tracking-widest">Sensitivity</span>
-                        <input type="text" value="${s.sensitivity}%" onclick="event.stopPropagation()" onchange="window.dawVrSetSensitivity('${key}', this.value)" class="w-10 bg-transparent text-[9px] text-center text-white font-bold outline-none">
+            <!-- TARGET -->
+            <div class="mt-3">
+                <div class="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-1.5">Target</div>
+                <input id="dawvr-target-${sk}" type="range" min="0" max="100" step="1" value="${s.target}" class="eq8-hslider w-full"
+                    oninput="window.dawVrTargetDrag('${key}', this.value)">
+            </div>
+
+            <!-- RIDE/IDLE + SENSITIVITY + FAST/SLOW -->
+            <div class="flex items-center gap-4 mt-4">
+                <div class="flex flex-col gap-2 flex-shrink-0">
+                    ${modeBtn('ride', 'Ride', '#2fd66a')}
+                    ${modeBtn('idle', 'Idle', '#888')}
+                </div>
+                <div class="flex flex-col gap-1 flex-shrink-0">
+                    <button onclick="window.dawVrSetSpeed('${key}','fast')" class="text-[8px] font-black uppercase tracking-widest ${s.speed === 'fast' ? 'neon-blue-text' : 'text-gray-600'}">Fast</button>
+                    <button onclick="window.dawVrSetSpeed('${key}','slow')" class="text-[8px] font-black uppercase tracking-widest ${s.speed === 'slow' ? 'neon-blue-text' : 'text-gray-600'}">Slow</button>
+                </div>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="text-center text-[8px] text-gray-500 uppercase font-black tracking-widest">Sensitivity</div>
+                    <div class="flex items-center justify-center gap-6">
+                        ${dawVrKnob(key, sk, 'sensVocal', 'Vocal')}
+                        ${dawVrKnob(key, sk, 'sensMusic', 'Music')}
                     </div>
-                    <svg id="dawvr-graph-${sk}" viewBox="0 0 ${DAW_VR_GRAPH_W} ${DAW_VR_GRAPH_H}" style="width:100%; height:230px; display:block;">
-                        <rect x="0" y="0" width="${DAW_VR_GRAPH_W}" height="${DAW_VR_GRAPH_H}" fill="#050505"/>
-                        ${gridLines}
-                        <polygon points="${waveFill}" fill="rgba(47,120,208,0.35)"/>
-                        <line id="dawvr-line-max-${sk}" x1="62" y1="${yMax.toFixed(1)}" x2="${DAW_VR_GRAPH_W}" y2="${yMax.toFixed(1)}" stroke="#a78bfa" stroke-width="1.5"/>
-                        <line id="dawvr-line-min-${sk}" x1="62" y1="${yMin.toFixed(1)}" x2="${DAW_VR_GRAPH_W}" y2="${yMin.toFixed(1)}" stroke="#a78bfa" stroke-width="1.5"/>
-                        <line id="dawvr-line-target-${sk}" x1="62" y1="${yT.toFixed(1)}" x2="${DAW_VR_GRAPH_W}" y2="${yT.toFixed(1)}" stroke="#fde047" stroke-width="1.5"/>
-                        <polyline points="${gainStr}" fill="none" stroke="#2fd0ff" stroke-width="2.5"/>
-                        ${pill(`dawvr-pill-max-${sk}`, `dawvr-pilltxt-max-${sk}`, yMax, '+' + s.rangeAbove.toFixed(1), '#a78bfa', 'max')}
-                        ${pill(`dawvr-pill-target-${sk}`, `dawvr-pilltxt-target-${sk}`, yT, s.target.toFixed(1) + ' dB', '#fde047', 'target')}
-                        ${pill(`dawvr-pill-min-${sk}`, `dawvr-pilltxt-min-${sk}`, yMin, '-' + s.rangeBelow.toFixed(1), '#a78bfa', 'min')}
-                    </svg>
-                    <div class="absolute left-2 bottom-1.5 text-[7px] text-gray-500 uppercase font-black tracking-widest">Input</div>
                 </div>
-                <div class="flex flex-col items-center justify-center gap-5 flex-shrink-0 rounded-lg p-3" style="width:100px; background:rgba(0,0,0,0.4); border:1px solid rgba(47,208,255,0.4); box-shadow: inset 0 0 10px rgba(47,208,255,0.08), 0 0 8px rgba(47,208,255,0.1);">
-                    ${dawVrKnob(key, sk, 'speed', 'Speed', DAW_VR_KNOB_CFG.speed.min, DAW_VR_KNOB_CFG.speed.max, DAW_VR_KNOB_CFG.speed.fmt)}
-                    ${dawVrKnob(key, sk, 'output', 'Output', DAW_VR_KNOB_CFG.output.min, DAW_VR_KNOB_CFG.output.max, DAW_VR_KNOB_CFG.output.fmt)}
+                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background:radial-gradient(circle at 35% 30%, #7fffb0, #1f8f4a); box-shadow:0 0 6px rgba(60,220,120,0.7);" title="Link active"></span>
+            </div>
+
+            <!-- FADER DECK -->
+            <div class="mt-5">
+                <div class="flex justify-center mb-2">
+                    <button onclick="window.dawVrToggleActive('${key}')" class="w-2.5 h-2.5 rounded-full" style="background:${s.active ? '#2fd0ff' : '#333'}; box-shadow:${s.active ? '0 0 6px rgba(47,208,255,0.8)' : 'none'};" title="Active"></button>
                 </div>
-            </div>`;
+                <div class="flex items-start justify-center gap-1" style="height:210px;">
+                    <!-- RANGE (dual-handle) -->
+                    <div class="flex flex-col items-center" style="width:70px;">
+                        <span class="text-[9px] neon-blue-text uppercase font-black tracking-widest mb-2">Range</span>
+                        <div class="relative" style="width:34px; height:170px;">
+                            <div class="absolute rounded" style="top:0; bottom:0; left:15px; width:4px; background:rgba(47,208,255,0.15);"></div>
+                            <div id="dawvr-range-fill-${sk}" class="absolute rounded" style="left:11px; width:12px; top:${rangeTopPct}%; height:${rangeBotPct - rangeTopPct}%; background:rgba(210,190,140,0.35); border:1px solid rgba(210,190,140,0.5);"></div>
+                            <div class="absolute inset-x-0" style="top:0; height:85px;">
+                                <input id="dawvr-range-top-${sk}" type="range" min="0" max="12" step="0.1" value="${s.rangeTop}" class="daw-fader-input eq8-fader-thumb" style="width:100%; height:100%;"
+                                    oninput="window.dawVrRangeInput('${key}','rangeTop', this.value)">
+                            </div>
+                            <div class="absolute inset-x-0" style="top:85px; height:85px;">
+                                <input id="dawvr-range-bottom-${sk}" type="range" min="-12" max="0" step="0.1" value="${s.rangeBottom}" class="daw-fader-input eq8-fader-thumb" style="width:100%; height:100%;"
+                                    oninput="window.dawVrRangeInput('${key}','rangeBottom', this.value)">
+                            </div>
+                        </div>
+                        <input id="dawvr-range-val-${sk}" type="text" value="${(s.rangeTop - s.rangeBottom).toFixed(1)}" onclick="event.stopPropagation()" onchange="window.dawVrSetRangeSpanFromText('${key}', this.value)" class="w-14 mt-2 bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[9px] text-center neon-blue-text font-bold outline-none">
+                    </div>
+
+                    <!-- ticks between Range and Rider -->
+                    <div class="relative flex-shrink-0" style="width:22px; height:170px; margin-top:22px;">${dawVrTicksColumn()}</div>
+
+                    <!-- RIDER (single, chunky) -->
+                    <div class="flex flex-col items-center" style="width:56px;">
+                        <span class="text-[9px] neon-blue-text uppercase font-black tracking-widest mb-2">Rider</span>
+                        <div class="daw-fader-track" style="height:170px;">
+                            <input id="dawvr-rider-slider-${sk}" type="range" min="-12" max="12" step="0.1" value="${s.rider}" class="daw-fader-input eq8-fader-thumb dawvr-rider-thumb"
+                                oninput="window.dawVrSetFromText('${key}','rider', this.value)">
+                        </div>
+                        <input id="dawvr-rider-val-${sk}" type="text" value="${s.rider.toFixed(1)}" onclick="event.stopPropagation()" onchange="window.dawVrSetFromText('${key}','rider', this.value)" class="w-14 mt-2 bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[9px] text-center neon-blue-text font-bold outline-none">
+                    </div>
+
+                    <!-- ticks between Rider and Output -->
+                    <div class="relative flex-shrink-0" style="width:22px; height:170px; margin-top:22px;">${dawVrTicksColumn()}</div>
+
+                    <!-- OUTPUT -->
+                    <div class="flex flex-col items-center" style="width:56px;">
+                        <div class="flex items-center gap-1.5 mb-2">
+                            <span class="text-[9px] neon-blue-text uppercase font-black tracking-widest">Output</span>
+                            <span id="dawvr-output-led-${sk}" class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:#333;"></span>
+                        </div>
+                        <div class="daw-fader-track" style="height:170px;">
+                            <input id="dawvr-output-slider-${sk}" type="range" min="-12" max="12" step="0.1" value="${s.output}" class="daw-fader-input eq8-fader-thumb"
+                                oninput="window.dawVrSetFromText('${key}','output', this.value)">
+                        </div>
+                        <input id="dawvr-output-val-${sk}" type="text" value="${s.output.toFixed(1)}" onclick="event.stopPropagation()" onchange="window.dawVrSetFromText('${key}','output', this.value)" class="w-14 mt-2 bg-black/60 border border-[rgba(47,208,255,0.4)] rounded px-1 py-1 text-[9px] text-center neon-blue-text font-bold outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <!-- AUTOMATION -->
+            <div class="mt-5">
+                <div class="text-center text-[8px] text-gray-500 uppercase font-black tracking-[0.3em] mb-1.5 border-t border-[rgba(47,208,255,0.15)] pt-2">— Automation —</div>
+                <div class="flex gap-1.5">
+                    ${autoBtn('off', 'Off')}
+                    ${autoBtn('write', 'Write')}
+                    ${autoBtn('read', 'Read')}
+                </div>
+            </div>
+            <style>
+                .dawvr-rider-thumb::-webkit-slider-thumb { width:44px !important; height:22px !important; margin-left:-20px !important; border-radius:3px !important;
+                    background: repeating-linear-gradient(180deg, #e8e8e8 0px, #e8e8e8 2px, #b8b8b8 2px, #b8b8b8 3px), linear-gradient(180deg, transparent 48%, #ff3b3b 48%, #ff3b3b 52%, transparent 52%) !important;
+                    background-blend-mode: normal !important; border: 1px solid #666 !important; box-shadow: 0 1px 4px rgba(0,0,0,0.6) !important; }
+                .dawvr-rider-thumb::-moz-range-thumb { width:44px !important; height:22px !important; border-radius:3px !important;
+                    background: repeating-linear-gradient(180deg, #e8e8e8 0px, #e8e8e8 2px, #b8b8b8 2px, #b8b8b8 3px), linear-gradient(180deg, transparent 48%, #ff3b3b 48%, #ff3b3b 52%, transparent 52%) !important;
+                    border: 1px solid #666 !important; box-shadow: 0 1px 4px rgba(0,0,0,0.6) !important; }
+            </style>`;
         };
 
         window.dawVrTogglePresetMenu = function(key) {
@@ -3889,265 +3924,6 @@
                 const preset = (window.dawFxUserPresets['vocal-rider'] || [])[presetIndex];
                 if (preset) {
                     window.dawVrState[key] = JSON.parse(JSON.stringify(preset.data));
-                    window.dawFxActivePresetLabel[key] = preset.name;
-                }
-            }
-            window.renderDawFxPicker();
-        };
-
-        // ============================================================
-        // SPECTRAL DYNAMICS — a "Krum-C"-style broadband dynamics panel:
-        // a big filled level/gain-reduction curve display, THR/RAT/MIX
-        // knobs, small ATK/REL vertical trim faders, dual LED meters,
-        // an OUT knob and a Bypass toggle. Recolored entirely in the
-        // app's black-background / neon-blue palette.
-        // ============================================================
-        window.dawSpState = window.dawSpState || {};
-
-        const DAW_SP_GRAPH_W = 480, DAW_SP_GRAPH_H = 220;
-
-        function dawSpDefaultState() {
-            return { thr: -43, rat: 4.1, mix: 72, atk: 5.5, rel: 639, out: -5, bypass: false };
-        }
-        function dawSpGetState(key) {
-            if (!window.dawSpState[key]) window.dawSpState[key] = dawSpDefaultState();
-            return window.dawSpState[key];
-        }
-        function dawSpClearBadge(key) {
-            const sk = eq8SafeKey(key);
-            delete window.dawFxActivePresetLabel[key];
-            const badge = document.getElementById(`dawsp-badge-${sk}`);
-            if (badge) badge.innerText = 'factory preset';
-        }
-
-        // Stable pseudo-random curve, seeded per instance so it doesn't reshuffle on re-render
-        function dawSpSeededRand(seedStr) {
-            let h = 0;
-            for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
-            return function() { h = (h * 1664525 + 1013904223) >>> 0; return h / 4294967296; };
-        }
-        function dawSpCurvePoints(key) {
-            const rand = dawSpSeededRand('sp-' + key);
-            const n = 90;
-            const pts = [];
-            for (let i = 0; i < n; i++) {
-                const x = (i / (n - 1)) * DAW_SP_GRAPH_W;
-                const t = i / (n - 1);
-                const ramp = Math.min(1, t / 0.08) * Math.min(1, (1 - t) / 0.12);
-                const jag = (rand() - 0.5) * 26;
-                const y = DAW_SP_GRAPH_H - (ramp * (150 + jag * 0.4) + 8);
-                pts.push([x, Math.max(6, Math.min(DAW_SP_GRAPH_H - 4, y))]);
-            }
-            return pts;
-        }
-
-        const DAW_SP_KNOB_CFG = {
-            thr: { min: -60, max: 0, fmt: v => Math.round(v) },
-            rat: { min: 1, max: 20, fmt: v => v.toFixed(1) },
-            mix: { min: 0, max: 100, fmt: v => Math.round(v) + '%' },
-            out: { min: -24, max: 24, fmt: v => (v >= 0 ? '+' : '') + Math.round(v) }
-        };
-
-        function dawSpKnob(key, sk, field, label) {
-            const s = dawSpGetState(key);
-            const c = DAW_SP_KNOB_CFG[field];
-            const pct = (s[field] - c.min) / (c.max - c.min);
-            const deg = -135 + pct * 270;
-            return `
-            <div class="flex flex-col items-center gap-1.5">
-                <div id="dawsp-knob-${field}-${sk}" class="relative rounded-full bg-black border-2 border-[rgba(47,208,255,0.5)] cursor-ns-resize select-none flex-shrink-0"
-                     style="width:46px; height:46px; box-shadow: inset 0 0 8px rgba(0,0,0,0.7), 0 0 6px rgba(47,208,255,0.2);"
-                     onmousedown="event.stopPropagation(); window.dawSpKnobDrag(event,'${key}','${field}')" ontouchstart="event.stopPropagation(); window.dawSpKnobDrag(event,'${key}','${field}')">
-                    <div id="dawsp-knob-ind-${field}-${sk}" class="absolute top-1 left-1/2 w-0.5 bg-[#2fd0ff] origin-bottom rounded-full" style="height:17px; transform:translateX(-50%) rotate(${deg}deg); box-shadow:0 0 4px rgba(47,208,255,0.9);"></div>
-                </div>
-                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
-                <input id="dawsp-knobval-${field}-${sk}" type="text" value="${c.fmt(s[field])}" onclick="event.stopPropagation()" onchange="window.dawSpSetKnobFromText('${key}','${field}', this.value)" class="w-11 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[7px] text-center neon-blue-text font-bold outline-none">
-            </div>`;
-        }
-
-        window.dawSpKnobDrag = function(e, key, field) {
-            e.preventDefault();
-            const c = DAW_SP_KNOB_CFG[field];
-            const s = dawSpGetState(key);
-            const startY = e.touches ? e.touches[0].clientY : e.clientY;
-            const startVal = s[field];
-            const range = c.max - c.min;
-            const move = (ev) => {
-                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
-                const deltaY = startY - clientY;
-                let newVal = startVal + deltaY * (range / 130);
-                newVal = Math.max(c.min, Math.min(c.max, newVal));
-                s[field] = newVal;
-                dawSpClearBadge(key);
-                window.dawSpUpdateKnobVisual(key, field);
-            };
-            const up = () => {
-                document.removeEventListener('mousemove', move);
-                document.removeEventListener('mouseup', up);
-                document.removeEventListener('touchmove', move);
-                document.removeEventListener('touchend', up);
-            };
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', up);
-            document.addEventListener('touchmove', move);
-            document.addEventListener('touchend', up);
-        };
-
-        window.dawSpUpdateKnobVisual = function(key, field) {
-            const sk = eq8SafeKey(key);
-            const s = dawSpGetState(key);
-            const c = DAW_SP_KNOB_CFG[field];
-            const pct = (s[field] - c.min) / (c.max - c.min);
-            const deg = -135 + pct * 270;
-            const ind = document.getElementById(`dawsp-knob-ind-${field}-${sk}`);
-            if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
-            const val = document.getElementById(`dawsp-knobval-${field}-${sk}`);
-            if (val) val.value = c.fmt(s[field]);
-        };
-
-        window.dawSpSetKnobFromText = function(key, field, text) {
-            const c = DAW_SP_KNOB_CFG[field];
-            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
-            if (isNaN(num)) return;
-            const s = dawSpGetState(key);
-            s[field] = Math.max(c.min, Math.min(c.max, num));
-            dawSpClearBadge(key);
-            window.dawSpUpdateKnobVisual(key, field);
-        };
-
-        window.dawSpSetTrim = function(key, field, text) {
-            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
-            if (isNaN(num)) return;
-            const s = dawSpGetState(key);
-            const clamps = { atk: [0.1, 100], rel: [10, 2000] };
-            const [lo, hi] = clamps[field];
-            s[field] = Math.max(lo, Math.min(hi, num));
-            dawSpClearBadge(key);
-            const sk = eq8SafeKey(key);
-            const slider = document.getElementById(`dawsp-trimslider-${field}-${sk}`); if (slider) slider.value = s[field];
-            const val = document.getElementById(`dawsp-trimval-${field}-${sk}`); if (val) val.value = s[field].toFixed(1);
-        };
-
-        window.dawSpToggleBypass = function(key) {
-            const s = dawSpGetState(key);
-            s.bypass = !s.bypass;
-            dawSpClearBadge(key);
-            window.renderDawFxPicker();
-        };
-
-        window.dawSpPanel = function(key, plugin) {
-            const s = dawSpGetState(key);
-            const sk = eq8SafeKey(key);
-
-            const gridDb = [0, -10, -20, -30, -40, -50, -60];
-            const gridLines = gridDb.map(db => {
-                const y = ((0 - db) / 60) * DAW_SP_GRAPH_H;
-                return `<line x1="0" y1="${y.toFixed(1)}" x2="${DAW_SP_GRAPH_W}" y2="${y.toFixed(1)}" stroke="rgba(47,208,255,0.08)" stroke-width="1"/>
-                        <text x="4" y="${(y - 3).toFixed(1)}" fill="#2fd0ff" opacity="0.5" font-size="8" font-family="monospace">${db}</text>`;
-            }).join('');
-
-            const curvePts = dawSpCurvePoints(key);
-            const curveStr = curvePts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-            const fillStr = `0,${DAW_SP_GRAPH_H} ${curveStr} ${DAW_SP_GRAPH_W},${DAW_SP_GRAPH_H}`;
-
-            const trimFader = (field, label, min, max) => `
-                <div class="flex flex-col items-center gap-1" style="width:34px;">
-                    <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
-                    <div class="daw-fader-track" style="height:100px;">
-                        <input id="dawsp-trimslider-${field}-${sk}" type="range" min="${min}" max="${max}" step="0.1" value="${s[field]}" class="daw-fader-input eq8-fader-thumb"
-                            oninput="window.dawSpSetTrim('${key}','${field}', this.value)">
-                    </div>
-                    <input id="dawsp-trimval-${field}-${sk}" type="text" value="${s[field].toFixed(1)}" onchange="window.dawSpSetTrim('${key}','${field}', this.value)" class="w-9 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-0.5 py-0.5 text-[6px] text-center neon-blue-text font-bold outline-none">
-                </div>`;
-
-            return `
-            <div class="flex items-start justify-between gap-2 mb-1">
-                <div class="min-w-0">
-                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
-                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
-                </div>
-                <span class="relative inline-block flex-shrink-0">
-                    <button onclick="event.stopPropagation(); window.dawSpTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
-                        <span id="dawsp-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
-                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
-                    </button>
-                    <div id="dawsp-preset-menu-${sk}" class="hidden-section"></div>
-                </span>
-            </div>
-            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
-
-            <div class="flex gap-2 mt-2">
-                <div class="flex-1 min-w-0 rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
-                    <svg viewBox="0 0 ${DAW_SP_GRAPH_W} ${DAW_SP_GRAPH_H}" style="width:100%; height:210px; display:block;">
-                        <rect x="0" y="0" width="${DAW_SP_GRAPH_W}" height="${DAW_SP_GRAPH_H}" fill="#050505"/>
-                        ${gridLines}
-                        <polygon points="${fillStr}" fill="rgba(47,208,255,0.16)"/>
-                        <polyline points="${curveStr}" fill="none" stroke="#2fd0ff" stroke-width="1.5" style="filter: drop-shadow(0 0 3px rgba(47,208,255,0.6));"/>
-                    </svg>
-                </div>
-
-                <div class="flex items-end gap-2 flex-shrink-0">
-                    ${trimFader('atk', 'ATK', 0.1, 100)}
-                    ${trimFader('rel', 'REL', 10, 2000)}
-                    <div class="flex gap-1">
-                        <div class="daw-led-meter-single" id="dawsp-led-L-${sk}" style="height:100px;"><div class="daw-led-mask" style="height:35%;"></div></div>
-                        <div class="daw-led-meter-single" id="dawsp-led-R-${sk}" style="height:100px;"><div class="daw-led-mask" style="height:38%;"></div></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex items-center justify-between gap-2 mt-3">
-                <div class="min-w-0">
-                    <div class="text-[9px] text-gray-600 font-black italic">Krum-C</div>
-                    <div class="text-[7px] text-gray-700">by Rockheyday</div>
-                </div>
-                <div class="flex items-center gap-3">
-                    ${dawSpKnob(key, sk, 'thr', 'THR')}
-                    ${dawSpKnob(key, sk, 'rat', 'RAT')}
-                    ${dawSpKnob(key, sk, 'mix', 'MIX')}
-                    <button onclick="window.dawSpToggleBypass('${key}')" class="text-[8px] font-black uppercase tracking-widest px-2.5 py-2 rounded border transition-colors ${s.bypass ? 'bg-[#2fd0ff]/20 border-[#2fd0ff] neon-blue-text' : 'text-gray-500 border-[rgba(47,208,255,0.3)] hover:text-[#2fd0ff]'}">Bypass</button>
-                    ${dawSpKnob(key, sk, 'out', 'OUT')}
-                </div>
-            </div>`;
-        };
-
-        window.dawSpTogglePresetMenu = function(key) {
-            const sk = eq8SafeKey(key);
-            const el = document.getElementById(`dawsp-preset-menu-${sk}`);
-            if (!el) return;
-            const isHidden = el.classList.contains('hidden-section');
-            if (isHidden) { window.dawSpRenderPresetMenu(key); el.classList.remove('hidden-section'); }
-            else el.classList.add('hidden-section');
-        };
-
-        window.dawSpRenderPresetMenu = function(key) {
-            const sk = eq8SafeKey(key);
-            const el = document.getElementById(`dawsp-preset-menu-${sk}`);
-            if (!el) return;
-            const userPresets = (window.dawFxUserPresets['spectral-dynamics'] || []);
-            const activeLabel = window.dawFxActivePresetLabel[key];
-            el.innerHTML = `
-            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
-                <button onclick="window.dawSpApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
-                <button onclick="window.dawSpApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
-                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
-                </button>
-                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
-                ${userPresets.map((p, i) => `
-                <button onclick="window.dawSpApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
-                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
-                </button>`).join('')}
-            </div>`;
-        };
-
-        window.dawSpApplyPreset = function(key, presetIndex) {
-            if (presetIndex === null || presetIndex === undefined) {
-                window.dawSpState[key] = dawSpDefaultState();
-                delete window.dawFxActivePresetLabel[key];
-            } else {
-                const preset = (window.dawFxUserPresets['spectral-dynamics'] || [])[presetIndex];
-                if (preset) {
-                    window.dawSpState[key] = JSON.parse(JSON.stringify(preset.data));
                     window.dawFxActivePresetLabel[key] = preset.name;
                 }
             }
@@ -4593,6 +4369,432 @@
                 const preset = (window.dawFxUserPresets['aether-reverb'] || [])[presetIndex];
                 if (preset) {
                     window.dawArState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
+            window.renderDawFxPicker();
+        };
+
+        // ============================================================
+        // LUXURY SATURATION — "AURUM": Drive / Colour / Mix knob trio
+        // driving a live transfer-curve scope, plus Noise / Compression /
+        // Filter / I/O mini-modules underneath. Full neon-blue theme to
+        // match the rest of the grid. The Dirt control is a self-built
+        // vertical fader (own drag math + fixed track height) rather
+        // than the shared .daw-fader-track/.eq8-fader-thumb classes,
+        // since those assume a taller track and overflowed at this
+        // panel's compact height.
+        // ============================================================
+        window.dawLsState = window.dawLsState || {};
+
+        function dawLsDefaultState() {
+            return {
+                autogain: true, mode: 0, // 0 Tube 1 Tape 2 Ribbon 3 Iron
+                drive: 0.72, colour: 0.64, mix: 1.0,
+                dirt: 0.45, duck: 0.0, follow: 1.0, tone: 0.0,
+                releaseSlow: true, compress: 0.37, warmth: 0.76,
+                filterLo: 0.06, filterHi: 0.82,
+                input: 0.42, output: 0.58
+            };
+        }
+        function dawLsGetState(key) {
+            if (!window.dawLsState[key]) window.dawLsState[key] = dawLsDefaultState();
+            return window.dawLsState[key];
+        }
+
+        const DAW_LS_MODES = ['Tube', 'Tape', 'Ribbon', 'Iron'];
+
+        function dawLsFormat(field, v) {
+            switch (field) {
+                case 'drive': return (v * 24 - 6).toFixed(1) + ' dB';
+                case 'colour': case 'tone': {
+                    const p = Math.round((v * 2 - 1) * 100);
+                    return (p > 0 ? '+' : '') + p + '%';
+                }
+                case 'input': case 'output': {
+                    const d = (v * 2 - 1) * 10;
+                    return (d >= 0 ? '+' : '') + d.toFixed(1) + ' dB';
+                }
+                default: return Math.round(v * 100) + '%';
+            }
+        }
+
+        function dawLsCurveD(s) {
+            const drive = 1 + s.drive * 9;
+            const skew = (s.colour - 0.5) * 1.4;
+            const W = 100, H = 60, N = 40;
+            const denom = Math.tanh(drive + Math.abs(skew * 0.3)) || 1;
+            let d = '';
+            for (let i = 0; i <= N; i++) {
+                const xn = (i / N) * 2 - 1;
+                let yn = Math.tanh(xn * drive + skew * 0.3) / denom;
+                yn = yn * (0.5 + 0.5 * s.mix) + xn * (0.5 - 0.5 * s.mix);
+                const px = ((xn + 1) / 2) * W;
+                const py = H - ((yn + 1) / 2) * H;
+                d += (i === 0 ? 'M' : 'L') + px.toFixed(1) + ',' + py.toFixed(1) + ' ';
+            }
+            return d.trim();
+        }
+        function dawLsFreqFromPos(p) { return 20 * Math.pow(1000, p); }
+        function dawLsFmtFreq(f) { return f >= 1000 ? (f / 1000).toFixed(1) + ' kHz' : Math.round(f) + ' Hz'; }
+
+        function dawLsKnob(key, sk, field, label, size) {
+            const s = dawLsGetState(key);
+            const v = s[field];
+            const deg = -132 + v * 264;
+            const dim = size || 32;
+            return `
+            <div class="flex flex-col items-center gap-1">
+                <div id="dawls-knob-${field}-${sk}" class="relative rounded-full cursor-ns-resize select-none flex-shrink-0"
+                     style="width:${dim}px; height:${dim}px; background:radial-gradient(circle at 32% 26%, #1c1f22, #0a0a0a 68%); box-shadow: 0 4px 8px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.08), inset 0 -3px 6px rgba(0,0,0,0.6), 0 0 0 1px rgba(47,208,255,0.1);"
+                     onmousedown="event.stopPropagation(); window.dawLsKnobDrag(event,'${key}','${field}')" ontouchstart="event.stopPropagation(); window.dawLsKnobDrag(event,'${key}','${field}')">
+                    <div id="dawls-knob-ind-${field}-${sk}" class="absolute top-0.5 left-1/2" style="width:2px; height:${(dim * 0.4).toFixed(0)}px; background:#2fd0ff; border-radius:2px; transform:translateX(-50%) rotate(${deg}deg); transform-origin:50% 100%; box-shadow:0 0 5px rgba(47,208,255,0.9);"></div>
+                </div>
+                ${label ? `<span class="text-[7px] font-black uppercase tracking-widest text-gray-500">${label}</span>` : ''}
+                <span id="dawls-val-${field}-${sk}" class="text-[7px] font-bold neon-blue-text">${dawLsFormat(field, v)}</span>
+            </div>`;
+        }
+
+        window.dawLsKnobDrag = function(e, key, field) {
+            e.preventDefault();
+            const s = dawLsGetState(key);
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
+            const startVal = s[field];
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const deltaY = startY - clientY;
+                let v = startVal + deltaY / 160;
+                v = Math.max(0, Math.min(1, v));
+                s[field] = v;
+                window.dawLsUpdateKnobVisual(key, field);
+                if (field === 'drive' || field === 'colour' || field === 'mix') window.dawLsRedrawCurve(key);
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
+        window.dawLsUpdateKnobVisual = function(key, field) {
+            const sk = eq8SafeKey(key);
+            const s = dawLsGetState(key);
+            const v = s[field];
+            const deg = -132 + v * 264;
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawls-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const ind = document.getElementById(`dawls-knob-ind-${field}-${sk}`);
+            if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+            const val = document.getElementById(`dawls-val-${field}-${sk}`);
+            if (val) val.innerText = dawLsFormat(field, v);
+        };
+
+        window.dawLsRedrawCurve = function(key) {
+            const sk = eq8SafeKey(key);
+            const s = dawLsGetState(key);
+            const path = document.getElementById(`dawls-curve-${sk}`);
+            if (path) path.setAttribute('d', dawLsCurveD(s));
+            const dbLabel = document.getElementById(`dawls-scope-db-${sk}`);
+            if (dbLabel) dbLabel.innerText = dawLsFormat('drive', s.drive);
+        };
+
+        window.dawLsCycleMode = function(key, dir) {
+            const s = dawLsGetState(key);
+            s.mode = (s.mode + dir + DAW_LS_MODES.length) % DAW_LS_MODES.length;
+            delete window.dawFxActivePresetLabel[key];
+            const sk = eq8SafeKey(key);
+            const badge = document.getElementById(`dawls-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const modeEl = document.getElementById(`dawls-mode-${sk}`);
+            if (modeEl) modeEl.innerText = DAW_LS_MODES[s.mode];
+            const scopeModeEl = document.getElementById(`dawls-scope-mode-${sk}`);
+            if (scopeModeEl) scopeModeEl.innerText = DAW_LS_MODES[s.mode].toUpperCase();
+        };
+
+        window.dawLsSetAutogain = function(key, on) {
+            const s = dawLsGetState(key);
+            s.autogain = on;
+            const sk = eq8SafeKey(key);
+            const a = document.getElementById(`dawls-tab-autogain-${sk}`);
+            const b = document.getElementById(`dawls-tab-bypass-${sk}`);
+            if (a) a.className = a.className.replace(/text-\S+/, on ? 'neon-blue-text' : 'text-gray-600');
+            if (b) b.className = b.className.replace(/text-\S+/, !on ? 'neon-blue-text' : 'text-gray-600');
+        };
+
+        window.dawLsToggleRelease = function(key) {
+            const s = dawLsGetState(key);
+            s.releaseSlow = !s.releaseSlow;
+            delete window.dawFxActivePresetLabel[key];
+            const sk = eq8SafeKey(key);
+            const badge = document.getElementById(`dawls-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const sw = document.getElementById(`dawls-switch-release-${sk}`);
+            const dot = document.getElementById(`dawls-switch-dot-${sk}`);
+            const lbl = document.getElementById(`dawls-release-label-${sk}`);
+            if (sw) { sw.style.background = s.releaseSlow ? 'rgba(47,208,255,0.2)' : 'rgba(0,0,0,0.4)'; sw.style.borderColor = s.releaseSlow ? '#2fd0ff' : 'rgba(47,208,255,0.14)'; }
+            if (dot) { dot.style.left = s.releaseSlow ? '15px' : '2px'; dot.style.background = s.releaseSlow ? '#2fd0ff' : '#6b7280'; dot.style.boxShadow = s.releaseSlow ? '0 0 6px rgba(47,208,255,0.8)' : 'none'; }
+            if (lbl) lbl.innerText = s.releaseSlow ? 'SLOW' : 'FAST';
+        };
+
+        // ---- Dirt: self-built vertical fader (fixed track height, own
+        // drag math) so it can't overflow its box the way the shared
+        // fader classes did at this compact size. ----
+        window.dawLsDirtDrag = function(e, key) {
+            e.preventDefault();
+            const sk = eq8SafeKey(key);
+            const wrap = document.getElementById(`dawls-dirt-wrap-${sk}`);
+            if (!wrap) return;
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const rect = wrap.getBoundingClientRect();
+                let p = 1 - (clientY - rect.top) / rect.height;
+                p = Math.max(0, Math.min(1, p));
+                const s = dawLsGetState(key);
+                s.dirt = p;
+                window.dawLsUpdateDirtVisual(key);
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
+        window.dawLsUpdateDirtVisual = function(key) {
+            const sk = eq8SafeKey(key);
+            const s = dawLsGetState(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawls-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const thumb = document.getElementById(`dawls-dirt-thumb-${sk}`);
+            if (thumb) thumb.style.top = ((1 - s.dirt) * 100) + '%';
+            const val = document.getElementById(`dawls-val-dirt-${sk}`);
+            if (val) val.innerText = Math.round(s.dirt * 100) + '%';
+        };
+
+        window.dawLsFilterDrag = function(e, key, edge) {
+            e.preventDefault();
+            const sk = eq8SafeKey(key);
+            const wrap = document.getElementById(`dawls-filter-track-${sk}`);
+            if (!wrap) return;
+            const move = (ev) => {
+                const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+                const rect = wrap.getBoundingClientRect();
+                let p = (clientX - rect.left) / rect.width;
+                p = Math.max(0, Math.min(1, p));
+                const s = dawLsGetState(key);
+                if (edge === 'lo') s.filterLo = Math.min(p, s.filterHi - 0.03);
+                else s.filterHi = Math.max(p, s.filterLo + 0.03);
+                window.dawLsUpdateFilterVisual(key);
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
+        window.dawLsUpdateFilterVisual = function(key) {
+            const sk = eq8SafeKey(key);
+            const s = dawLsGetState(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawls-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const lo = document.getElementById(`dawls-handle-lo-${sk}`);
+            const hi = document.getElementById(`dawls-handle-hi-${sk}`);
+            if (lo) lo.style.left = (s.filterLo * 100) + '%';
+            if (hi) hi.style.left = (s.filterHi * 100) + '%';
+            const loVal = document.getElementById(`dawls-lo-val-${sk}`);
+            const hiVal = document.getElementById(`dawls-hi-val-${sk}`);
+            if (loVal) loVal.innerText = dawLsFmtFreq(dawLsFreqFromPos(s.filterLo));
+            if (hiVal) hiVal.innerText = dawLsFmtFreq(dawLsFreqFromPos(s.filterHi));
+        };
+
+        window.dawLsPanel = function(key, plugin) {
+            const s = dawLsGetState(key);
+            const sk = eq8SafeKey(key);
+
+            return `
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button onclick="event.stopPropagation(); window.dawLsTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/10 transition-colors max-w-[150px]">
+                        <span id="dawls-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div id="dawls-preset-menu-${sk}" class="hidden-section"></div>
+                </span>
+            </div>
+            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+
+            <div class="rounded-xl mt-3 overflow-hidden bg-black/30" style="border:1px solid rgba(47,208,255,0.16);">
+
+                <div class="flex items-center justify-between px-3 py-2" style="border-bottom:1px solid rgba(47,208,255,0.16);">
+                    <div class="flex gap-3">
+                        <button id="dawls-tab-autogain-${sk}" onclick="window.dawLsSetAutogain('${key}', true)" class="text-[8px] font-black uppercase tracking-widest ${s.autogain ? 'neon-blue-text' : 'text-gray-600'}">Autogain</button>
+                        <button id="dawls-tab-bypass-${sk}" onclick="window.dawLsSetAutogain('${key}', false)" class="text-[8px] font-black uppercase tracking-widest ${!s.autogain ? 'neon-blue-text' : 'text-gray-600'}">Bypass</button>
+                    </div>
+                    <div class="flex items-center gap-1.5 neon-blue-text" style="opacity:0.75;">
+                        <span class="text-[9px]" style="font-family:Georgia,serif; letter-spacing:0.3em;">AURUM</span>
+                        <svg width="13" height="13" viewBox="0 0 40 40" fill="none"><path d="M20 3 L36 34 L4 34 Z" stroke="#2fd0ff" stroke-width="2.5" fill="none" stroke-linejoin="round"/></svg>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 p-3">
+                    <div class="flex flex-col items-center flex-shrink-0" style="width:72px;">
+                        <div class="w-full h-[2px] rounded mb-2" style="background:linear-gradient(90deg, rgba(47,208,255,0.15), rgba(47,208,255,0.6), rgba(47,208,255,0.15));"></div>
+                        <span class="text-[7px] font-black uppercase tracking-widest mb-1.5 text-gray-500">Drive</span>
+                        ${dawLsKnob(key, sk, 'drive', '', 42)}
+                        <div class="flex items-center gap-1 mt-1.5 rounded px-1.5 py-0.5 bg-black/40" style="border:1px solid rgba(47,208,255,0.16);">
+                            <button onclick="window.dawLsCycleMode('${key}', -1)" class="text-[8px] text-gray-500 hover:text-[#2fd0ff]">&#9664;</button>
+                            <span id="dawls-mode-${sk}" class="text-[7px] font-bold text-gray-200">${DAW_LS_MODES[s.mode]}</span>
+                            <button onclick="window.dawLsCycleMode('${key}', 1)" class="text-[8px] text-gray-500 hover:text-[#2fd0ff]">&#9654;</button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col items-center flex-shrink-0" style="width:60px;">
+                        <div class="w-full h-[2px] rounded mb-2" style="background:linear-gradient(90deg, rgba(47,208,255,0.15), rgba(47,208,255,0.6), rgba(47,208,255,0.15));"></div>
+                        <span class="text-[7px] font-black uppercase tracking-widest mb-1.5 text-gray-500">Colour</span>
+                        ${dawLsKnob(key, sk, 'colour', '', 42)}
+                    </div>
+
+                    <div class="flex flex-col items-center flex-shrink-0" style="width:60px;">
+                        <div class="w-full h-[2px] rounded mb-2" style="background:linear-gradient(90deg, rgba(47,208,255,0.15), rgba(47,208,255,0.6), rgba(47,208,255,0.15));"></div>
+                        <span class="text-[7px] font-black uppercase tracking-widest mb-1.5 text-gray-500">Mix</span>
+                        ${dawLsKnob(key, sk, 'mix', '', 42)}
+                    </div>
+
+                    <div class="flex-1 min-w-0 rounded-lg p-2 flex flex-col bg-black/50" style="border:1px solid rgba(47,208,255,0.16);">
+                        <div class="flex justify-between text-[7px] font-black uppercase tracking-widest neon-blue-text" style="opacity:0.8;">
+                            <span id="dawls-scope-mode-${sk}">${DAW_LS_MODES[s.mode].toUpperCase()}</span>
+                            <span id="dawls-scope-db-${sk}">${dawLsFormat('drive', s.drive)}</span>
+                        </div>
+                        <svg viewBox="0 0 100 60" class="flex-1 w-full mt-1" preserveAspectRatio="none">
+                            <line x1="0" y1="30" x2="100" y2="30" stroke="rgba(47,208,255,0.14)" stroke-width="0.5"/>
+                            <line x1="50" y1="0" x2="50" y2="60" stroke="rgba(47,208,255,0.14)" stroke-width="0.5"/>
+                            <line x1="0" y1="60" x2="100" y2="0" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+                            <path id="dawls-curve-${sk}" d="${dawLsCurveD(s)}" fill="none" stroke="#2fd0ff" stroke-width="1.6" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.7));"/>
+                        </svg>
+                        <div class="flex justify-between text-[7px] font-bold uppercase tracking-widest mt-0.5 text-gray-600">
+                            <span>Out</span><span>Input</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-4 gap-2 px-3 pb-3">
+                    <div class="rounded-lg p-2 bg-black/20" style="border:1px solid rgba(47,208,255,0.14);">
+                        <div class="text-[7px] font-black uppercase tracking-widest mb-2 neon-blue-text" style="opacity:0.8;">Noise</div>
+                        <div class="flex gap-2 items-end">
+                            <div class="flex flex-col items-center gap-1">
+                                <div id="dawls-dirt-wrap-${sk}" class="relative cursor-ns-resize" style="width:14px; height:52px;" onmousedown="window.dawLsDirtDrag(event,'${key}')" ontouchstart="window.dawLsDirtDrag(event,'${key}')">
+                                    <div class="absolute left-1/2 top-0 bottom-0 pointer-events-none" style="width:3px; transform:translateX(-50%); border-radius:2px; background:linear-gradient(180deg, rgba(47,208,255,0.55), rgba(47,208,255,0.12));"></div>
+                                    <div id="dawls-dirt-thumb-${sk}" class="absolute left-1/2 pointer-events-none" style="top:${((1 - s.dirt) * 100).toFixed(1)}%; width:14px; height:8px; transform:translate(-50%,-50%); background:#0a0a0a; border:2px solid #2fd0ff; border-radius:2px; box-shadow:0 0 6px rgba(47,208,255,0.7);"></div>
+                                </div>
+                                <span class="text-[6.5px] font-black uppercase text-gray-500">Dirt</span>
+                                <span id="dawls-val-dirt-${sk}" class="text-[7px] font-bold neon-blue-text">${Math.round(s.dirt * 100)}%</span>
+                            </div>
+                            ${dawLsKnob(key, sk, 'duck', 'Duck', 26)}
+                            ${dawLsKnob(key, sk, 'follow', 'Follow', 26)}
+                            ${dawLsKnob(key, sk, 'tone', 'Tone', 26)}
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg p-2 bg-black/20" style="border:1px solid rgba(47,208,255,0.14);">
+                        <div class="text-[7px] font-black uppercase tracking-widest mb-2 neon-blue-text" style="opacity:0.8;">Compression</div>
+                        <div class="flex gap-2 items-start">
+                            <div class="flex flex-col items-center gap-1 pt-0.5">
+                                <span class="text-[6.5px] font-black uppercase text-gray-500">Release</span>
+                                <div id="dawls-switch-release-${sk}" onclick="window.dawLsToggleRelease('${key}')" class="relative cursor-pointer flex-shrink-0" style="width:28px; height:15px; border-radius:8px; background:${s.releaseSlow ? 'rgba(47,208,255,0.2)' : 'rgba(0,0,0,0.4)'}; border:1px solid ${s.releaseSlow ? '#2fd0ff' : 'rgba(47,208,255,0.14)'};">
+                                    <div id="dawls-switch-dot-${sk}" class="absolute top-0.5" style="width:10px; height:10px; border-radius:50%; left:${s.releaseSlow ? '15px' : '2px'}; background:${s.releaseSlow ? '#2fd0ff' : '#6b7280'}; box-shadow:${s.releaseSlow ? '0 0 6px rgba(47,208,255,0.8)' : 'none'}; transition:left .15s ease;"></div>
+                                </div>
+                                <span id="dawls-release-label-${sk}" class="text-[6.5px] font-bold text-gray-400">${s.releaseSlow ? 'SLOW' : 'FAST'}</span>
+                            </div>
+                            ${dawLsKnob(key, sk, 'compress', 'Comp.', 26)}
+                            ${dawLsKnob(key, sk, 'warmth', 'Warmth', 26)}
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg p-2 bg-black/20" style="border:1px solid rgba(47,208,255,0.14);">
+                        <div class="text-[7px] font-black uppercase tracking-widest mb-2 neon-blue-text" style="opacity:0.8;">Filter</div>
+                        <div class="text-[6.5px] font-black uppercase mb-1 text-gray-500">Cut</div>
+                        <div id="dawls-filter-track-${sk}" class="relative" style="height:30px; margin-top:4px;">
+                            <div class="absolute top-1/2 left-0 right-0" style="height:3px; transform:translateY(-50%); border-radius:2px; background:linear-gradient(90deg, rgba(255,255,255,0.05), rgba(47,208,255,0.45), rgba(255,255,255,0.05));"></div>
+                            <div id="dawls-handle-lo-${sk}" onmousedown="window.dawLsFilterDrag(event,'${key}','lo')" ontouchstart="window.dawLsFilterDrag(event,'${key}','lo')" class="absolute top-1/2 cursor-ew-resize" style="left:${s.filterLo * 100}%; transform:translate(-50%,-115%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:7px solid #2fd0ff; filter:drop-shadow(0 0 3px rgba(47,208,255,0.7));"></div>
+                            <div id="dawls-handle-hi-${sk}" onmousedown="window.dawLsFilterDrag(event,'${key}','hi')" ontouchstart="window.dawLsFilterDrag(event,'${key}','hi')" class="absolute top-1/2 cursor-ew-resize" style="left:${s.filterHi * 100}%; transform:translate(-50%,15%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:7px solid #2fd0ff; filter:drop-shadow(0 0 3px rgba(47,208,255,0.7));"></div>
+                        </div>
+                        <div class="flex justify-between text-[7px] font-bold mt-1 text-gray-400">
+                            <span id="dawls-lo-val-${sk}">${dawLsFmtFreq(dawLsFreqFromPos(s.filterLo))}</span>
+                            <span id="dawls-hi-val-${sk}">${dawLsFmtFreq(dawLsFreqFromPos(s.filterHi))}</span>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg p-2 bg-black/20" style="border:1px solid rgba(47,208,255,0.14);">
+                        <div class="text-[7px] font-black uppercase tracking-widest mb-2 neon-blue-text" style="opacity:0.8;">I/O</div>
+                        <div class="flex justify-around">
+                            ${dawLsKnob(key, sk, 'input', 'Input', 28)}
+                            ${dawLsKnob(key, sk, 'output', 'Output', 28)}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        };
+
+        window.dawLsTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawls-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawLsRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawLsRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawls-preset-menu-${sk}`);
+            if (!el) return;
+            const userPresets = (window.dawFxUserPresets['luxury-saturation'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.35), inset 0 0 2px rgba(47,208,255,0.4); max-height:220px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawLsApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest hover:bg-white/5 transition-colors border-b border-white/10 neon-blue-text">Reset to factory default</button>
+                <button onclick="window.dawLsApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-white/5 ${!activeLabel ? 'neon-blue-text' : 'text-gray-400'}">
+                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
+                </button>
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] uppercase tracking-[0.2em] border-b border-white/5 text-gray-600">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawLsApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+
+        window.dawLsApplyPreset = function(key, presetIndex) {
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawLsState[key] = dawLsDefaultState();
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = (window.dawFxUserPresets['luxury-saturation'] || [])[presetIndex];
+                if (preset) {
+                    window.dawLsState[key] = JSON.parse(JSON.stringify(preset.data));
                     window.dawFxActivePresetLabel[key] = preset.name;
                 }
             }
@@ -5899,13 +6101,12 @@
 
         function dawFxCurrentSelection() {
             const ctx = window.activePluginPickerContext;
-            if (!ctx || (ctx.type !== 'daw' && ctx.type !== 'mastering-chain') || ctx.selectedIndex === null) return null;
-            const fxList = ctx.type === 'mastering-chain' ? mfxListFor(ctx.presetId, ctx.slotIndex) : dawFxListFor(ctx.trackId);
+            if (!ctx || ctx.type !== 'daw' || ctx.selectedIndex === null) return null;
+            const fxList = dawFxListFor(ctx.trackId);
             const name = fxList && fxList[ctx.selectedIndex];
             const plugin = name && window.SOVEREIGN_12_PLUGINS.find(p => p.name === name);
             if (!plugin) return null;
-            const key = ctx.type === 'mastering-chain' ? `mfx:${ctx.presetId}:${ctx.slotIndex}` : `${ctx.trackId}::${ctx.selectedIndex}`;
-            return { ctx, plugin, key };
+            return { ctx, plugin, key: `${ctx.trackId}::${ctx.selectedIndex}` };
         }
 
         window.dawFxToggleTopMenu = function(event) {
@@ -5952,8 +6153,8 @@
             else if (sel.plugin.id === 'multiband-comp') window.dawMbTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'vocal-deesser') window.dawDsTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'vocal-rider') window.dawVrTogglePresetMenu(sel.key);
-            else if (sel.plugin.id === 'spectral-dynamics') window.dawSpTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'aether-reverb') window.dawArTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'luxury-saturation') window.dawLsTogglePresetMenu(sel.key);
             else window.dawFxTogglePresetMenu(sel.key);
         };
 
@@ -5984,10 +6185,10 @@
                 data = JSON.parse(JSON.stringify(dawDsGetState(sel.key)));
             } else if (sel.plugin.id === 'vocal-rider') {
                 data = JSON.parse(JSON.stringify(dawVrGetState(sel.key)));
-            } else if (sel.plugin.id === 'spectral-dynamics') {
-                data = JSON.parse(JSON.stringify(dawSpGetState(sel.key)));
             } else if (sel.plugin.id === 'aether-reverb') {
                 data = JSON.parse(JSON.stringify(dawArGetState(sel.key)));
+            } else if (sel.plugin.id === 'luxury-saturation') {
+                data = JSON.parse(JSON.stringify(dawLsGetState(sel.key)));
             } else {
                 const choice = window.dawFxPresetChoice[sel.key];
                 data = { values: choice ? choice.values : sel.plugin.values };
@@ -5996,7 +6197,7 @@
             window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
             window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
             window.dawFxActivePresetLabel[sel.key] = label;
-            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'spectral-dynamics' && sel.plugin.id !== 'aether-reverb') {
+            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'aether-reverb' && sel.plugin.id !== 'luxury-saturation') {
                 window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
             }
             window.renderDawFxPicker();
