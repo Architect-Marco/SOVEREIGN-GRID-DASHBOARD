@@ -839,13 +839,12 @@
         const KNOB_ICON = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 12 12 6"/></svg>';
 
         window.SOVEREIGN_12_PLUGINS = [
-            { id: 'sovereign-dynamics', name: 'Sovereign Dynamics', tagline: 'The Glue', category: 'DYNAMICS',
-              values: [['THRESH','-25.0d'],['RATIO','1.8:1'],['ATTACK','35ms'],['RELEASE','250ms']],
+            { id: 'spectral-dynamics', name: 'Spectral Dynamics', tagline: 'The Glue', category: 'DYNAMICS',
+              values: [['THR','-43d'],['RAT','4.1:1'],['MIX','72%'],['OUT','-5d']],
               presets: [
-                { name: 'sovereign: vocal glue', values: [['THRESH','-18.0d'],['RATIO','2.5:1'],['ATTACK','15ms'],['RELEASE','180ms']] },
-                { name: 'sovereign: drum bus punch', values: [['THRESH','-14.0d'],['RATIO','4.0:1'],['ATTACK','8ms'],['RELEASE','90ms']] },
-                { name: 'sovereign: master bus smooth', values: [['THRESH','-28.0d'],['RATIO','1.5:1'],['ATTACK','45ms'],['RELEASE','400ms']] },
-                { name: 'sovereign: gentle leveling', values: [['THRESH','-22.0d'],['RATIO','1.3:1'],['ATTACK','60ms'],['RELEASE','300ms']] }
+                { name: 'sovereign: vocal glue', values: [['THR','-18d'],['RAT','2.5:1'],['MIX','60%'],['OUT','0d']] },
+                { name: 'sovereign: drum bus punch', values: [['THR','-14d'],['RAT','6.0:1'],['MIX','100%'],['OUT','-3d']] },
+                { name: 'sovereign: master bus smooth', values: [['THR','-28d'],['RAT','1.8:1'],['MIX','45%'],['OUT','0d']] }
               ] },
             { id: 'master-limiter', name: 'Master Limiter', tagline: 'The Ceiling', category: 'DYNAMICS',
               values: [['CEILING','-0.5d'],['RELEASE','80ms'],['SOFT-CLIP','15%'],['GAIN','+2.0d']],
@@ -2000,6 +1999,8 @@
                     detail.innerHTML = window.dawDsPanel(key, plugin);
                 } else if (plugin && plugin.id === 'vocal-rider') {
                     detail.innerHTML = window.dawVrPanel(key, plugin);
+                } else if (plugin && plugin.id === 'spectral-dynamics') {
+                    detail.innerHTML = window.dawSpPanel(key, plugin);
                 } else if (plugin && plugin.id === 'aether-reverb') {
                     detail.innerHTML = window.dawArPanel(key, plugin);
                 } else if (plugin && plugin.id === 'resonator-528') {
@@ -3895,6 +3896,265 @@
         };
 
         // ============================================================
+        // SPECTRAL DYNAMICS — a "Krum-C"-style broadband dynamics panel:
+        // a big filled level/gain-reduction curve display, THR/RAT/MIX
+        // knobs, small ATK/REL vertical trim faders, dual LED meters,
+        // an OUT knob and a Bypass toggle. Recolored entirely in the
+        // app's black-background / neon-blue palette.
+        // ============================================================
+        window.dawSpState = window.dawSpState || {};
+
+        const DAW_SP_GRAPH_W = 480, DAW_SP_GRAPH_H = 220;
+
+        function dawSpDefaultState() {
+            return { thr: -43, rat: 4.1, mix: 72, atk: 5.5, rel: 639, out: -5, bypass: false };
+        }
+        function dawSpGetState(key) {
+            if (!window.dawSpState[key]) window.dawSpState[key] = dawSpDefaultState();
+            return window.dawSpState[key];
+        }
+        function dawSpClearBadge(key) {
+            const sk = eq8SafeKey(key);
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawsp-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+        }
+
+        // Stable pseudo-random curve, seeded per instance so it doesn't reshuffle on re-render
+        function dawSpSeededRand(seedStr) {
+            let h = 0;
+            for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) >>> 0;
+            return function() { h = (h * 1664525 + 1013904223) >>> 0; return h / 4294967296; };
+        }
+        function dawSpCurvePoints(key) {
+            const rand = dawSpSeededRand('sp-' + key);
+            const n = 90;
+            const pts = [];
+            for (let i = 0; i < n; i++) {
+                const x = (i / (n - 1)) * DAW_SP_GRAPH_W;
+                const t = i / (n - 1);
+                const ramp = Math.min(1, t / 0.08) * Math.min(1, (1 - t) / 0.12);
+                const jag = (rand() - 0.5) * 26;
+                const y = DAW_SP_GRAPH_H - (ramp * (150 + jag * 0.4) + 8);
+                pts.push([x, Math.max(6, Math.min(DAW_SP_GRAPH_H - 4, y))]);
+            }
+            return pts;
+        }
+
+        const DAW_SP_KNOB_CFG = {
+            thr: { min: -60, max: 0, fmt: v => Math.round(v) },
+            rat: { min: 1, max: 20, fmt: v => v.toFixed(1) },
+            mix: { min: 0, max: 100, fmt: v => Math.round(v) + '%' },
+            out: { min: -24, max: 24, fmt: v => (v >= 0 ? '+' : '') + Math.round(v) }
+        };
+
+        function dawSpKnob(key, sk, field, label) {
+            const s = dawSpGetState(key);
+            const c = DAW_SP_KNOB_CFG[field];
+            const pct = (s[field] - c.min) / (c.max - c.min);
+            const deg = -135 + pct * 270;
+            return `
+            <div class="flex flex-col items-center gap-1.5">
+                <div id="dawsp-knob-${field}-${sk}" class="relative rounded-full bg-black border-2 border-[rgba(47,208,255,0.5)] cursor-ns-resize select-none flex-shrink-0"
+                     style="width:46px; height:46px; box-shadow: inset 0 0 8px rgba(0,0,0,0.7), 0 0 6px rgba(47,208,255,0.2);"
+                     onmousedown="event.stopPropagation(); window.dawSpKnobDrag(event,'${key}','${field}')" ontouchstart="event.stopPropagation(); window.dawSpKnobDrag(event,'${key}','${field}')">
+                    <div id="dawsp-knob-ind-${field}-${sk}" class="absolute top-1 left-1/2 w-0.5 bg-[#2fd0ff] origin-bottom rounded-full" style="height:17px; transform:translateX(-50%) rotate(${deg}deg); box-shadow:0 0 4px rgba(47,208,255,0.9);"></div>
+                </div>
+                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
+                <input id="dawsp-knobval-${field}-${sk}" type="text" value="${c.fmt(s[field])}" onclick="event.stopPropagation()" onchange="window.dawSpSetKnobFromText('${key}','${field}', this.value)" class="w-11 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[7px] text-center neon-blue-text font-bold outline-none">
+            </div>`;
+        }
+
+        window.dawSpKnobDrag = function(e, key, field) {
+            e.preventDefault();
+            const c = DAW_SP_KNOB_CFG[field];
+            const s = dawSpGetState(key);
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
+            const startVal = s[field];
+            const range = c.max - c.min;
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const deltaY = startY - clientY;
+                let newVal = startVal + deltaY * (range / 130);
+                newVal = Math.max(c.min, Math.min(c.max, newVal));
+                s[field] = newVal;
+                dawSpClearBadge(key);
+                window.dawSpUpdateKnobVisual(key, field);
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
+        window.dawSpUpdateKnobVisual = function(key, field) {
+            const sk = eq8SafeKey(key);
+            const s = dawSpGetState(key);
+            const c = DAW_SP_KNOB_CFG[field];
+            const pct = (s[field] - c.min) / (c.max - c.min);
+            const deg = -135 + pct * 270;
+            const ind = document.getElementById(`dawsp-knob-ind-${field}-${sk}`);
+            if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+            const val = document.getElementById(`dawsp-knobval-${field}-${sk}`);
+            if (val) val.value = c.fmt(s[field]);
+        };
+
+        window.dawSpSetKnobFromText = function(key, field, text) {
+            const c = DAW_SP_KNOB_CFG[field];
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            const s = dawSpGetState(key);
+            s[field] = Math.max(c.min, Math.min(c.max, num));
+            dawSpClearBadge(key);
+            window.dawSpUpdateKnobVisual(key, field);
+        };
+
+        window.dawSpSetTrim = function(key, field, text) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return;
+            const s = dawSpGetState(key);
+            const clamps = { atk: [0.1, 100], rel: [10, 2000] };
+            const [lo, hi] = clamps[field];
+            s[field] = Math.max(lo, Math.min(hi, num));
+            dawSpClearBadge(key);
+            const sk = eq8SafeKey(key);
+            const slider = document.getElementById(`dawsp-trimslider-${field}-${sk}`); if (slider) slider.value = s[field];
+            const val = document.getElementById(`dawsp-trimval-${field}-${sk}`); if (val) val.value = s[field].toFixed(1);
+        };
+
+        window.dawSpToggleBypass = function(key) {
+            const s = dawSpGetState(key);
+            s.bypass = !s.bypass;
+            dawSpClearBadge(key);
+            window.renderDawFxPicker();
+        };
+
+        window.dawSpPanel = function(key, plugin) {
+            const s = dawSpGetState(key);
+            const sk = eq8SafeKey(key);
+
+            const gridDb = [0, -10, -20, -30, -40, -50, -60];
+            const gridLines = gridDb.map(db => {
+                const y = ((0 - db) / 60) * DAW_SP_GRAPH_H;
+                return `<line x1="0" y1="${y.toFixed(1)}" x2="${DAW_SP_GRAPH_W}" y2="${y.toFixed(1)}" stroke="rgba(47,208,255,0.08)" stroke-width="1"/>
+                        <text x="4" y="${(y - 3).toFixed(1)}" fill="#2fd0ff" opacity="0.5" font-size="8" font-family="monospace">${db}</text>`;
+            }).join('');
+
+            const curvePts = dawSpCurvePoints(key);
+            const curveStr = curvePts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+            const fillStr = `0,${DAW_SP_GRAPH_H} ${curveStr} ${DAW_SP_GRAPH_W},${DAW_SP_GRAPH_H}`;
+
+            const trimFader = (field, label, min, max) => `
+                <div class="flex flex-col items-center gap-1" style="width:34px;">
+                    <span class="text-[6px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
+                    <div class="daw-fader-track" style="height:100px;">
+                        <input id="dawsp-trimslider-${field}-${sk}" type="range" min="${min}" max="${max}" step="0.1" value="${s[field]}" class="daw-fader-input eq8-fader-thumb"
+                            oninput="window.dawSpSetTrim('${key}','${field}', this.value)">
+                    </div>
+                    <input id="dawsp-trimval-${field}-${sk}" type="text" value="${s[field].toFixed(1)}" onchange="window.dawSpSetTrim('${key}','${field}', this.value)" class="w-9 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-0.5 py-0.5 text-[6px] text-center neon-blue-text font-bold outline-none">
+                </div>`;
+
+            return `
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button onclick="event.stopPropagation(); window.dawSpTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                        <span id="dawsp-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div id="dawsp-preset-menu-${sk}" class="hidden-section"></div>
+                </span>
+            </div>
+            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+
+            <div class="flex gap-2 mt-2">
+                <div class="flex-1 min-w-0 rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
+                    <svg viewBox="0 0 ${DAW_SP_GRAPH_W} ${DAW_SP_GRAPH_H}" style="width:100%; height:210px; display:block;">
+                        <rect x="0" y="0" width="${DAW_SP_GRAPH_W}" height="${DAW_SP_GRAPH_H}" fill="#050505"/>
+                        ${gridLines}
+                        <polygon points="${fillStr}" fill="rgba(47,208,255,0.16)"/>
+                        <polyline points="${curveStr}" fill="none" stroke="#2fd0ff" stroke-width="1.5" style="filter: drop-shadow(0 0 3px rgba(47,208,255,0.6));"/>
+                    </svg>
+                </div>
+
+                <div class="flex items-end gap-2 flex-shrink-0">
+                    ${trimFader('atk', 'ATK', 0.1, 100)}
+                    ${trimFader('rel', 'REL', 10, 2000)}
+                    <div class="flex gap-1">
+                        <div class="daw-led-meter-single" id="dawsp-led-L-${sk}" style="height:100px;"><div class="daw-led-mask" style="height:35%;"></div></div>
+                        <div class="daw-led-meter-single" id="dawsp-led-R-${sk}" style="height:100px;"><div class="daw-led-mask" style="height:38%;"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-2 mt-3">
+                <div class="min-w-0">
+                    <div class="text-[9px] text-gray-600 font-black italic">Krum-C</div>
+                    <div class="text-[7px] text-gray-700">by Rockheyday</div>
+                </div>
+                <div class="flex items-center gap-3">
+                    ${dawSpKnob(key, sk, 'thr', 'THR')}
+                    ${dawSpKnob(key, sk, 'rat', 'RAT')}
+                    ${dawSpKnob(key, sk, 'mix', 'MIX')}
+                    <button onclick="window.dawSpToggleBypass('${key}')" class="text-[8px] font-black uppercase tracking-widest px-2.5 py-2 rounded border transition-colors ${s.bypass ? 'bg-[#2fd0ff]/20 border-[#2fd0ff] neon-blue-text' : 'text-gray-500 border-[rgba(47,208,255,0.3)] hover:text-[#2fd0ff]'}">Bypass</button>
+                    ${dawSpKnob(key, sk, 'out', 'OUT')}
+                </div>
+            </div>`;
+        };
+
+        window.dawSpTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawsp-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawSpRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawSpRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawsp-preset-menu-${sk}`);
+            if (!el) return;
+            const userPresets = (window.dawFxUserPresets['spectral-dynamics'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawSpApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                <button onclick="window.dawSpApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
+                </button>
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawSpApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+
+        window.dawSpApplyPreset = function(key, presetIndex) {
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawSpState[key] = dawSpDefaultState();
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = (window.dawFxUserPresets['spectral-dynamics'] || [])[presetIndex];
+                if (preset) {
+                    window.dawSpState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
+            window.renderDawFxPicker();
+        };
+
+        // ============================================================
         // AETHER-REVERB — a "luxury space" reverb: a Time Response bar
         // chart (impulse decay) with Decorrelation Evar/Rvar, a row of
         // Dimension/Room Size/Distance/Balance/Decay Time/Pre Delay/
@@ -5692,6 +5952,7 @@
             else if (sel.plugin.id === 'multiband-comp') window.dawMbTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'vocal-deesser') window.dawDsTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'vocal-rider') window.dawVrTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'spectral-dynamics') window.dawSpTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'aether-reverb') window.dawArTogglePresetMenu(sel.key);
             else window.dawFxTogglePresetMenu(sel.key);
         };
@@ -5723,6 +5984,8 @@
                 data = JSON.parse(JSON.stringify(dawDsGetState(sel.key)));
             } else if (sel.plugin.id === 'vocal-rider') {
                 data = JSON.parse(JSON.stringify(dawVrGetState(sel.key)));
+            } else if (sel.plugin.id === 'spectral-dynamics') {
+                data = JSON.parse(JSON.stringify(dawSpGetState(sel.key)));
             } else if (sel.plugin.id === 'aether-reverb') {
                 data = JSON.parse(JSON.stringify(dawArGetState(sel.key)));
             } else {
@@ -5733,7 +5996,7 @@
             window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
             window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
             window.dawFxActivePresetLabel[sel.key] = label;
-            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'aether-reverb') {
+            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'spectral-dynamics' && sel.plugin.id !== 'aether-reverb') {
                 window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
             }
             window.renderDawFxPicker();
