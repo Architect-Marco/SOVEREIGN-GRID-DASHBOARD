@@ -916,6 +916,12 @@
                 { name: 'sovereign: coreless', values: [['DIV','1/64 T'],['TAPS','8'],['MODE','Mid/Side'],['FX','Chorus']] },
                 { name: 'sovereign: tape cluster', values: [['DIV','1/8'],['TAPS','5'],['MODE','Stereo'],['FX','Wobble']] }
               ] },
+            { id: 'fruity-vocoder', name: 'Fruity Vocoder', tagline: 'Talking Synth', category: 'COLOR',
+              values: [['BANDS','32'],['FILTER','2'],['WET','85%'],['CAR','70%']],
+              presets: [
+                { name: 'sovereign: robot voice', values: [['BANDS','16'],['FILTER','1'],['WET','100%'],['CAR','80%']] },
+                { name: 'sovereign: subtle talk', values: [['BANDS','64'],['FILTER','3'],['WET','40%'],['CAR','60%']] }
+              ] },
             { id: 'resonator-528', name: '528Hz Resonator', tagline: 'The Signature', category: 'SIGNATURE',
               values: [['TARGET','528Hz'],['RESONANCE','85%'],['AMOUNT','50%'],['GLOW','100%']],
               presets: [
@@ -1972,6 +1978,8 @@
                     detail.innerHTML = window.dawHePanel(key, plugin);
                 } else if (plugin && plugin.id === 'sovereign-delay') {
                     detail.innerHTML = window.dawSdPanel(key, plugin);
+                } else if (plugin && plugin.id === 'fruity-vocoder') {
+                    detail.innerHTML = window.dawVcPanel(key, plugin);
                 } else if (plugin && plugin.id === 'multiband-comp') {
                     detail.innerHTML = window.dawMbPanel(key, plugin);
                 } else if (plugin && plugin.id === 'vocal-deesser') {
@@ -4948,6 +4956,244 @@
                 }
             }
             window.renderDawFxPicker();
+        };
+
+        // ============================================================
+        // FRUITY VOCODER — top row split into 3 panels: FREQ (Form
+        // vertical fader + Min/Max/Scale knobs, Bandwidth knob, Invert
+        // toggle), ENV (Attack/Release knobs), MIX (L/R analysis
+        // toggles + Mod/Car/Wet vertical faders). Bottom: a band-level
+        // bar display with Bands (4/8/16/32/64/128) and Filter (1/2/3)
+        // selector buttons, plus a Hold toggle.
+        // ============================================================
+        window.dawVcState = window.dawVcState || {};
+
+        const DAW_VC_BAND_COUNTS = [4, 8, 16, 32, 64, 128];
+        const DAW_VC_FILTERS = [1, 2, 3];
+
+        function dawVcDefaultState() {
+            return {
+                form: 0.50, min: 0.30, max: 0.72, scale: 0.50, bw: 0.40, invert: false,
+                att: 0.25, rel: 0.40,
+                lOn: false, rOn: false, wetOn: true,
+                mod: 0.72, car: 0.72, wet: 0.85,
+                bandCount: 32, filterIndex: 2, hold: false,
+                bands: Array.from({ length: 24 }, (_, i) => {
+                    if (i === 2) return 0.85; // one taller "selected" bar, like the picture
+                    return 0.18 + Math.abs(Math.sin(i * 0.7)) * 0.35 * (1 - i / 30);
+                })
+            };
+        }
+        function dawVcGetState(key) {
+            if (!window.dawVcState[key]) window.dawVcState[key] = dawVcDefaultState();
+            return window.dawVcState[key];
+        }
+
+        const DAW_VC_FIELDS = {
+            form:  { min: 0, max: 1, decimals: 2 },
+            min:   { min: 0, max: 1, decimals: 2 },
+            max:   { min: 0, max: 1, decimals: 2 },
+            scale: { min: 0, max: 1, decimals: 2 },
+            bw:    { min: 0, max: 1, decimals: 2 },
+            att:   { min: 0, max: 1, decimals: 2 },
+            rel:   { min: 0, max: 1, decimals: 2 },
+            mod:   { min: 0, max: 1, decimals: 2 },
+            car:   { min: 0, max: 1, decimals: 2 },
+            wet:   { min: 0, max: 1, decimals: 2 }
+        };
+
+        function dawVcKnob(key, sk, field, label, size) {
+            const s = dawVcGetState(key);
+            const c = DAW_VC_FIELDS[field];
+            const pct = (s[field] - c.min) / (c.max - c.min);
+            const deg = -135 + pct * 270;
+            const dim = size || 36;
+            return `
+            <div class="flex flex-col items-center gap-1">
+                <div id="dawvc-knob-${field}-${sk}" class="relative rounded-full bg-black border-2 border-[rgba(47,208,255,0.45)] cursor-ns-resize select-none flex-shrink-0"
+                     style="width:${dim}px; height:${dim}px;"
+                     onmousedown="event.stopPropagation(); window.dawVcKnobDrag(event,'${key}','${field}')" ontouchstart="event.stopPropagation(); window.dawVcKnobDrag(event,'${key}','${field}')">
+                    <div id="dawvc-knob-ind-${field}-${sk}" class="absolute top-0.5 left-1/2 w-0.5 bg-[#2fd0ff] origin-bottom" style="height:${dim * 0.4}px; transform:translateX(-50%) rotate(${deg}deg);"></div>
+                </div>
+                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
+            </div>`;
+        }
+
+        window.dawVcKnobDrag = function(e, key, field) {
+            e.preventDefault();
+            const c = DAW_VC_FIELDS[field];
+            const s = dawVcGetState(key);
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
+            const startVal = s[field];
+            const range = c.max - c.min;
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const deltaY = startY - clientY;
+                let newVal = startVal + deltaY * (range / 150);
+                newVal = Math.max(c.min, Math.min(c.max, newVal));
+                s[field] = newVal;
+                window.dawVcUpdateKnobVisual(key, field);
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
+        window.dawVcUpdateKnobVisual = function(key, field) {
+            const sk = eq8SafeKey(key);
+            const s = dawVcGetState(key);
+            const c = DAW_VC_FIELDS[field];
+            const pct = (s[field] - c.min) / (c.max - c.min);
+            const deg = -135 + pct * 270;
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawvc-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const ind = document.getElementById(`dawvc-knob-ind-${field}-${sk}`);
+            if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+        };
+
+        window.dawVcToggle = function(key, field) {
+            const s = dawVcGetState(key);
+            s[field] = !s[field];
+            delete window.dawFxActivePresetLabel[key];
+            window.renderDawFxPicker();
+        };
+        window.dawVcSetBandCount = function(key, n) {
+            const s = dawVcGetState(key);
+            s.bandCount = n;
+            delete window.dawFxActivePresetLabel[key];
+            window.renderDawFxPicker();
+        };
+        window.dawVcSetFilter = function(key, n) {
+            const s = dawVcGetState(key);
+            s.filterIndex = n;
+            delete window.dawFxActivePresetLabel[key];
+            window.renderDawFxPicker();
+        };
+
+        function dawVcBarsInner(s) {
+            return s.bands.map((v, i) => {
+                const h = Math.max(4, Math.min(100, v * 100));
+                const lit = i === 2;
+                return `<div class="flex-1" style="height:${h.toFixed(1)}%; background:${lit ? '#e8ecf7' : 'rgba(120,140,220,0.55)'}; border-radius:1px;"></div>`;
+            }).join('');
+        }
+
+        window.dawVcPanel = function(key, plugin) {
+            const s = dawVcGetState(key);
+            const sk = eq8SafeKey(key);
+
+            const litToggle = (field, label) => `
+                <button onclick="window.dawVcToggle('${key}','${field}')" class="w-6 h-4 rounded-sm text-[7px] font-black flex items-center justify-center border transition-colors ${s[field] ? 'bg-[#ff9a3d] border-[#ff9a3d] text-black' : 'bg-black/50 border-[rgba(47,208,255,0.3)] text-gray-500'}">${label}</button>`;
+
+            const bandBtn = (n) => `
+                <button onclick="window.dawVcSetBandCount('${key}',${n})" class="px-1.5 py-0.5 rounded text-[7px] font-black border transition-colors ${s.bandCount === n ? 'bg-[#2fd0ff] text-black border-[#2fd0ff]' : 'text-gray-500 border-[rgba(47,208,255,0.3)]'}">${n}</button>`;
+            const filterBtn = (n) => `
+                <button onclick="window.dawVcSetFilter('${key}',${n})" class="w-5 h-5 rounded text-[7px] font-black border transition-colors ${s.filterIndex === n ? 'bg-[#2fd0ff] text-black border-[#2fd0ff]' : 'text-gray-500 border-[rgba(47,208,255,0.3)]'}">${n}</button>`;
+
+            return `
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 max-w-[150px]">
+                        <span id="dawvc-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                    </button>
+                </span>
+            </div>
+            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+
+            <!-- TOP: FREQ / ENV / MIX -->
+            <div class="flex gap-3 mt-3">
+                <!-- FREQ -->
+                <div class="flex-1 min-w-0 rounded-lg p-2" style="border:1px solid rgba(47,208,255,0.3);">
+                    <div class="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-2">Freq</div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex flex-col items-center gap-1 flex-shrink-0">
+                            ${dawArVFader(key, sk, 'form', 90, 16)}
+                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Form</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-x-4 gap-y-2">
+                            ${dawVcKnob(key, sk, 'min', 'Min', 34)}
+                            ${dawVcKnob(key, sk, 'max', 'Max', 34)}
+                            ${dawVcKnob(key, sk, 'scale', 'Scale', 34)}
+                            ${dawVcKnob(key, sk, 'bw', 'BW', 34)}
+                            <div></div>
+                            <div class="flex flex-col items-center justify-center gap-1">
+                                <button onclick="window.dawVcToggle('${key}','invert')" class="rounded-full border-2 transition-colors" style="width:14px; height:14px; background:${s.invert ? '#2fd0ff' : 'transparent'}; border-color:rgba(47,208,255,0.5);"></button>
+                                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Invert</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ENV -->
+                <div class="flex-shrink-0 rounded-lg p-2" style="width:90px; border:1px solid rgba(47,208,255,0.3);">
+                    <div class="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-2">Env</div>
+                    <div class="flex flex-col items-center gap-3">
+                        ${dawVcKnob(key, sk, 'att', 'Att', 34)}
+                        ${dawVcKnob(key, sk, 'rel', 'Rel', 34)}
+                    </div>
+                </div>
+
+                <!-- MIX -->
+                <div class="flex-shrink-0 rounded-lg p-2" style="width:150px; border:1px solid rgba(47,208,255,0.3);">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-1">
+                            ${litToggle('lOn', 'L')}
+                            ${litToggle('rOn', 'R')}
+                        </div>
+                        <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest">Mix</span>
+                    </div>
+                    <div class="flex items-end justify-center gap-3">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="w-6 h-2"></div>
+                            ${dawArVFader(key, sk, 'mod', 90, 16)}
+                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Mod</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="w-6 h-2"></div>
+                            ${dawArVFader(key, sk, 'car', 90, 16)}
+                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Car</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                            <button onclick="window.dawVcToggle('${key}','wetOn')" class="w-6 h-2 rounded-sm transition-colors" style="background:${s.wetOn ? '#ff9a3d' : 'rgba(47,208,255,0.2)'};"></button>
+                            ${dawArVFader(key, sk, 'wet', 90, 16)}
+                            <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Wet</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTTOM: band display -->
+            <div class="rounded-lg p-2 mt-3" style="border:1px solid rgba(47,208,255,0.3);">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[9px] neon-blue-text font-black italic uppercase tracking-widest">Fruity Vocoder</span>
+                    <button onclick="window.dawVcToggle('${key}','hold')" class="px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border transition-colors ${s.hold ? 'bg-[#2fd0ff] text-black border-[#2fd0ff]' : 'text-gray-500 border-[rgba(47,208,255,0.3)]'}">Hold</button>
+                </div>
+                <div class="flex items-end gap-0.5 rounded" style="height:110px; background:rgba(20,25,45,0.6); border:1px solid rgba(47,208,255,0.2); padding:4px;">
+                    ${dawVcBarsInner(s)}
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Bands</span>
+                        <div class="flex items-center gap-1">${DAW_VC_BAND_COUNTS.map(bandBtn).join('')}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Filter</span>
+                        <div class="flex items-center gap-1">${DAW_VC_FILTERS.map(filterBtn).join('')}</div>
+                    </div>
+                </div>
+            </div>`;
         };
 
         // ============================================================
