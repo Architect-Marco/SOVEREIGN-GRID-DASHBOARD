@@ -4700,10 +4700,10 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-4 gap-2 px-3 pb-3">
+                <div class="grid grid-cols-[1.15fr_1fr_1fr_0.85fr] gap-2 px-3 pb-3">
                     <div class="rounded-lg p-2 bg-black/20" style="border:1px solid rgba(47,208,255,0.14);">
                         <div class="text-[7px] font-black uppercase tracking-widest mb-2 neon-blue-text" style="opacity:0.8;">Noise</div>
-                        <div class="flex gap-2 items-end">
+                        <div class="flex gap-3.5 items-end justify-between">
                             <div class="flex flex-col items-center gap-1">
                                 <div id="dawls-dirt-wrap-${sk}" class="relative cursor-ns-resize" style="width:14px; height:52px;" onmousedown="window.dawLsDirtDrag(event,'${key}')" ontouchstart="window.dawLsDirtDrag(event,'${key}')">
                                     <div class="absolute left-1/2 top-0 bottom-0 pointer-events-none" style="width:3px; transform:translateX(-50%); border-radius:2px; background:linear-gradient(180deg, rgba(47,208,255,0.55), rgba(47,208,255,0.12));"></div>
@@ -4720,7 +4720,7 @@
 
                     <div class="rounded-lg p-2 bg-black/20" style="border:1px solid rgba(47,208,255,0.14);">
                         <div class="text-[7px] font-black uppercase tracking-widest mb-2 neon-blue-text" style="opacity:0.8;">Compression</div>
-                        <div class="flex gap-2 items-start">
+                        <div class="flex gap-3.5 items-start justify-between">
                             <div class="flex flex-col items-center gap-1 pt-0.5">
                                 <span class="text-[6.5px] font-black uppercase text-gray-500">Release</span>
                                 <div id="dawls-switch-release-${sk}" onclick="window.dawLsToggleRelease('${key}')" class="relative cursor-pointer flex-shrink-0" style="width:28px; height:15px; border-radius:8px; background:${s.releaseSlow ? 'rgba(47,208,255,0.2)' : 'rgba(0,0,0,0.4)'}; border:1px solid ${s.releaseSlow ? '#2fd0ff' : 'rgba(47,208,255,0.14)'};">
