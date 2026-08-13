@@ -5019,6 +5019,52 @@
             </div>`;
         }
 
+        function dawVcVFader(key, sk, field, height, trackWidth) {
+            const s = dawVcGetState(key);
+            const c = DAW_VC_FIELDS[field];
+            const pct = (1 - (s[field] - c.min) / (c.max - c.min)) * 100;
+            return `
+            <div id="dawvc-vftrack-${field}-${sk}" class="relative rounded flex-shrink-0" style="width:${trackWidth}px; height:${height}px; background:rgba(6,10,13,0.85); border:1px solid rgba(47,208,255,0.3); cursor:ns-resize;"
+                 onmousedown="window.dawVcFaderDrag(event,'${key}','${field}')" ontouchstart="window.dawVcFaderDrag(event,'${key}','${field}')">
+                <div class="absolute rounded-full" style="left:50%; top:4px; bottom:4px; width:2px; background:rgba(47,208,255,0.18); transform:translateX(-50%);"></div>
+                <div id="dawvc-vfthumb-${field}-${sk}" class="absolute rounded-sm" style="left:2px; right:2px; height:4px; top:${pct.toFixed(2)}%; transform:translateY(-50%); background:#2fd0ff; box-shadow:0 0 5px rgba(47,208,255,0.9);"></div>
+            </div>`;
+        }
+
+        window.dawVcFaderDrag = function(e, key, field) {
+            e.preventDefault();
+            e.stopPropagation();
+            const c = DAW_VC_FIELDS[field];
+            const s = dawVcGetState(key);
+            const sk = eq8SafeKey(key);
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
+            const startVal = s[field];
+            const range = c.max - c.min;
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const deltaY = startY - clientY;
+                let newVal = startVal + deltaY * (range / 150);
+                newVal = Math.max(c.min, Math.min(c.max, newVal));
+                s[field] = newVal;
+                delete window.dawFxActivePresetLabel[key];
+                const badge = document.getElementById(`dawvc-badge-${sk}`);
+                if (badge) badge.innerText = 'factory preset';
+                const pct = (1 - (newVal - c.min) / range) * 100;
+                const thumb = document.getElementById(`dawvc-vfthumb-${field}-${sk}`);
+                if (thumb) thumb.style.top = pct.toFixed(2) + '%';
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
         window.dawVcKnobDrag = function(e, key, field) {
             e.preventDefault();
             const c = DAW_VC_FIELDS[field];
@@ -5119,7 +5165,7 @@
                     <div class="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-2">Freq</div>
                     <div class="flex items-center gap-4">
                         <div class="flex flex-col items-center gap-1 flex-shrink-0">
-                            ${dawArVFader(key, sk, 'form', 90, 16)}
+                            ${dawVcVFader(key, sk, 'form', 90, 16)}
                             <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Form</span>
                         </div>
                         <div class="grid grid-cols-3 gap-x-4 gap-y-2">
@@ -5157,17 +5203,17 @@
                     <div class="flex items-end justify-center gap-3">
                         <div class="flex flex-col items-center gap-1">
                             <div class="w-6 h-2"></div>
-                            ${dawArVFader(key, sk, 'mod', 90, 16)}
+                            ${dawVcVFader(key, sk, 'mod', 90, 16)}
                             <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Mod</span>
                         </div>
                         <div class="flex flex-col items-center gap-1">
                             <div class="w-6 h-2"></div>
-                            ${dawArVFader(key, sk, 'car', 90, 16)}
+                            ${dawVcVFader(key, sk, 'car', 90, 16)}
                             <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Car</span>
                         </div>
                         <div class="flex flex-col items-center gap-1">
                             <button onclick="window.dawVcToggle('${key}','wetOn')" class="w-6 h-2 rounded-sm transition-colors" style="background:${s.wetOn ? '#ff9a3d' : 'rgba(47,208,255,0.2)'};"></button>
-                            ${dawArVFader(key, sk, 'wet', 90, 16)}
+                            ${dawVcVFader(key, sk, 'wet', 90, 16)}
                             <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">Wet</span>
                         </div>
                     </div>
