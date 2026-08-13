@@ -1992,6 +1992,8 @@
                     detail.innerHTML = window.dawRzPanel(key, plugin);
                 } else if (plugin && plugin.id === 'luxury-saturation') {
                     detail.innerHTML = window.dawLsPanel(key, plugin);
+                } else if (plugin && plugin.id === 'sovereign-dynamics') {
+                    detail.innerHTML = window.dawDynPanel(key, plugin);
                 } else {
                     detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
                 }
@@ -4802,6 +4804,116 @@
         };
 
         // ============================================================
+        // SOVEREIGN DYNAMICS — bespoke GUI modeled on the 6-column
+        // console-strip layout: [in meter][in section][response
+        // graph][GR meter][out section][out meter]. Building this up
+        // incrementally — this pass only wires the two outer LED meter
+        // columns (live off the track's level, same pattern as the
+        // other plugins' meters); columns 2-5 are placeholder boxes
+        // reserved for the controls/graph/GR meter to come next.
+        // ============================================================
+        window.dawDynState = window.dawDynState || {};
+        function dawDynDefaultState() { return {}; }
+        function dawDynGetState(key) {
+            if (!window.dawDynState[key]) window.dawDynState[key] = dawDynDefaultState();
+            return window.dawDynState[key];
+        }
+
+        window.dawDynPanel = function(key, plugin) {
+            const sk = eq8SafeKey(key);
+            const H = 230;
+
+            return `
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button onclick="event.stopPropagation(); window.dawDynTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/10 transition-colors max-w-[150px]">
+                        <span id="dawdyn-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div id="dawdyn-preset-menu-${sk}" class="hidden-section"></div>
+                </span>
+            </div>
+            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+
+            <div class="flex gap-1.5 mt-3" style="height:${H}px;">
+
+                <div class="flex flex-col items-center flex-shrink-0 rounded-lg bg-black/20 pt-2 pb-1.5" style="width:34px; border:1px solid rgba(47,208,255,0.14);">
+                    <span class="text-[6px] font-black uppercase tracking-widest text-gray-500 mb-1">In</span>
+                    <div class="flex items-end gap-0.5 flex-1 min-h-0">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                        <div class="flex-1 min-h-0 daw-led-meter-single" id="dawdyn-led-in-${sk}"><div class="daw-led-mask" style="height:100%;"></div></div>
+                    </div>
+                    <span id="dawdyn-peak-in-${sk}" class="text-[6.5px] font-bold neon-blue-text mt-1">-Inf</span>
+                </div>
+
+                <div class="flex-shrink-0 rounded-lg bg-black/20" style="width:118px; border:1px solid rgba(47,208,255,0.14);"></div>
+
+                <div class="flex-1 min-w-0 rounded-lg bg-black/20" style="border:1px solid rgba(47,208,255,0.14);"></div>
+
+                <div class="flex-shrink-0 rounded-lg bg-black/20" style="width:110px; border:1px solid rgba(47,208,255,0.14);"></div>
+
+                <div class="flex-shrink-0 rounded-lg bg-black/20" style="width:88px; border:1px solid rgba(47,208,255,0.14);"></div>
+
+                <div class="flex flex-col items-center flex-shrink-0 rounded-lg bg-black/20 pt-2 pb-1.5" style="width:34px; border:1px solid rgba(47,208,255,0.14);">
+                    <span class="text-[6px] font-black uppercase tracking-widest text-gray-500 mb-1">Out</span>
+                    <div class="flex items-end gap-0.5 flex-1 min-h-0">
+                        <div class="daw-fader-scale">${dawFaderScaleHtml()}</div>
+                        <div class="flex-1 min-h-0 daw-led-meter-single" id="dawdyn-led-out-${sk}"><div class="daw-led-mask" style="height:100%;"></div></div>
+                    </div>
+                    <span id="dawdyn-peak-out-${sk}" class="text-[6.5px] font-bold neon-blue-text mt-1">-Inf</span>
+                </div>
+
+            </div>`;
+        };
+
+        window.dawDynTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawdyn-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawDynRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawDynRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawdyn-preset-menu-${sk}`);
+            if (!el) return;
+            const userPresets = (window.dawFxUserPresets['sovereign-dynamics'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.35), inset 0 0 2px rgba(47,208,255,0.4); max-height:220px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawDynApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest hover:bg-white/5 transition-colors border-b border-white/10 neon-blue-text">Reset to factory default</button>
+                <button onclick="window.dawDynApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-white/5 ${!activeLabel ? 'neon-blue-text' : 'text-gray-400'}">
+                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
+                </button>
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] uppercase tracking-[0.2em] border-b border-white/5 text-gray-600">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawDynApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+
+        window.dawDynApplyPreset = function(key, presetIndex) {
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawDynState[key] = dawDynDefaultState();
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = (window.dawFxUserPresets['sovereign-dynamics'] || [])[presetIndex];
+                if (preset) {
+                    window.dawDynState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
+            window.renderDawFxPicker();
+        };
+
+        // ============================================================
         // 528HZ RESONATOR — top bar: Dry/Wet knobs + 2-channel LED
         // meter (no power/settings buttons). Box 1: Decay/Color knobs
         // + a filter response curve. Box 2: 6 pitch knobs (top row) +
@@ -6155,6 +6267,7 @@
             else if (sel.plugin.id === 'vocal-rider') window.dawVrTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'aether-reverb') window.dawArTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'luxury-saturation') window.dawLsTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'sovereign-dynamics') window.dawDynTogglePresetMenu(sel.key);
             else window.dawFxTogglePresetMenu(sel.key);
         };
 
@@ -6189,6 +6302,8 @@
                 data = JSON.parse(JSON.stringify(dawArGetState(sel.key)));
             } else if (sel.plugin.id === 'luxury-saturation') {
                 data = JSON.parse(JSON.stringify(dawLsGetState(sel.key)));
+            } else if (sel.plugin.id === 'sovereign-dynamics') {
+                data = JSON.parse(JSON.stringify(dawDynGetState(sel.key)));
             } else {
                 const choice = window.dawFxPresetChoice[sel.key];
                 data = { values: choice ? choice.values : sel.plugin.values };
@@ -6197,7 +6312,7 @@
             window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
             window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
             window.dawFxActivePresetLabel[sel.key] = label;
-            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'aether-reverb' && sel.plugin.id !== 'luxury-saturation') {
+            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'aether-reverb' && sel.plugin.id !== 'luxury-saturation' && sel.plugin.id !== 'sovereign-dynamics') {
                 window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
             }
             window.renderDawFxPicker();
@@ -7122,6 +7237,21 @@
                         const rText = document.getElementById('dawar-peak-R-' + ask);
                         if (lText) lText.innerText = lVal > 0.5 ? (Math.round(20 * Math.log10(lVal / 100) * 10) / 10) : '-Inf';
                         if (rText) rText.innerText = rVal > 0.5 ? (Math.round(20 * Math.log10(rVal / 100) * 10) / 10) : '-Inf';
+                    }
+                    // Same pattern for an open Sovereign Dynamics panel — drive its
+                    // In/Out meters off the selected track's channel level (Out
+                    // trimmed slightly to suggest gentle gain reduction).
+                    if (pPlugin && pPlugin.id === 'sovereign-dynamics') {
+                        const dsk = eq8SafeKey(`${pCtx.trackId}::${pCtx.selectedIndex}`);
+                        const base = window.dawMeterPeaks[pCtx.trackId === 'master' ? 'master' : ('t-' + pCtx.trackId)] || 0;
+                        const inVal = base;
+                        const outVal = Math.max(0, Math.min(100, base * (0.82 + Math.random() * 0.1)));
+                        window.dawUpdateLed('dawdyn-led-in-' + dsk, inVal);
+                        window.dawUpdateLed('dawdyn-led-out-' + dsk, outVal);
+                        const inText = document.getElementById('dawdyn-peak-in-' + dsk);
+                        const outText = document.getElementById('dawdyn-peak-out-' + dsk);
+                        if (inText) inText.innerText = inVal > 0.5 ? (Math.round(20 * Math.log10(inVal / 100) * 10) / 10) : '-Inf';
+                        if (outText) outText.innerText = outVal > 0.5 ? (Math.round(20 * Math.log10(outVal / 100) * 10) / 10) : '-Inf';
                     }
                 }
 
