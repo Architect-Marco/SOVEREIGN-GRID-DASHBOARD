@@ -4502,17 +4502,52 @@
             if (svg) svg.innerHTML = dawRzFilterInner(key);
         };
 
-        // --- 2-channel horizontal LED meter (idle/demo level) ---
-        function dawRzHMeter(id) {
+        // --- 2-channel horizontal LED meter with numeric dB readout ---
+        function dawRzHMeter(key, sk, ch) {
             return `
-            <div class="relative rounded-sm overflow-hidden" style="height:6px; width:100%; background:rgba(6,10,13,0.85); border:1px solid rgba(47,208,255,0.3);">
-                <div id="${id}" class="absolute top-0 left-0 h-full" style="width:35%; background:linear-gradient(90deg, #2fd0ff, #a259ff); box-shadow:0 0 5px rgba(47,208,255,0.7);"></div>
+            <div class="flex items-center gap-1.5">
+                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest flex-shrink-0" style="width:8px;">${ch}</span>
+                <div class="relative rounded-sm overflow-hidden flex-1 min-w-0" style="height:6px; background:rgba(6,10,13,0.85); border:1px solid rgba(47,208,255,0.3);">
+                    <div id="dawrz-meter-${ch}-${sk}" class="absolute top-0 left-0 h-full" style="width:5%; background:linear-gradient(90deg, #2fd0ff, #a259ff); box-shadow:0 0 5px rgba(47,208,255,0.7);"></div>
+                </div>
+                <span id="dawrz-meter-val-${ch}-${sk}" class="w-11 flex-shrink-0 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[7px] text-center neon-blue-text font-bold">-Inf</span>
             </div>`;
         }
+
+        // Functional level animation — runs while the panel is open,
+        // driven by window.requestAnimationFrame like the other DAW
+        // plugin meters (dawBmAnimate / dawHeAnimate pattern).
+        window.dawRzRafIds = window.dawRzRafIds || {};
+        window.dawRzAnimate = function(key) {
+            const sk = eq8SafeKey(key);
+            if (window.dawRzRafIds[sk]) return;
+            const step = (t) => {
+                const barL = document.getElementById(`dawrz-meter-L-${sk}`);
+                const barR = document.getElementById(`dawrz-meter-R-${sk}`);
+                if (!barL || !barR) { delete window.dawRzRafIds[sk]; return; }
+                const s = dawRzGetState(key);
+                const drive = 0.35 + s.wet * 0.6;
+                const lvlL = (0.5 + 0.5 * Math.sin(t / 260)) * drive;
+                const lvlR = (0.5 + 0.5 * Math.sin(t / 300 + 1.3)) * drive;
+                const pctL = Math.max(3, Math.min(100, lvlL * 95));
+                const pctR = Math.max(3, Math.min(100, lvlR * 95));
+                barL.style.width = pctL.toFixed(1) + '%';
+                barR.style.width = pctR.toFixed(1) + '%';
+                const dbL = -30 + (pctL / 100) * 30;
+                const dbR = -30 + (pctR / 100) * 30;
+                const valL = document.getElementById(`dawrz-meter-val-L-${sk}`);
+                const valR = document.getElementById(`dawrz-meter-val-R-${sk}`);
+                if (valL) valL.innerText = dbL.toFixed(1);
+                if (valR) valR.innerText = dbR.toFixed(1);
+                window.dawRzRafIds[sk] = window.requestAnimationFrame(step);
+            };
+            window.dawRzRafIds[sk] = window.requestAnimationFrame(step);
+        };
 
         window.dawRzPanel = function(key, plugin) {
             const s = dawRzGetState(key);
             const sk = eq8SafeKey(key);
+            try { window.dawRzAnimate(key); } catch (e) {}
 
             const pitchKnobs = [1,2,3,4,5,6].map(i => dawRzKnob(key, sk, `pitch${i}`, `Pitch`, 34)).join('');
             const gainKnobs = [1,2,3,4,5,6].map(i => dawRzKnob(key, sk, `gain${i}`, `Gain`, 34)).join('');
@@ -4531,15 +4566,15 @@
             </div>
             <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
 
-            <!-- TOP: Dry/Wet knobs + 2-channel LED meter (power/settings omitted) -->
-            <div class="flex items-center gap-3 mt-3 rounded-lg p-2" style="border:1px solid rgba(47,208,255,0.3);">
-                <div class="flex items-center gap-3 flex-shrink-0">
+            <!-- TOP: Dry/Wet knobs (aligned above box 1's width) + 2-channel LED meter (aligned above box 2's width) -->
+            <div class="flex gap-3 mt-3">
+                <div class="flex-shrink-0 flex items-center justify-center gap-3 rounded-lg p-2" style="width:160px; border:1px solid rgba(47,208,255,0.3);">
                     ${dawRzKnob(key, sk, 'dry', 'Dry', 32)}
                     ${dawRzKnob(key, sk, 'wet', 'Wet', 32)}
                 </div>
-                <div class="flex-1 min-w-0 flex flex-col gap-1.5 justify-center">
-                    ${dawRzHMeter(`dawrz-meter-L-${sk}`)}
-                    ${dawRzHMeter(`dawrz-meter-R-${sk}`)}
+                <div class="flex-1 min-w-0 flex flex-col justify-center gap-2 rounded-lg p-2" style="border:1px solid rgba(47,208,255,0.3);">
+                    ${dawRzHMeter(key, sk, 'L')}
+                    ${dawRzHMeter(key, sk, 'R')}
                 </div>
             </div>
 
