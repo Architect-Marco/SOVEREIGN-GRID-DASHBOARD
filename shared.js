@@ -7485,35 +7485,49 @@
             return v === undefined ? defaultVal : !!v;
         };
 
+        // Clip dragging (the waveform "grab and slide" on the editor page) —
+        // throttled to one transform update per animation frame via
+        // window.requestAnimationFrame, same pattern as the EQ node dragging
+        // above, instead of writing style.transform on every raw mousemove.
         window.dawClipDragStart = function(e, trackId) {
             const startX = e.touches ? e.touches[0].clientX : e.clientX;
             const startOffset = window.dawClipOffsets[trackId] || 0;
             const wrap = document.getElementById('clip-wrap-' + trackId);
             if (!wrap) return;
             let dragging = false;
+            let rafId = null;
+            let pending = null;
             const PIXELS_PER_BAR = 108; // matches .daw-ruler-mark width
             const move = (ev) => {
                 const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
                 const delta = clientX - startX;
                 if (!dragging && Math.abs(delta) > 5) dragging = true;
-                if (dragging) {
-                    ev.preventDefault();
-                    let newOffset = Math.max(0, startOffset + delta); // never drag left of the track's own start
+                if (!dragging) return;
 
-                    // Mouse Modifiers (Preferences → Editing Behavior → Mouse Modifiers): "Shift: Move item ignoring snap" is live.
-                    const shiftHeld = !!ev.shiftKey;
-                    let effectiveSnap = window.dawSnapOn && !shiftHeld;
+                ev.preventDefault();
+                let newOffset = Math.max(0, startOffset + delta); // never drag left of the track's own start
 
-                    if (effectiveSnap) {
-                        const snapPx = PIXELS_PER_BAR / (window.dawGridDivision || 16);
-                        newOffset = Math.round(newOffset / snapPx) * snapPx;
-                    }
-                    window.dawClipOffsets[trackId] = newOffset;
-                    wrap.style.transform = `translateX(${newOffset}px)`;
-                    wrap.style.outline = shiftHeld ? '1px dashed rgba(239,68,68,0.7)' : 'none';
+                // Mouse Modifiers (Preferences → Editing Behavior → Mouse Modifiers): "Shift: Move item ignoring snap" is live.
+                const shiftHeld = !!ev.shiftKey;
+                let effectiveSnap = window.dawSnapOn && !shiftHeld;
+
+                if (effectiveSnap) {
+                    const snapPx = PIXELS_PER_BAR / (window.dawGridDivision || 16);
+                    newOffset = Math.round(newOffset / snapPx) * snapPx;
                 }
+
+                pending = { newOffset, shiftHeld };
+                if (rafId) return; // already scheduled — the queued frame will pick up the latest "pending" value
+                rafId = window.requestAnimationFrame(() => {
+                    rafId = null;
+                    if (!pending) return;
+                    window.dawClipOffsets[trackId] = pending.newOffset;
+                    wrap.style.transform = `translateX(${pending.newOffset}px)`;
+                    wrap.style.outline = pending.shiftHeld ? '1px dashed rgba(239,68,68,0.7)' : 'none';
+                });
             };
             const up = () => {
+                if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
                 wrap.style.outline = 'none';
                 document.removeEventListener('mousemove', move);
                 document.removeEventListener('mouseup', up);
