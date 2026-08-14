@@ -7485,27 +7485,117 @@
             return v === undefined ? defaultVal : !!v;
         };
 
+        // Track reordering — grab the "⋮⋮" grip (or drag the waveform mostly
+        // vertically) and drag a track up/down past its neighbors. Reorders
+        // window.dawTracks live as you cross each row's midpoint, throttled
+        // to one reorder-check per animation frame.
+        window.dawTrackDragStart = function(e, trackId) {
+            e.preventDefault();
+            e.stopPropagation();
+            const headers = document.getElementById('daw-track-headers');
+            const lanes = document.getElementById('daw-tracks');
+            if (!headers || !lanes) return;
+
+            let currentIndex = window.dawTracks.findIndex(t => t.id === trackId);
+            if (currentIndex === -1) return;
+
+            let rafId = null;
+            let pendingY = null;
+
+            const markDragging = (on) => {
+                const hRow = headers.children[currentIndex];
+                const lRow = lanes.children[currentIndex];
+                if (hRow) { hRow.style.opacity = on ? '0.4' : ''; hRow.style.cursor = on ? 'grabbing' : ''; }
+                if (lRow) { lRow.style.opacity = on ? '0.4' : ''; }
+            };
+            markDragging(true);
+            document.body.style.cursor = 'grabbing';
+
+            const move = (ev) => {
+                if (ev.cancelable) ev.preventDefault();
+                pendingY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                if (rafId) return; // already scheduled — the queued frame will pick up the latest "pendingY"
+                rafId = window.requestAnimationFrame(() => {
+                    rafId = null;
+                    if (pendingY === null) return;
+                    const rows = Array.from(headers.children);
+                    let targetIndex = rows.length - 1;
+                    for (let i = 0; i < rows.length; i++) {
+                        const r = rows[i].getBoundingClientRect();
+                        if (pendingY < r.top + r.height / 2) { targetIndex = i; break; }
+                    }
+                    targetIndex = Math.max(0, Math.min(window.dawTracks.length - 1, targetIndex));
+                    if (targetIndex !== currentIndex) {
+                        const [moved] = window.dawTracks.splice(currentIndex, 1);
+                        window.dawTracks.splice(targetIndex, 0, moved);
+                        currentIndex = targetIndex;
+                        window.renderDawTracks();
+                        markDragging(true);
+                    }
+                });
+            };
+            const up = () => {
+                if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+                document.body.style.cursor = '';
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+                window.renderDawTracks(); // clean re-render clears the inline dragging styles
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move, { passive: false });
+            document.addEventListener('touchend', up);
+        };
+
         // Clip dragging (the waveform "grab and slide" on the editor page) —
         // throttled to one transform update per animation frame via
         // window.requestAnimationFrame, same pattern as the EQ node dragging
         // above, instead of writing style.transform on every raw mousemove.
+        // The first few pixels of movement decide the axis: mostly-horizontal
+        // moves the clip in time (existing behavior); mostly-vertical hands
+        // off to the same track-reorder drag the grip handle uses.
         window.dawClipDragStart = function(e, trackId) {
             const startX = e.touches ? e.touches[0].clientX : e.clientX;
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
             const startOffset = window.dawClipOffsets[trackId] || 0;
             const wrap = document.getElementById('clip-wrap-' + trackId);
             if (!wrap) return;
+            let axis = null; // becomes 'x' or 'y' once movement crosses the threshold
             let dragging = false;
             let rafId = null;
             let pending = null;
             const PIXELS_PER_BAR = 108; // matches .daw-ruler-mark width
+
+            const cleanup = () => {
+                if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+
             const move = (ev) => {
                 const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
-                const delta = clientX - startX;
-                if (!dragging && Math.abs(delta) > 5) dragging = true;
-                if (!dragging) return;
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const deltaX = clientX - startX;
+                const deltaY = clientY - startY;
+
+                if (!axis) {
+                    if (Math.abs(deltaX) < 5 && Math.abs(deltaY) < 5) return;
+                    axis = Math.abs(deltaY) > Math.abs(deltaX) ? 'y' : 'x';
+                    if (axis === 'y') {
+                        cleanup();
+                        window.dawTrackDragStart(ev, trackId); // hand off to the vertical reorder drag
+                        return;
+                    }
+                    dragging = true;
+                }
+                if (axis !== 'x' || !dragging) return;
 
                 ev.preventDefault();
-                let newOffset = Math.max(0, startOffset + delta); // never drag left of the track's own start
+                let newOffset = Math.max(0, startOffset + deltaX); // never drag left of the track's own start
 
                 // Mouse Modifiers (Preferences → Editing Behavior → Mouse Modifiers): "Shift: Move item ignoring snap" is live.
                 const shiftHeld = !!ev.shiftKey;
@@ -7527,8 +7617,8 @@
                 });
             };
             const up = () => {
-                if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
                 wrap.style.outline = 'none';
+                if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
                 document.removeEventListener('mousemove', move);
                 document.removeEventListener('mouseup', up);
                 document.removeEventListener('touchmove', move);
@@ -7573,7 +7663,7 @@
                 return `
                 <div class="daw-track-header-row" oncontextmenu="window.openDawTrackContextMenu(event,'${t.id}')" style="height:${dawRowHeight(t)}px;">
                     <div class="flex items-center gap-2">
-                        <span class="daw-grip">⋮⋮</span>
+                        <span class="daw-grip" style="cursor:grab;" onmousedown="window.dawTrackDragStart(event,'${t.id}')" ontouchstart="window.dawTrackDragStart(event,'${t.id}')" title="Drag to reorder">⋮⋮</span>
                         <span id="daw-recbtn-${t.id}" class="daw-rec-btn ${t.recordEnabled ? 'armed' : ''}" onclick="window.toggleDawTrackRecordEnable('${t.id}')" title="Record Enable"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg></span>
                         <span class="text-[12px] font-bold neon-blue-text truncate flex-1">${t.name}</span>
                         <button onclick="toggleDawMute('${t.id}')" id="daw-mute-${t.id}" class="daw-chip-btn ${t.muted ? 'on-mute' : ''}">M</button>
