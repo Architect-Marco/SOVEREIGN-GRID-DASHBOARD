@@ -9107,9 +9107,10 @@
                         old.destroy();
                     } catch (e) {}
                 }
+                const waveH = Math.max(24, (container.clientHeight || 76) - 6);
                 window.waves[key] = WaveSurfer.create({
                     container: `#wave-${key}`, waveColor: t.color, progressColor: t.color,
-                    cursorWidth: 0, barWidth: 3, barGap: 1, barRadius: 1, responsive: true, height: 30, normalize: true, interact: false
+                    cursorWidth: 0, barWidth: 3, barGap: 1, barRadius: 1, responsive: true, height: waveH, normalize: true, interact: false
                 });
                 window.waves[key].setVolume((t.volume ?? 80) / 100);
                 window.waves[key].on('audioprocess', () => { window.updateDawTimer(key); window.updateDawPlayhead(); });
