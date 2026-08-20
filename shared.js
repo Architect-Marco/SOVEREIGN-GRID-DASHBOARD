@@ -7214,34 +7214,42 @@
         // one distinct colored line per linked plugin instead of just the base
         // cyan volume curve — otherwise there's no way to tell what's linked or
         // which direction it's moving relative to the fader.
+        // Small vertical offsets (in the 0-100 display scale) keep the four possible
+        // overlay lines visually separated even when two parameters move in
+        // identical proportion to volume (e.g. a direct link and volume itself
+        // are the same shape) — without the offset they'd draw exactly on top of
+        // each other and read as "one line" even though multiple things are linked.
         const DAW_LINK_OVERLAY_STYLES = {
-            eq: { color: '#ff9d2f', dash: '', label: 'EQ-8 LP freq' },
-            sd: { color: '#ff2fd0', dash: '4,3', label: 'Delay wet' },
-            ar: { color: '#4dff8f', dash: '2,3', label: 'Reverb wet' },
-            sp: { color: '#ffe14d', dash: '1,4', label: 'Comp thresh' }
+            eq: { color: '#ff9d2f', dash: '', label: 'EQ-8 LP freq', dir: 1, offset: -9 },
+            sd: { color: '#ff2fd0', dash: '4,3', label: 'Delay wet', dir: -1, offset: -3 },
+            ar: { color: '#4dff8f', dash: '2,3', label: 'Reverb wet', dir: -1, offset: 3 },
+            sp: { color: '#ffe14d', dash: '1,4', label: 'Comp thresh', dir: 1, offset: 9 }
         };
+        function dawLinkOverlayTransform(style) {
+            return v => Math.max(0, Math.min(100, (style.dir === 1 ? v : 100 - v) + style.offset));
+        }
 
         function dawAutomationLinkedOverlays(trackId) {
             const overlays = [];
             Object.keys(window.dawEqState || {}).forEach(key => {
                 if (dawTrackIdFromFxKey(key) !== trackId) return;
                 const s = window.dawEqState[key];
-                if (s.volumeLink && s.bands.some(b => b.type === 'Low Pass')) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.eq, transform: v => v });
+                if (s.volumeLink && s.bands.some(b => b.type === 'Low Pass')) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.eq, transform: dawLinkOverlayTransform(DAW_LINK_OVERLAY_STYLES.eq) });
             });
             Object.keys(window.dawSdState || {}).forEach(key => {
                 if (dawTrackIdFromFxKey(key) !== trackId) return;
                 const s = window.dawSdState[key];
-                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.sd, transform: v => 100 - v });
+                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.sd, transform: dawLinkOverlayTransform(DAW_LINK_OVERLAY_STYLES.sd) });
             });
             Object.keys(window.dawArState || {}).forEach(key => {
                 if (dawTrackIdFromFxKey(key) !== trackId) return;
                 const s = window.dawArState[key];
-                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.ar, transform: v => 100 - v });
+                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.ar, transform: dawLinkOverlayTransform(DAW_LINK_OVERLAY_STYLES.ar) });
             });
             Object.keys(window.dawSpState || {}).forEach(key => {
                 if (dawTrackIdFromFxKey(key) !== trackId) return;
                 const s = window.dawSpState[key];
-                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.sp, transform: v => v });
+                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.sp, transform: dawLinkOverlayTransform(DAW_LINK_OVERLAY_STYLES.sp) });
             });
             return overlays;
         }
@@ -7439,12 +7447,20 @@
         window.dawEqToggleVolumeLink = function(key) {
             const s = dawEqGetState(key);
             s.volumeLink = !s.volumeLink;
-            const lp = s.bands.find(b => b.type === 'Low Pass');
+            let lp = s.bands.find(b => b.type === 'Low Pass');
+            if (s.volumeLink && !lp && s.bands.length < 8) {
+                // Linking with no Low Pass band would silently do nothing — add one
+                // automatically so the link actually has something to modulate.
+                lp = { freq: DAW_LINK_EQ_MAX_FREQ, gain: 0, bw: 1.5, type: 'Low Pass', enabled: true };
+                s.bands.push(lp);
+                s.selectedBand = s.bands.length - 1;
+            }
             if (s.volumeLink && lp) s.volumeLinkBaseFreq = lp.freq; // remember where the user had it for a clean unlink
-            else if (!s.volumeLink && lp && s.volumeLinkBaseFreq != null) { lp.freq = s.volumeLinkBaseFreq; window.dawEqRenderGraphOnly(key); window.dawEqSyncControls(key); }
+            else if (!s.volumeLink && lp && s.volumeLinkBaseFreq != null) { lp.freq = s.volumeLinkBaseFreq; }
             const sk = eq8SafeKey(key);
             const btn = document.getElementById(`eq8-vollink-${sk}`);
             if (btn) btn.classList.toggle('link-active', s.volumeLink);
+            window.renderDawFxPicker(); // band list may have changed — repaint the whole panel, not just the graph
         };
 
         window.dawSpToggleVolumeLink = function(key) {
