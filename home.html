@@ -8,6 +8,37 @@
     <script src="https://unpkg.com/wavesurfer.js@7"></script>
     <link rel="stylesheet" href="shared.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* SOVEREIGN EXTRACTION SEQUENCE — button pulse + full-screen neon sweep */
+        .extraction-btn.extraction-active {
+            background: rgba(47,208,255,0.12);
+            box-shadow: 0 0 10px rgba(47,208,255,0.5), 0 0 22px rgba(47,208,255,0.25);
+            animation: extraction-btn-pulse 0.6s ease-in-out infinite;
+        }
+        @keyframes extraction-btn-pulse {
+            0%, 100% { box-shadow: 0 0 8px rgba(47,208,255,0.45), 0 0 18px rgba(47,208,255,0.2); }
+            50% { box-shadow: 0 0 16px rgba(47,208,255,0.9), 0 0 34px rgba(47,208,255,0.5); }
+        }
+        .extraction-sweep-line {
+            position: absolute;
+            left: 0; right: 0; top: -4px;
+            height: 3px;
+            background: #2fd0ff;
+            box-shadow: 0 0 12px 3px rgba(47,208,255,0.9), 0 0 40px 10px rgba(47,208,255,0.4);
+            animation: extraction-sweep-move 1.4s linear 2;
+        }
+        @keyframes extraction-sweep-move {
+            0% { transform: translateY(0); opacity: 0.9; }
+            100% { transform: translateY(100vh); opacity: 0.9; }
+        }
+        #extraction-toast {
+            animation: extraction-toast-in 0.25s ease-out;
+        }
+        @keyframes extraction-toast-in {
+            0% { opacity: 0; transform: translateY(-8px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
 <body class="flex flex-col">
     <div class="scanline"></div>
@@ -54,12 +85,41 @@
                         <h1 class="ethnocentric-title tracking-[0.05em]" style="font-size:16pt;">Welcome, Architect</h1>
                         <p class="text-gray-500 text-[10px] uppercase tracking-[0.3em] font-black mt-2">Vertical Takeover Active / Noir Sector Queen</p>
                     </div>
-                    <div class="w-full max-w-xs">
-                        <div class="relative">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                            <input type="text" id="home-search-input" placeholder="Search pages, tools, media, artists..." class="w-full bg-[#0a0a0a] border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-[11px] text-white placeholder-gray-600 outline-none focus:border-white/40 transition-all" oninput="if(this.value.trim()){ document.getElementById('app-menu-modal').classList.remove('hidden'); window.filterAppMenu(this.value); } else { document.getElementById('app-menu-modal').classList.add('hidden'); }" onkeydown="if(event.key==='Enter') window.runHomeSearch()">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <button id="extraction-trigger" onclick="window.initiateExtractionSequence()" class="extraction-btn px-5 py-2.5 rounded-lg border border-[#2fd0ff] text-[#2fd0ff] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[rgba(47,208,255,0.1)] transition-all flex-shrink-0">Initiate Extraction</button>
+                        <div class="w-full max-w-xs">
+                            <div class="relative">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                                <input type="text" id="home-search-input" placeholder="Search pages, tools, media, artists..." class="w-full bg-[#0a0a0a] border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-[11px] text-white placeholder-gray-600 outline-none focus:border-white/40 transition-all" oninput="if(this.value.trim()){ document.getElementById('app-menu-modal').classList.remove('hidden'); window.filterAppMenu(this.value); } else { document.getElementById('app-menu-modal').classList.add('hidden'); }" onkeydown="if(event.key==='Enter') window.runHomeSearch()">
+                            </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- EXTRACTION STATUS PANEL — hidden until Initiate Extraction is triggered -->
+                <div id="extraction-status-panel" class="hidden bg-[#0a0a0a] noir-bezel rounded-2xl p-6 mb-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-black/40 border border-white/5 rounded-xl p-4 text-center">
+                        <div class="text-[9px] text-gray-500 uppercase font-black tracking-[0.25em] mb-2">Signal Hardening</div>
+                        <div id="extraction-metric-signal" class="text-2xl font-black neon-blue-text tracking-tight">0%</div>
+                    </div>
+                    <div class="bg-black/40 border border-white/5 rounded-xl p-4 text-center">
+                        <div class="text-[9px] text-gray-500 uppercase font-black tracking-[0.25em] mb-2">528Hz Sync</div>
+                        <div id="extraction-metric-sync" class="text-2xl font-black neon-blue-text tracking-tight">0%</div>
+                    </div>
+                    <div class="bg-black/40 border border-white/5 rounded-xl p-4 text-center">
+                        <div class="text-[9px] text-gray-500 uppercase font-black tracking-[0.25em] mb-2">Bounty Extraction</div>
+                        <div id="extraction-metric-bounty" class="text-2xl font-black neon-blue-text tracking-tight">0%</div>
+                    </div>
+                </div>
+
+                <!-- NEON SWEEP OVERLAY -->
+                <div id="extraction-sweep" class="hidden fixed inset-0 z-[999] pointer-events-none overflow-hidden">
+                    <div class="extraction-sweep-line"></div>
+                </div>
+
+                <!-- EXTRACTION SUCCESS NOTIFICATION -->
+                <div id="extraction-toast" class="hidden fixed top-6 right-6 z-[1000] bg-black noir-bezel border border-[#2fd0ff] rounded-xl px-5 py-4 text-[11px] font-black uppercase tracking-widest neon-blue-text shadow-2xl">
+                    Success: DNA Secured
                 </div>
 
                 <!-- TABS -->
