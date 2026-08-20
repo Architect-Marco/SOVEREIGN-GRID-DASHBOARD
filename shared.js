@@ -7220,9 +7220,9 @@
         // each other and read as "one line" even though multiple things are linked.
         const DAW_LINK_OVERLAY_STYLES = {
             eq: { color: '#ff9d2f', dash: '', label: 'EQ-8 LP freq', dir: 1, offset: -9 },
-            sd: { color: '#ff2fd0', dash: '4,3', label: 'Delay wet', dir: -1, offset: -3 },
-            ar: { color: '#4dff8f', dash: '2,3', label: 'Reverb wet', dir: -1, offset: 3 },
-            sp: { color: '#ffe14d', dash: '1,4', label: 'Comp thresh', dir: 1, offset: 9 }
+            sd: { color: '#ff2fd0', dash: '', label: 'Delay wet', dir: -1, offset: -3 },
+            ar: { color: '#4dff8f', dash: '', label: 'Reverb wet', dir: -1, offset: 3 },
+            sp: { color: '#ffe14d', dash: '', label: 'Comp thresh', dir: 1, offset: 9 }
         };
         function dawLinkOverlayTransform(style) {
             return v => Math.max(0, Math.min(100, (style.dir === 1 ? v : 100 - v) + style.offset));
@@ -7488,7 +7488,7 @@
                     <line x1="0" y1="${dawAutoValToY(80).toFixed(1)}" x2="1000" y2="${dawAutoValToY(80).toFixed(1)}" stroke="rgba(47,208,255,0.12)" stroke-width="0.6" vector-effect="non-scaling-stroke"></line>
                     ${pts.length
                         ? `<polyline points="${pathD}" fill="none" stroke="#2fd0ff" stroke-width="${volumeFocused ? 1.9 : 1.4}" vector-effect="non-scaling-stroke" opacity="${volumeLocked ? 0.4 : 1}" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.55));"></polyline>`
-                        : `<line x1="0" y1="${dawAutoValToY(80).toFixed(1)}" x2="1000" y2="${dawAutoValToY(80).toFixed(1)}" stroke="rgba(47,208,255,0.3)" stroke-width="0.6" stroke-dasharray="6,4" vector-effect="non-scaling-stroke"></line>`}
+                        : `<line x1="0" y1="${dawAutoValToY(80).toFixed(1)}" x2="1000" y2="${dawAutoValToY(80).toFixed(1)}" stroke="rgba(47,208,255,0.3)" stroke-width="0.6" vector-effect="non-scaling-stroke"></line>`}
                     ${overlayLines}
                     ${nodes}
                     ${overlayNodes}
