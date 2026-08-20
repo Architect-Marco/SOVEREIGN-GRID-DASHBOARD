@@ -7484,7 +7484,7 @@
                 ${overlays.length ? `<div class="absolute bottom-0.5 right-1.5 text-[6px] text-gray-500 font-bold uppercase tracking-wide pointer-events-none">Shift=Volume · Alt=Plugin</div>` : ''}`;
 
             return `${legend}<svg id="daw-automation-svg-${t.id}" width="100%" height="100%" viewBox="0 0 1000 100" preserveAspectRatio="none"
-                    style="display:block; cursor:crosshair;" onclick="window.dawAutomationLaneClick(event,'${t.id}')">
+                    style="display:block; cursor:crosshair;" onmousedown="window.dawAutomationLaneDown(event,'${t.id}')" ontouchstart="window.dawAutomationLaneDown(event,'${t.id}')">
                     <line x1="0" y1="${dawAutoValToY(80).toFixed(1)}" x2="1000" y2="${dawAutoValToY(80).toFixed(1)}" stroke="rgba(47,208,255,0.12)" stroke-width="0.6" vector-effect="non-scaling-stroke"></line>
                     ${pts.length
                         ? `<polyline points="${pathD}" fill="none" stroke="#2fd0ff" stroke-width="${volumeFocused ? 1.9 : 1.4}" vector-effect="non-scaling-stroke" opacity="${volumeLocked ? 0.4 : 1}" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.55));"></polyline>`
@@ -7517,17 +7517,23 @@
             window.initDawWaves(); // renderDawTracks rebuilds the wave containers too — reattach any already-loaded audio
         };
 
-        // Layered point placement: a plain click respects the legend's focus/solo
-        // state; Shift+Click always targets Volume; Alt+Click always targets a
-        // plugin line — letting you build a full spectral automation map (volume
-        // + several plugin curves) without ever switching pages or modes.
-        window.dawAutomationLaneClick = function(event, trackId) {
+        // Press-and-drag directly on the line (or anywhere in the empty lane) to
+        // both create a point and immediately bend the curve at that spot, in one
+        // motion — "grab the line and pull it down" rather than click-then-drag.
+        // Layering is the same as before: plain press respects the legend's
+        // focus/solo state; Shift always targets Volume; Alt always targets a
+        // plugin line — letting you build a full spectral automation map without
+        // ever switching pages or modes.
+        window.dawAutomationLaneDown = function(event, trackId) {
+            if (event.type === 'mousedown' && event.button !== 0) return; // left-click only
             const svg = document.getElementById('daw-automation-svg-' + trackId);
             const track = window.dawTracks.find(x => x.id === trackId);
             if (!svg || !track) return;
+            if (event.cancelable) event.preventDefault();
             const rect = svg.getBoundingClientRect();
-            const xFrac = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-            const yPct = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100));
+            const pt = event.touches ? event.touches[0] : event;
+            const xFrac = Math.max(0, Math.min(1, (pt.clientX - rect.left) / rect.width));
+            const yPct = Math.max(0, Math.min(100, ((pt.clientY - rect.top) / rect.height) * 100));
             const time = dawAutoXToTime(xFrac);
 
             let target;
@@ -7536,30 +7542,31 @@
             else target = dawAutomationClickTarget(trackId);
             if (!target || target.kind === 'locked') return;
 
-            if (target.kind === 'volume') {
-                const pts = dawAutomationPoints(track);
-                pts.push({ t: time, v: Math.round(dawAutoYToVal(yPct)) });
-                pts.sort((a, b) => a.t - b.t);
+            const kind = target.kind;
+            const lineKey = kind === 'plugin' ? target.overlay.lineKey : null;
+            const offset = kind === 'plugin' ? (target.overlay.offset || 0) : 0;
+            const pts = kind === 'volume' ? dawAutomationPoints(track) : dawPluginAutoPoints(track, lineKey);
+            const newPoint = { t: time, v: Math.round(Math.max(0, Math.min(100, dawAutoYToVal(yPct) - offset))) };
+            pts.push(newPoint);
+            pts.sort((a, b) => a.t - b.t);
+            if (kind === 'volume') {
                 const chip = document.getElementById('daw-auto-' + trackId);
                 if (chip) chip.innerText = 'A ' + pts.length;
-            } else {
-                const o = target.overlay;
-                const raw = Math.max(0, Math.min(100, dawAutoYToVal(yPct) - (o.offset || 0)));
-                const pts = dawPluginAutoPoints(track, o.lineKey);
-                pts.push({ t: time, v: Math.round(raw) });
-                pts.sort((a, b) => a.t - b.t);
             }
             window.renderDawAutomationLane(trackId);
-            window.dawApplyAutomationFrame(); // reflect the new curve immediately
+            window.dawApplyAutomationFrame();
+
+            // Keep dragging the point we just created for as long as the mouse/touch
+            // stays down, so pulling down/up right after the press bends the line
+            // exactly where it was grabbed.
+            dawAutomationBeginDrag(trackId, kind, lineKey, pts.indexOf(newPoint), rect);
         };
 
-        window.dawAutomationNodeDown = function(event, trackId, kind, lineKey, index) {
-            event.preventDefault();
-            event.stopPropagation(); // don't let this bubble into dawAutomationLaneClick and add a second point
-            const svg = document.getElementById('daw-automation-svg-' + trackId);
+        // Shared drag loop used both when grabbing an existing node and when a new
+        // point was just created by dawAutomationLaneDown above.
+        function dawAutomationBeginDrag(trackId, kind, lineKey, index, rect) {
             const track = window.dawTracks.find(x => x.id === trackId);
-            if (!svg || !track) return;
-            const rect = svg.getBoundingClientRect();
+            if (!track) return;
             let offset = 0;
             if (kind === 'plugin') {
                 const ov = dawAutomationLinkedOverlays(trackId).find(o => o.lineKey === lineKey);
@@ -7611,6 +7618,15 @@
             document.addEventListener('mouseup', onUp);
             document.addEventListener('touchmove', onMove, { passive: false });
             document.addEventListener('touchend', onUp);
+        }
+
+        window.dawAutomationNodeDown = function(event, trackId, kind, lineKey, index) {
+            event.preventDefault();
+            event.stopPropagation(); // don't let this bubble into dawAutomationLaneDown and create a second point
+            const svg = document.getElementById('daw-automation-svg-' + trackId);
+            if (!svg) return;
+            const rect = svg.getBoundingClientRect();
+            dawAutomationBeginDrag(trackId, kind, lineKey, index, rect);
         };
 
         window.dawAutomationNodeRemove = function(event, trackId, kind, lineKey, index) {
