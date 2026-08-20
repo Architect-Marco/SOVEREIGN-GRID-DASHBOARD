@@ -7209,9 +7209,47 @@
 
         const DAW_AUTO_CURVE_STEPS = 14; // subdivisions per segment used to draw the S-curve as a smooth path
 
+        // Color-coded per-plugin overlay so a track with several parameters linked
+        // to its volume automation (EQ freq, delay/reverb wet, comp threshold) shows
+        // one distinct colored line per linked plugin instead of just the base
+        // cyan volume curve — otherwise there's no way to tell what's linked or
+        // which direction it's moving relative to the fader.
+        const DAW_LINK_OVERLAY_STYLES = {
+            eq: { color: '#ff9d2f', dash: '', label: 'EQ-8 LP freq' },
+            sd: { color: '#ff2fd0', dash: '4,3', label: 'Delay wet' },
+            ar: { color: '#4dff8f', dash: '2,3', label: 'Reverb wet' },
+            sp: { color: '#ffe14d', dash: '1,4', label: 'Comp thresh' }
+        };
+
+        function dawAutomationLinkedOverlays(trackId) {
+            const overlays = [];
+            Object.keys(window.dawEqState || {}).forEach(key => {
+                if (dawTrackIdFromFxKey(key) !== trackId) return;
+                const s = window.dawEqState[key];
+                if (s.volumeLink && s.bands.some(b => b.type === 'Low Pass')) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.eq, transform: v => v });
+            });
+            Object.keys(window.dawSdState || {}).forEach(key => {
+                if (dawTrackIdFromFxKey(key) !== trackId) return;
+                const s = window.dawSdState[key];
+                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.sd, transform: v => 100 - v });
+            });
+            Object.keys(window.dawArState || {}).forEach(key => {
+                if (dawTrackIdFromFxKey(key) !== trackId) return;
+                const s = window.dawArState[key];
+                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.ar, transform: v => 100 - v });
+            });
+            Object.keys(window.dawSpState || {}).forEach(key => {
+                if (dawTrackIdFromFxKey(key) !== trackId) return;
+                const s = window.dawSpState[key];
+                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.sp, transform: v => v });
+            });
+            return overlays;
+        }
+
         function dawAutomationLaneSvg(t, laneHeight) {
             const pts = dawAutomationPoints(t).slice().sort((a, b) => a.t - b.t);
             let pathD = '';
+            const samples = []; // {x, v} — the base eased volume curve, reused to derive each linked overlay's shape
             if (pts.length) {
                 // Extend a flat lead-in/lead-out so the drawn curve reads as a continuous
                 // envelope across the whole lane, not just between the first/last node.
@@ -7219,16 +7257,16 @@
                 // same eased curve used for playback, so what's drawn is what plays.
                 const xs = [0, ...pts.map(p => dawAutoTimeToX(p.t)), 1000];
                 const vs = [pts[0].v, ...pts.map(p => p.v), pts[pts.length - 1].v];
-                const segPts = [`${xs[0].toFixed(1)},${dawAutoValToY(vs[0]).toFixed(1)}`];
+                samples.push({ x: xs[0], v: vs[0] });
                 for (let i = 0; i < xs.length - 1; i++) {
                     for (let s = 1; s <= DAW_AUTO_CURVE_STEPS; s++) {
                         const frac = s / DAW_AUTO_CURVE_STEPS;
                         const x = xs[i] + (xs[i + 1] - xs[i]) * frac;
                         const v = vs[i] + (vs[i + 1] - vs[i]) * dawAutomationEase(frac);
-                        segPts.push(`${x.toFixed(1)},${dawAutoValToY(v).toFixed(1)}`);
+                        samples.push({ x, v });
                     }
                 }
-                pathD = segPts.join(' ');
+                pathD = samples.map(p => `${p.x.toFixed(1)},${dawAutoValToY(p.v).toFixed(1)}`).join(' ');
             }
             const nodes = pts.map((p, i) => `
                 <circle class="daw-automation-node" cx="${dawAutoTimeToX(p.t).toFixed(1)}" cy="${dawAutoValToY(p.v).toFixed(1)}" r="3.2"
@@ -7236,11 +7274,23 @@
                     onclick="event.stopPropagation()"
                     ondblclick="window.dawAutomationNodeRemove(event,'${t.id}',${i})"
                     oncontextmenu="window.dawAutomationNodeRemove(event,'${t.id}',${i})"></circle>`).join('');
-            return `<svg id="daw-automation-svg-${t.id}" width="100%" height="100%" viewBox="0 0 1000 100" preserveAspectRatio="none"
+
+            const overlays = pts.length ? dawAutomationLinkedOverlays(t.id) : [];
+            const overlayLines = overlays.map(o => {
+                const overlayPts = samples.map(p => `${p.x.toFixed(1)},${dawAutoValToY(o.transform(p.v)).toFixed(1)}`).join(' ');
+                return `<polyline points="${overlayPts}" fill="none" stroke="${o.color}" stroke-width="1.1" stroke-dasharray="${o.dash}" vector-effect="non-scaling-stroke" opacity="0.85"></polyline>`;
+            }).join('');
+            const legend = overlays.length ? `
+                <div class="absolute top-1 left-1.5 flex items-center gap-2.5 flex-wrap pointer-events-none" style="max-width:calc(100% - 12px);">
+                    <span class="flex items-center gap-1"><span style="width:8px; height:2px; background:#2fd0ff; display:inline-block;"></span><span class="text-[6.5px] text-gray-400 font-bold uppercase tracking-wide">Volume</span></span>
+                    ${overlays.map(o => `<span class="flex items-center gap-1"><span style="width:8px; height:2px; background:${o.color}; display:inline-block;"></span><span class="text-[6.5px] font-bold uppercase tracking-wide" style="color:${o.color};">${o.label}</span></span>`).join('')}
+                </div>` : '';
+
+            return `${legend}<svg id="daw-automation-svg-${t.id}" width="100%" height="100%" viewBox="0 0 1000 100" preserveAspectRatio="none"
                     style="display:block; cursor:crosshair;" onclick="window.dawAutomationLaneClick(event,'${t.id}')">
                     <line x1="0" y1="${dawAutoValToY(80).toFixed(1)}" x2="1000" y2="${dawAutoValToY(80).toFixed(1)}" stroke="rgba(47,208,255,0.12)" stroke-width="0.6" vector-effect="non-scaling-stroke"></line>
                     ${pts.length
-                        ? `<polyline points="${pathD}" fill="none" stroke="#2fd0ff" stroke-width="1.4" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.55));"></polyline>`
+                        ? `<polyline points="${pathD}" fill="none" stroke="#2fd0ff" stroke-width="1.4" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.55));"></polyline>${overlayLines}`
                         : `<line x1="0" y1="${dawAutoValToY(80).toFixed(1)}" x2="1000" y2="${dawAutoValToY(80).toFixed(1)}" stroke="rgba(47,208,255,0.3)" stroke-width="0.6" stroke-dasharray="6,4" vector-effect="non-scaling-stroke"></line>`}
                     ${nodes}
                 </svg>`;
