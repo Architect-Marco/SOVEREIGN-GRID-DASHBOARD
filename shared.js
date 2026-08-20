@@ -1528,7 +1528,10 @@
                     <div id="eq8-preset-menu-${sk}" class="hidden-section"></div>
                 </span>
             </div>
-            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5 flex-shrink-0">${plugin.category}</div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5 flex-shrink-0">${plugin.category}</div>
+                <button id="eq8-vollink-${sk}" onclick="event.stopPropagation(); window.dawEqToggleVolumeLink('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest border rounded px-1.5 py-0.5 transition-colors ${state.volumeLink ? 'link-active bg-[#2fd0ff]/20 border-[#2fd0ff] neon-blue-text' : 'text-gray-500 border-white/10 hover:border-[rgba(47,208,255,0.4)] hover:text-[#2fd0ff]'}" title="Link the Low Pass band's cutoff to this track's volume automation — it darkens as the level fades, like the sound receding into the distance. Add a Low Pass band first.">🔗 LP freq → volume</button>
+            </div>
 
             <div class="flex gap-3 mt-3">
                 <div class="flex-1 min-w-0">
@@ -4201,7 +4204,10 @@
                     <div id="dawar-preset-menu-${sk}" class="hidden-section"></div>
                 </span>
             </div>
-            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+            <div class="flex items-center gap-1.5 flex-wrap mt-1">
+                <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+                <button id="dawar-vollink-${sk}" onclick="event.stopPropagation(); window.dawArToggleVolumeLink('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest border rounded px-1.5 py-0.5 transition-colors ${s.volumeLink ? 'link-active bg-[#2fd0ff]/20 border-[#2fd0ff] neon-blue-text' : 'text-gray-500 border-white/10 hover:border-[rgba(47,208,255,0.4)] hover:text-[#2fd0ff]'}" title="Link the reverb return to this track's volume automation — the wet tail rises as the dry signal fades, so the sound trails off instead of cutting out.">🔗 Wet → volume</button>
+            </div>
 
             <div class="grid gap-3 mt-3" style="grid-template-columns: 1fr 150px;">
 
@@ -4341,6 +4347,178 @@
                 const preset = (window.dawFxUserPresets['aether-reverb'] || [])[presetIndex];
                 if (preset) {
                     window.dawArState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
+            window.renderDawFxPicker();
+        };
+
+        // ============================================================
+        // SOVEREIGN DELAY — "The Cluster Engine": tap-count/time-division
+        // delay with a stereo/mid-side/ping-pong spread and a built-in
+        // modulation FX on the repeats. Same factory-default + user-preset
+        // pattern as Aether-Reverb, plus its own "🔗 Wet → volume" link so
+        // the Zero-G Tail technique works here too — as the track's volume
+        // automation pulls the dry signal down, the delay's wet return
+        // rises to fill the space, so the repeats trail off instead of
+        // the whole part just cutting out.
+        // ============================================================
+        window.dawSdState = window.dawSdState || {}; // key -> {div,taps,mode,fx,feedback,wet,bypass,volumeLink,volumeLinkBaseWet}
+        const DAW_SD_DIVS = ['1/4', '1/8', '1/8 T', '1/16', '1/16 T', '1/32', '1/64 T'];
+        const DAW_SD_MODES = ['Stereo', 'Mid/Side', 'Ping-Pong'];
+        const DAW_SD_FX = ['Chorus', 'Wobble', 'Flutter', 'None'];
+
+        function dawSdDefaultState() {
+            return { div: '1/64 T', taps: 8, mode: 'Mid/Side', fx: 'Chorus', feedback: 45, wet: 35, bypass: false };
+        }
+        function dawSdGetState(key) {
+            if (!window.dawSdState[key]) window.dawSdState[key] = dawSdDefaultState();
+            return window.dawSdState[key];
+        }
+
+        window.dawSdPanel = function(key, plugin) {
+            const s = dawSdGetState(key);
+            const sk = eq8SafeKey(key);
+
+            const sliderRow = (label, field, min, max, step, unit) => `
+            <div class="flex items-center gap-2">
+                <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest w-16 flex-shrink-0">${label}</span>
+                <input id="dawsd-slider-${field}-${sk}" type="range" min="${min}" max="${max}" step="${step}" value="${s[field]}" class="eq8-hslider"
+                    oninput="window.dawSdSetField('${key}','${field}', this.value)">
+                <input id="dawsd-input-${field}-${sk}" type="text" value="${s[field]}${unit}" onchange="window.dawSdSetFieldFromText('${key}','${field}', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-1.5 py-1 text-[8px] text-center neon-blue-text font-bold flex-shrink-0 outline-none">
+            </div>`;
+
+            return `
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button onclick="event.stopPropagation(); window.dawSdTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                        <span id="dawsd-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div id="dawsd-preset-menu-${sk}" class="hidden-section"></div>
+                </span>
+            </div>
+
+            <div class="flex items-center gap-1.5 flex-wrap mt-1">
+                <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+                <button id="dawsd-vollink-${sk}" onclick="event.stopPropagation(); window.dawSdToggleVolumeLink('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest border rounded px-1.5 py-0.5 transition-colors ${s.volumeLink ? 'link-active bg-[#2fd0ff]/20 border-[#2fd0ff] neon-blue-text' : 'text-gray-500 border-white/10 hover:border-[rgba(47,208,255,0.4)] hover:text-[#2fd0ff]'}" title="Link the wet return to this track's volume automation — the repeats trail off as the dry signal fades, instead of cutting out.">🔗 Wet → volume</button>
+                <button onclick="event.stopPropagation(); window.dawSdToggleBypass('${key}')" class="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border transition-colors ${s.bypass ? 'bg-[#2fd0ff]/20 border-[#2fd0ff] neon-blue-text' : 'text-gray-500 border-white/10 hover:text-[#2fd0ff] hover:border-[rgba(47,208,255,0.4)]'}">Bypass</button>
+            </div>
+
+            <div class="mt-3 space-y-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest w-16 flex-shrink-0">Division</span>
+                    <select onchange="window.dawSdSetField('${key}','div', this.value)" class="flex-1 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-2 py-1 text-[9px] font-bold neon-blue-text outline-none">
+                        ${DAW_SD_DIVS.map(d => `<option value="${d}" ${s.div === d ? 'selected' : ''}>${d}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest w-16 flex-shrink-0">Mode</span>
+                    <select onchange="window.dawSdSetField('${key}','mode', this.value)" class="flex-1 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-2 py-1 text-[9px] font-bold neon-blue-text outline-none">
+                        ${DAW_SD_MODES.map(m => `<option value="${m}" ${s.mode === m ? 'selected' : ''}>${m}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[8px] text-gray-500 uppercase font-black tracking-widest w-16 flex-shrink-0">FX</span>
+                    <select onchange="window.dawSdSetField('${key}','fx', this.value)" class="flex-1 bg-black/50 border border-[rgba(47,208,255,0.4)] rounded px-2 py-1 text-[9px] font-bold neon-blue-text outline-none">
+                        ${DAW_SD_FX.map(f => `<option value="${f}" ${s.fx === f ? 'selected' : ''}>${f}</option>`).join('')}
+                    </select>
+                </div>
+                ${sliderRow('Taps', 'taps', 1, 16, 1, '')}
+                ${sliderRow('Feedback', 'feedback', 0, 95, 1, '%')}
+                ${sliderRow('Wet', 'wet', 0, 100, 1, '%')}
+            </div>`;
+        };
+
+        window.dawSdSetField = function(key, field, value) {
+            const s = dawSdGetState(key);
+            s[field] = (field === 'div' || field === 'mode' || field === 'fx') ? value : parseFloat(value);
+            delete window.dawFxActivePresetLabel[key]; // manual tweak — no longer matches a named preset
+            const sk = eq8SafeKey(key);
+            const badge = document.getElementById(`dawsd-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            if (field !== 'div' && field !== 'mode' && field !== 'fx') {
+                const inp = document.getElementById(`dawsd-input-${field}-${sk}`);
+                const unit = field === 'feedback' || field === 'wet' ? '%' : '';
+                if (inp) inp.value = s[field] + unit;
+            }
+        };
+
+        window.dawSdSetFieldFromText = function(key, field, value) {
+            const s = dawSdGetState(key);
+            const num = parseFloat(String(value).replace(/[^\d.\-]/g, ''));
+            if (isNaN(num)) return;
+            const bounds = { taps: [1, 16], feedback: [0, 95], wet: [0, 100] }[field] || [0, 100];
+            s[field] = Math.max(bounds[0], Math.min(bounds[1], num));
+            delete window.dawFxActivePresetLabel[key];
+            const sk = eq8SafeKey(key);
+            const badge = document.getElementById(`dawsd-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const sl = document.getElementById(`dawsd-slider-${field}-${sk}`);
+            if (sl) sl.value = s[field];
+        };
+
+        window.dawSdToggleBypass = function(key) {
+            const s = dawSdGetState(key);
+            s.bypass = !s.bypass;
+            window.renderDawFxPicker();
+        };
+
+        window.dawSdToggleVolumeLink = function(key) {
+            const s = dawSdGetState(key);
+            s.volumeLink = !s.volumeLink;
+            if (s.volumeLink) s.volumeLinkBaseWet = s.wet;
+            else if (s.volumeLinkBaseWet != null) s.wet = s.volumeLinkBaseWet;
+            const sk = eq8SafeKey(key);
+            const btn = document.getElementById(`dawsd-vollink-${sk}`);
+            if (btn) btn.classList.toggle('link-active', s.volumeLink);
+            const sl = document.getElementById(`dawsd-slider-wet-${sk}`);
+            if (sl) sl.value = s.wet;
+            const inp = document.getElementById(`dawsd-input-wet-${sk}`);
+            if (inp) inp.value = s.wet + '%';
+        };
+
+        window.dawSdTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawsd-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawSdRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawSdRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawsd-preset-menu-${sk}`);
+            if (!el) return;
+            const userPresets = (window.dawFxUserPresets['sovereign-delay'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawSdApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                <button onclick="window.dawSdApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
+                </button>
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawSdApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+
+        window.dawSdApplyPreset = function(key, presetIndex) {
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawSdState[key] = dawSdDefaultState();
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = (window.dawFxUserPresets['sovereign-delay'] || [])[presetIndex];
+                if (preset) {
+                    window.dawSdState[key] = JSON.parse(JSON.stringify(preset.data));
                     window.dawFxActivePresetLabel[key] = preset.name;
                 }
             }
@@ -4976,7 +5154,10 @@
                     <div id="dawsp-preset-menu-${sk}" class="hidden-section"></div>
                 </span>
             </div>
-            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+            <div class="flex items-center gap-1.5 flex-wrap mt-1">
+                <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+                <button id="dawsp-vollink-${sk}" onclick="event.stopPropagation(); window.dawSpToggleVolumeLink('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest border rounded px-1.5 py-0.5 transition-colors ${s.volumeLink ? 'link-active bg-[#2fd0ff]/20 border-[#2fd0ff] neon-blue-text' : 'text-gray-500 border-white/10 hover:border-[rgba(47,208,255,0.4)] hover:text-[#2fd0ff]'}" title="Link threshold to this track's volume automation, so gain reduction stays consistent as the fader moves instead of pumping.">🔗 Threshold → volume</button>
+            </div>
 
             <div class="flex gap-2 mt-2">
                 <div class="flex-1 min-w-0 rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08);">
@@ -6999,9 +7180,18 @@
         function dawAutoTimeToX(t) { return Math.max(0, Math.min(1000, (t / dawAutomationTotalSeconds()) * 1000)); }
         function dawAutoXToTime(xFrac) { return Math.max(0, xFrac * dawAutomationTotalSeconds()); }
 
+        // Ease shape between two envelope points — smoothstep (3t²-2t³) instead of
+        // a straight ramp. This is "The Parabolic Glide": volume doesn't just go
+        // down, it fades away, slow at both ends and fastest through the middle,
+        // a natural S-curve/bezier automation lane rather than a robotic ramp.
+        function dawAutomationEase(frac) {
+            const f = Math.max(0, Math.min(1, frac));
+            return f * f * (3 - 2 * f);
+        }
+
         // Value of the envelope at an arbitrary time: flat before the first point,
-        // flat after the last point, linearly interpolated in between — matches
-        // how volume envelopes behave in most DAWs.
+        // flat after the last point, eased (S-curve) in between — matches how a
+        // volume fade actually sounds, not a linear DAW ramp.
         window.dawAutomationValueAt = function(track, time) {
             const pts = dawAutomationPoints(track).slice().sort((a, b) => a.t - b.t);
             if (!pts.length) return null;
@@ -7011,20 +7201,34 @@
                 const a = pts[i], b = pts[i + 1];
                 if (time >= a.t && time <= b.t) {
                     const frac = (b.t - a.t) > 0 ? (time - a.t) / (b.t - a.t) : 0;
-                    return a.v + (b.v - a.v) * frac;
+                    return a.v + (b.v - a.v) * dawAutomationEase(frac);
                 }
             }
             return pts[pts.length - 1].v;
         };
 
+        const DAW_AUTO_CURVE_STEPS = 14; // subdivisions per segment used to draw the S-curve as a smooth path
+
         function dawAutomationLaneSvg(t, laneHeight) {
             const pts = dawAutomationPoints(t).slice().sort((a, b) => a.t - b.t);
-            let line = '';
+            let pathD = '';
             if (pts.length) {
                 // Extend a flat lead-in/lead-out so the drawn curve reads as a continuous
                 // envelope across the whole lane, not just between the first/last node.
-                const mid = pts.map(p => `${dawAutoTimeToX(p.t).toFixed(1)},${dawAutoValToY(p.v).toFixed(1)}`).join(' ');
-                line = `0,${dawAutoValToY(pts[0].v).toFixed(1)} ${mid} 1000,${dawAutoValToY(pts[pts.length - 1].v).toFixed(1)}`;
+                // Every segment (including the flat lead-in/out) is sampled through the
+                // same eased curve used for playback, so what's drawn is what plays.
+                const xs = [0, ...pts.map(p => dawAutoTimeToX(p.t)), 1000];
+                const vs = [pts[0].v, ...pts.map(p => p.v), pts[pts.length - 1].v];
+                const segPts = [`${xs[0].toFixed(1)},${dawAutoValToY(vs[0]).toFixed(1)}`];
+                for (let i = 0; i < xs.length - 1; i++) {
+                    for (let s = 1; s <= DAW_AUTO_CURVE_STEPS; s++) {
+                        const frac = s / DAW_AUTO_CURVE_STEPS;
+                        const x = xs[i] + (xs[i + 1] - xs[i]) * frac;
+                        const v = vs[i] + (vs[i + 1] - vs[i]) * dawAutomationEase(frac);
+                        segPts.push(`${x.toFixed(1)},${dawAutoValToY(v).toFixed(1)}`);
+                    }
+                }
+                pathD = segPts.join(' ');
             }
             const nodes = pts.map((p, i) => `
                 <circle class="daw-automation-node" cx="${dawAutoTimeToX(p.t).toFixed(1)}" cy="${dawAutoValToY(p.v).toFixed(1)}" r="3.2"
@@ -7036,7 +7240,7 @@
                     style="display:block; cursor:crosshair;" onclick="window.dawAutomationLaneClick(event,'${t.id}')">
                     <line x1="0" y1="${dawAutoValToY(80).toFixed(1)}" x2="1000" y2="${dawAutoValToY(80).toFixed(1)}" stroke="rgba(47,208,255,0.12)" stroke-width="0.6" vector-effect="non-scaling-stroke"></line>
                     ${pts.length
-                        ? `<polyline points="${line}" fill="none" stroke="#2fd0ff" stroke-width="1.4" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.55));"></polyline>`
+                        ? `<polyline points="${pathD}" fill="none" stroke="#2fd0ff" stroke-width="1.4" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.55));"></polyline>`
                         : `<line x1="0" y1="${dawAutoValToY(80).toFixed(1)}" x2="1000" y2="${dawAutoValToY(80).toFixed(1)}" stroke="rgba(47,208,255,0.3)" stroke-width="0.6" stroke-dasharray="6,4" vector-effect="non-scaling-stroke"></line>`}
                     ${nodes}
                 </svg>`;
@@ -7155,8 +7359,106 @@
                 const v = window.dawAutomationValueAt(t, window.dawTransportTime);
                 if (v === null) return;
                 window.setDawVolume(t.id, v);
+                dawApplyLinkedAutomationForTrack(t.id, v);
             });
         };
+
+        // ============================================================
+        // LINKED AUTOMATION — plugin parameters that ride a track's volume
+        // envelope automatically, the way an engineer racks these moves
+        // together by hand instead of "just" pulling a fader down:
+        //   • Surgical EQ-8's Low Pass band darkens as volume fades (spectral
+        //     sync) — the sound recedes into the distance, not just gets quiet
+        //   • Aether-Reverb's wet return rises as the dry signal falls (the
+        //     Zero-G tail) — the soul stays behind instead of a hard cutoff
+        //   • Spectral Dynamics' threshold tracks the fader (neural pressure
+        //     link) so gain reduction stays consistent — no pumping
+        // Each link is a boolean on that specific plugin instance's own state
+        // object (state.volumeLink), toggled from its panel, so linking is
+        // per plugin-instance/per-track, not global.
+        // ============================================================
+        function dawTrackIdFromFxKey(key) {
+            return (typeof key === 'string' && key.indexOf('::') !== -1) ? key.split('::')[0] : null;
+        }
+
+        const DAW_LINK_EQ_MIN_FREQ = 700;     // Hz at volume 0 — fully "underwater"
+        const DAW_LINK_EQ_MAX_FREQ = 18000;   // Hz at volume 100 — essentially open
+        const DAW_LINK_COMP_RANGE_DB = 18;    // how far the threshold is allowed to shift with the fader
+        const DAW_LINK_REVERB_MAX_BOOST = 45; // added wet %, at volume 0, on top of the user's base setting
+
+        window.dawEqToggleVolumeLink = function(key) {
+            const s = dawEqGetState(key);
+            s.volumeLink = !s.volumeLink;
+            const lp = s.bands.find(b => b.type === 'Low Pass');
+            if (s.volumeLink && lp) s.volumeLinkBaseFreq = lp.freq; // remember where the user had it for a clean unlink
+            else if (!s.volumeLink && lp && s.volumeLinkBaseFreq != null) { lp.freq = s.volumeLinkBaseFreq; window.dawEqRenderGraphOnly(key); window.dawEqSyncControls(key); }
+            const sk = eq8SafeKey(key);
+            const btn = document.getElementById(`eq8-vollink-${sk}`);
+            if (btn) btn.classList.toggle('link-active', s.volumeLink);
+        };
+
+        window.dawSpToggleVolumeLink = function(key) {
+            const s = dawSpGetState(key);
+            s.volumeLink = !s.volumeLink;
+            if (s.volumeLink) s.volumeLinkBaseThr = s.thr;
+            else if (s.volumeLinkBaseThr != null) s.thr = s.volumeLinkBaseThr;
+            const sk = eq8SafeKey(key);
+            const btn = document.getElementById(`dawsp-vollink-${sk}`);
+            if (btn) btn.classList.toggle('link-active', s.volumeLink);
+        };
+
+        window.dawArToggleVolumeLink = function(key) {
+            const s = dawArGetState(key);
+            s.volumeLink = !s.volumeLink;
+            if (s.volumeLink) s.volumeLinkBaseReverb = s.reverb;
+            else if (s.volumeLinkBaseReverb != null) s.reverb = s.volumeLinkBaseReverb;
+            const sk = eq8SafeKey(key);
+            const btn = document.getElementById(`dawar-vollink-${sk}`);
+            if (btn) btn.classList.toggle('link-active', s.volumeLink);
+        };
+
+        // Applies every linked plugin parameter on one track for the given 0-100
+        // automation value `v`. Called once per playback/scrub frame right
+        // alongside the fader move, so everything glides together.
+        function dawApplyLinkedAutomationForTrack(trackId, v) {
+            const frac = Math.max(0, Math.min(1, v / 100));
+
+            Object.keys(window.dawEqState || {}).forEach(key => {
+                if (dawTrackIdFromFxKey(key) !== trackId) return;
+                const s = window.dawEqState[key];
+                if (!s.volumeLink) return;
+                const lp = s.bands.find(b => b.type === 'Low Pass');
+                if (!lp) return;
+                lp.freq = DAW_LINK_EQ_MIN_FREQ + frac * (DAW_LINK_EQ_MAX_FREQ - DAW_LINK_EQ_MIN_FREQ);
+                if (document.getElementById(`eq8-graph-wrap-${eq8SafeKey(key)}`)) window.dawEqRenderGraphOnly(key);
+            });
+
+            Object.keys(window.dawSpState || {}).forEach(key => {
+                if (dawTrackIdFromFxKey(key) !== trackId) return;
+                const s = window.dawSpState[key];
+                if (!s.volumeLink || s.volumeLinkBaseThr == null) return;
+                s.thr = Math.max(-60, Math.min(0, s.volumeLinkBaseThr - (1 - frac) * DAW_LINK_COMP_RANGE_DB));
+            });
+
+            Object.keys(window.dawArState || {}).forEach(key => {
+                if (dawTrackIdFromFxKey(key) !== trackId) return;
+                const s = window.dawArState[key];
+                if (!s.volumeLink || s.volumeLinkBaseReverb == null) return;
+                s.reverb = Math.max(0, Math.min(100, s.volumeLinkBaseReverb + (1 - frac) * DAW_LINK_REVERB_MAX_BOOST));
+            });
+
+            Object.keys(window.dawSdState || {}).forEach(key => {
+                if (dawTrackIdFromFxKey(key) !== trackId) return;
+                const s = window.dawSdState[key];
+                if (!s.volumeLink || s.volumeLinkBaseWet == null) return;
+                s.wet = Math.max(0, Math.min(100, s.volumeLinkBaseWet + (1 - frac) * DAW_LINK_REVERB_MAX_BOOST));
+                const sk = eq8SafeKey(key);
+                const sl = document.getElementById(`dawsd-slider-wet-${sk}`);
+                if (sl) sl.value = Math.round(s.wet);
+                const inp = document.getElementById(`dawsd-input-wet-${sk}`);
+                if (inp) inp.value = Math.round(s.wet) + '%';
+            });
+        }
 
         window.dawGridDivision = window.dawGridDivision || 16; // ticks per bar: 4, 8, 16, or 32 (matches the Grid selector)
 
