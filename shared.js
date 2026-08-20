@@ -275,6 +275,60 @@
             }
         };
 
+        // 1.6 SOVEREIGN EXTRACTION SEQUENCE — "Initiate Extraction" button on Home
+        window.initiateExtractionSequence = function() {
+            const btn = document.getElementById('extraction-trigger');
+            const panel = document.getElementById('extraction-status-panel');
+            const sweep = document.getElementById('extraction-sweep');
+            const toast = document.getElementById('extraction-toast');
+            if (!btn || btn.dataset.extracting === '1') return; // guard against double-clicks mid-sequence
+
+            // 1. IGNITE THE TRIGGER
+            btn.dataset.extracting = '1';
+            btn.innerText = 'EXTRACTING DNA...';
+            btn.classList.add('extraction-active');
+
+            // 2. THE NEON SWEEP — full-screen laser line top to bottom
+            if (sweep) {
+                sweep.classList.remove('hidden');
+                const line = sweep.querySelector('.extraction-sweep-line');
+                if (line) {
+                    line.style.animation = 'none';
+                    void line.offsetWidth; // restart animation
+                    line.style.animation = '';
+                }
+            }
+
+            // 3. THE PROGRESS HUB — reveal panel, count each metric 0 -> 101%
+            if (panel) panel.classList.remove('hidden');
+            const metricIds = ['extraction-metric-signal', 'extraction-metric-sync', 'extraction-metric-bounty'];
+            const metricEls = metricIds.map(id => document.getElementById(id));
+            metricEls.forEach(el => { if (el) el.innerText = '0%'; });
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress++;
+                metricEls.forEach(el => { if (el) el.innerText = Math.min(progress, 101) + '%'; });
+                if (progress >= 101) {
+                    clearInterval(interval);
+
+                    // 4. THE FINAL SEAL
+                    if (sweep) sweep.classList.add('hidden');
+                    if (toast) {
+                        toast.classList.remove('hidden');
+                        setTimeout(() => toast.classList.add('hidden'), 2400);
+                    }
+                    btn.innerText = 'SUCCESS: DNA SECURED';
+                    setTimeout(() => {
+                        btn.innerText = 'INITIATE EXTRACTION';
+                        btn.classList.remove('extraction-active');
+                        btn.dataset.extracting = '0';
+                        if (panel) panel.classList.add('hidden');
+                    }, 2000);
+                }
+            }, 30); // high-velocity count, ~3s total to 101
+        };
+
         // 2. HOME TAB SYSTEM
         window.switchHomeTab = function(t) {
             ['overview', 'releases', 'syndicate', 'intel'].forEach(tab => {
