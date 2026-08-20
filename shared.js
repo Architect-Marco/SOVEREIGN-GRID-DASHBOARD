@@ -4471,15 +4471,14 @@
         window.dawSdToggleVolumeLink = function(key) {
             const s = dawSdGetState(key);
             s.volumeLink = !s.volumeLink;
+            s.automationEnabled = true; // stays visible/editable in the automation lane whether tethered or not
             if (s.volumeLink) s.volumeLinkBaseWet = s.wet;
-            else if (s.volumeLinkBaseWet != null) s.wet = s.volumeLinkBaseWet;
+            // unlinking freezes the wet% right where it is — the line goes flat there,
+            // waiting for manual nodes, instead of snapping back to the pre-link value
             const sk = eq8SafeKey(key);
             const btn = document.getElementById(`dawsd-vollink-${sk}`);
             if (btn) btn.classList.toggle('link-active', s.volumeLink);
-            const sl = document.getElementById(`dawsd-slider-wet-${sk}`);
-            if (sl) sl.value = s.wet;
-            const inp = document.getElementById(`dawsd-input-wet-${sk}`);
-            if (inp) inp.value = s.wet + '%';
+            if (typeof window.renderDawAllAutomationLanes === 'function') window.renderDawAllAutomationLanes();
         };
 
         window.dawSdTogglePresetMenu = function(key) {
@@ -7229,78 +7228,270 @@
             return v => Math.max(0, Math.min(100, (style.dir === 1 ? v : 100 - v) + style.offset));
         }
 
+        // ------------------------------------------------------------------
+        // PARAMETER ADAPTERS — how each plugin's real value maps to/from the
+        // 0-100 display scale the automation lane draws in. Used both for the
+        // "tethered" (linked) derived overlay AND for the "unlinked" manual
+        // points, so a line reads the same way in either mode.
+        // ------------------------------------------------------------------
+        const DAW_LINK_PARAM_ADAPTERS = {
+            eq: {
+                getState: dawEqGetState,
+                getReal: s => { const lp = s.bands.find(b => b.type === 'Low Pass'); return lp ? lp.freq : DAW_LINK_EQ_MAX_FREQ; },
+                setReal: (s, val) => {
+                    let lp = s.bands.find(b => b.type === 'Low Pass');
+                    if (!lp) { if (s.bands.length >= 8) return; lp = { freq: DAW_LINK_EQ_MAX_FREQ, gain: 0, bw: 1.5, type: 'Low Pass', enabled: true }; s.bands.push(lp); }
+                    lp.freq = val;
+                },
+                toDisplay: freq => Math.max(0, Math.min(100, (freq - DAW_LINK_EQ_MIN_FREQ) / (DAW_LINK_EQ_MAX_FREQ - DAW_LINK_EQ_MIN_FREQ) * 100)),
+                fromDisplay: v => DAW_LINK_EQ_MIN_FREQ + (v / 100) * (DAW_LINK_EQ_MAX_FREQ - DAW_LINK_EQ_MIN_FREQ),
+                afterApply: key => { if (document.getElementById(`eq8-graph-wrap-${eq8SafeKey(key)}`)) window.dawEqRenderGraphOnly(key); }
+            },
+            sd: {
+                getState: dawSdGetState,
+                getReal: s => s.wet, setReal: (s, val) => { s.wet = val; },
+                toDisplay: v => Math.max(0, Math.min(100, v)), fromDisplay: v => Math.max(0, Math.min(100, v)),
+                afterApply: key => {
+                    const sk = eq8SafeKey(key);
+                    const s = dawSdGetState(key);
+                    const sl = document.getElementById(`dawsd-slider-wet-${sk}`);
+                    if (sl) sl.value = Math.round(s.wet);
+                    const inp = document.getElementById(`dawsd-input-wet-${sk}`);
+                    if (inp) inp.value = Math.round(s.wet) + '%';
+                }
+            },
+            ar: {
+                getState: dawArGetState,
+                getReal: s => s.reverb, setReal: (s, val) => { s.reverb = val; },
+                toDisplay: v => Math.max(0, Math.min(100, v)), fromDisplay: v => Math.max(0, Math.min(100, v)),
+                afterApply: () => {}
+            },
+            sp: {
+                getState: dawSpGetState,
+                getReal: s => s.thr, setReal: (s, val) => { s.thr = val; },
+                toDisplay: v => Math.max(0, Math.min(100, (v + 60) / 60 * 100)), fromDisplay: v => (v / 100) * 60 - 60,
+                afterApply: () => {}
+            }
+        };
+
+        // Which categories participate in the automation lane, and when a line
+        // is even eligible to be shown (e.g. EQ needs a Low Pass band to modulate).
+        const DAW_LINK_CATS = [
+            { cat: 'eq', map: () => window.dawEqState, style: DAW_LINK_OVERLAY_STYLES.eq, show: s => s.bands && s.bands.some(b => b.type === 'Low Pass') },
+            { cat: 'sd', map: () => window.dawSdState, style: DAW_LINK_OVERLAY_STYLES.sd, show: () => true },
+            { cat: 'ar', map: () => window.dawArState, style: DAW_LINK_OVERLAY_STYLES.ar, show: () => true },
+            { cat: 'sp', map: () => window.dawSpState, style: DAW_LINK_OVERLAY_STYLES.sp, show: () => true }
+        ];
+
+        // track.automation.plugins[lineKey] holds manual {t,v} nodes (same 0-100
+        // display scale as volume) for an UNLINKED plugin parameter — created
+        // lazily the first time a point is placed on that line.
+        function dawPluginAutoPoints(track, lineKey) {
+            if (!track.automation) track.automation = {};
+            if (!track.automation.plugins) track.automation.plugins = {};
+            if (!Array.isArray(track.automation.plugins[lineKey])) track.automation.plugins[lineKey] = [];
+            return track.automation.plugins[lineKey];
+        }
+
+        // Same eased-curve interpolation as window.dawAutomationValueAt, but generic
+        // over any {t,v} point array — used to play back manual plugin automation.
+        function dawAutomationValueAtPoints(pts, time, fallback) {
+            if (!pts || !pts.length) return fallback;
+            const sorted = pts.slice().sort((a, b) => a.t - b.t);
+            if (time <= sorted[0].t) return sorted[0].v;
+            if (time >= sorted[sorted.length - 1].t) return sorted[sorted.length - 1].v;
+            for (let i = 0; i < sorted.length - 1; i++) {
+                const a = sorted[i], b = sorted[i + 1];
+                if (time >= a.t && time <= b.t) {
+                    const frac = (b.t - a.t) > 0 ? (time - a.t) / (b.t - a.t) : 0;
+                    return a.v + (b.v - a.v) * dawAutomationEase(frac);
+                }
+            }
+            return sorted[sorted.length - 1].v;
+        }
+
+        // ------------------------------------------------------------------
+        // FOCUS MODE ("Legend Toggle") — clicking a legend label solos that
+        // line: plain clicks on the lane only add points to the focused line,
+        // every other line stays locked in the background until it's focused.
+        // ------------------------------------------------------------------
+        window.dawAutomationFocus = window.dawAutomationFocus || {}; // trackId -> 'volume' | lineKey | null
+
+        window.dawAutomationSetFocus = function(trackId, key) {
+            const cur = window.dawAutomationFocus[trackId];
+            window.dawAutomationFocus[trackId] = (cur === key) ? null : key; // click again to clear focus
+            window.renderDawAutomationLane(trackId);
+        };
+
+        // Turns a plugin parameter into an automation-lane participant without
+        // necessarily tethering it to volume — used so Alt+Click always has
+        // somewhere to land even if nothing's been linked yet.
+        function dawAutomationEnableCat(cat, key) {
+            const entry = DAW_LINK_CATS.find(c => c.cat === cat);
+            const adapter = DAW_LINK_PARAM_ADAPTERS[cat];
+            if (!entry || !adapter) return;
+            const s = adapter.getState(key);
+            s.automationEnabled = true;
+            if (cat === 'eq' && !s.bands.find(b => b.type === 'Low Pass') && s.bands.length < 8) {
+                s.bands.push({ freq: DAW_LINK_EQ_MAX_FREQ, gain: 0, bw: 1.5, type: 'Low Pass', enabled: true });
+            }
+        }
+
+        // Dispatches to whichever plugin's own "🔗 → volume" toggle — used by
+        // the automation lane's inline link icon so unlinking is one click away.
+        function dawAutomationToggleLink(cat, key) {
+            const fns = { eq: window.dawEqToggleVolumeLink, sd: window.dawSdToggleVolumeLink, ar: window.dawArToggleVolumeLink, sp: window.dawSpToggleVolumeLink };
+            if (fns[cat]) fns[cat](key);
+        }
+        window.dawAutomationToggleLinkFromLane = function(trackId, cat, key) {
+            dawAutomationToggleLink(cat, key);
+        };
+
+        // Every line currently visible in this track's lane — tethered (linked,
+        // derived from the volume curve) or unlinked (independently automated
+        // via its own manual points, once "enabled" by linking at least once
+        // or by an Alt+Click).
         function dawAutomationLinkedOverlays(trackId) {
             const overlays = [];
-            Object.keys(window.dawEqState || {}).forEach(key => {
-                if (dawTrackIdFromFxKey(key) !== trackId) return;
-                const s = window.dawEqState[key];
-                if (s.volumeLink && s.bands.some(b => b.type === 'Low Pass')) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.eq, transform: dawLinkOverlayTransform(DAW_LINK_OVERLAY_STYLES.eq) });
-            });
-            Object.keys(window.dawSdState || {}).forEach(key => {
-                if (dawTrackIdFromFxKey(key) !== trackId) return;
-                const s = window.dawSdState[key];
-                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.sd, transform: dawLinkOverlayTransform(DAW_LINK_OVERLAY_STYLES.sd) });
-            });
-            Object.keys(window.dawArState || {}).forEach(key => {
-                if (dawTrackIdFromFxKey(key) !== trackId) return;
-                const s = window.dawArState[key];
-                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.ar, transform: dawLinkOverlayTransform(DAW_LINK_OVERLAY_STYLES.ar) });
-            });
-            Object.keys(window.dawSpState || {}).forEach(key => {
-                if (dawTrackIdFromFxKey(key) !== trackId) return;
-                const s = window.dawSpState[key];
-                if (s.volumeLink) overlays.push({ ...DAW_LINK_OVERLAY_STYLES.sp, transform: dawLinkOverlayTransform(DAW_LINK_OVERLAY_STYLES.sp) });
+            DAW_LINK_CATS.forEach(({ cat, map, style, show }) => {
+                const stateMap = map() || {};
+                const adapter = DAW_LINK_PARAM_ADAPTERS[cat];
+                Object.keys(stateMap).forEach(key => {
+                    if (dawTrackIdFromFxKey(key) !== trackId) return;
+                    const s = stateMap[key];
+                    if (!s.volumeLink && !s.automationEnabled) return;
+                    if (!show(s)) return;
+                    overlays.push({
+                        lineKey: key, cat, color: style.color, dash: style.dash, label: style.label,
+                        linked: !!s.volumeLink, offset: style.offset, adapter, state: s,
+                        transform: s.volumeLink ? dawLinkOverlayTransform(style) : null
+                    });
+                });
             });
             return overlays;
         }
 
+        // Resolves what a plain (no-modifier) click on the lane should target,
+        // based on the legend's current focus/solo state.
+        function dawAutomationClickTarget(trackId) {
+            const focus = window.dawAutomationFocus[trackId];
+            if (!focus || focus === 'volume') return { kind: 'volume' };
+            const ov = dawAutomationLinkedOverlays(trackId).find(o => o.lineKey === focus);
+            if (ov && !ov.linked) return { kind: 'plugin', overlay: ov };
+            return { kind: 'locked' }; // focused line is tethered, or no longer exists — ignore plain clicks
+        }
+
+        // Resolves an Alt+Click target: the focused plugin line if there is one,
+        // else the first visible plugin line, else auto-enables the first
+        // available plugin on the track so there's always somewhere to land.
+        function dawAutomationAltClickTarget(trackId) {
+            const overlays = dawAutomationLinkedOverlays(trackId);
+            const focus = window.dawAutomationFocus[trackId];
+            let ov = overlays.find(o => o.lineKey === focus) || overlays[0];
+            if (!ov) {
+                for (const { cat, map } of DAW_LINK_CATS) {
+                    const stateMap = map() || {};
+                    const key = Object.keys(stateMap).find(k => dawTrackIdFromFxKey(k) === trackId);
+                    if (key) { dawAutomationEnableCat(cat, key); ov = dawAutomationLinkedOverlays(trackId).find(o => o.lineKey === key); break; }
+                }
+            }
+            if (!ov) return { kind: 'locked' }; // no plugin on this track to automate
+            if (ov.linked) dawAutomationToggleLink(ov.cat, ov.lineKey); // placing a manual point breaks the tether
+            const refreshed = dawAutomationLinkedOverlays(trackId).find(o => o.lineKey === ov.lineKey) || ov;
+            return { kind: 'plugin', overlay: refreshed };
+        }
+
+        // Samples an eased envelope curve across the full 0..1000 x-domain from a
+        // (possibly empty) {t,v} point array, flat-extending before the first and
+        // after the last node — shared by the volume line and every plugin line
+        // so "what's drawn is what plays" holds for all of them, not just volume.
+        function dawAutomationSampleCurve(pts, fallbackV) {
+            if (!pts.length) return [{ x: 0, v: fallbackV }, { x: 1000, v: fallbackV }];
+            const xs = [0, ...pts.map(p => dawAutoTimeToX(p.t)), 1000];
+            const vs = [pts[0].v, ...pts.map(p => p.v), pts[pts.length - 1].v];
+            const samples = [{ x: xs[0], v: vs[0] }];
+            for (let i = 0; i < xs.length - 1; i++) {
+                for (let s = 1; s <= DAW_AUTO_CURVE_STEPS; s++) {
+                    const frac = s / DAW_AUTO_CURVE_STEPS;
+                    samples.push({ x: xs[i] + (xs[i + 1] - xs[i]) * frac, v: vs[i] + (vs[i + 1] - vs[i]) * dawAutomationEase(frac) });
+                }
+            }
+            return samples;
+        }
+
         function dawAutomationLaneSvg(t, laneHeight) {
             const pts = dawAutomationPoints(t).slice().sort((a, b) => a.t - b.t);
-            let pathD = '';
-            const samples = []; // {x, v} — the base eased volume curve, reused to derive each linked overlay's shape
-            if (pts.length) {
-                // Extend a flat lead-in/lead-out so the drawn curve reads as a continuous
-                // envelope across the whole lane, not just between the first/last node.
-                // Every segment (including the flat lead-in/out) is sampled through the
-                // same eased curve used for playback, so what's drawn is what plays.
-                const xs = [0, ...pts.map(p => dawAutoTimeToX(p.t)), 1000];
-                const vs = [pts[0].v, ...pts.map(p => p.v), pts[pts.length - 1].v];
-                samples.push({ x: xs[0], v: vs[0] });
-                for (let i = 0; i < xs.length - 1; i++) {
-                    for (let s = 1; s <= DAW_AUTO_CURVE_STEPS; s++) {
-                        const frac = s / DAW_AUTO_CURVE_STEPS;
-                        const x = xs[i] + (xs[i + 1] - xs[i]) * frac;
-                        const v = vs[i] + (vs[i + 1] - vs[i]) * dawAutomationEase(frac);
-                        samples.push({ x, v });
-                    }
-                }
-                pathD = samples.map(p => `${p.x.toFixed(1)},${dawAutoValToY(p.v).toFixed(1)}`).join(' ');
-            }
+            const samples = dawAutomationSampleCurve(pts, pts.length ? pts[0].v : 0);
+            const pathD = samples.map(p => `${p.x.toFixed(1)},${dawAutoValToY(p.v).toFixed(1)}`).join(' ');
+
+            const focus = window.dawAutomationFocus[t.id] || null;
+            const volumeLocked = focus && focus !== 'volume';
+            const volumeFocused = focus === 'volume';
+
             const nodes = pts.map((p, i) => `
                 <circle class="daw-automation-node" cx="${dawAutoTimeToX(p.t).toFixed(1)}" cy="${dawAutoValToY(p.v).toFixed(1)}" r="3.2"
-                    onmousedown="window.dawAutomationNodeDown(event,'${t.id}',${i})" ontouchstart="window.dawAutomationNodeDown(event,'${t.id}',${i})"
+                    onmousedown="window.dawAutomationNodeDown(event,'${t.id}','volume',null,${i})" ontouchstart="window.dawAutomationNodeDown(event,'${t.id}','volume',null,${i})"
                     onclick="event.stopPropagation()"
-                    ondblclick="window.dawAutomationNodeRemove(event,'${t.id}',${i})"
-                    oncontextmenu="window.dawAutomationNodeRemove(event,'${t.id}',${i})"></circle>`).join('');
+                    ondblclick="window.dawAutomationNodeRemove(event,'${t.id}','volume',null,${i})"
+                    oncontextmenu="window.dawAutomationNodeRemove(event,'${t.id}','volume',null,${i})"
+                    opacity="${volumeLocked ? 0.35 : 1}"></circle>`).join('');
 
-            const overlays = pts.length ? dawAutomationLinkedOverlays(t.id) : [];
-            const overlayLines = overlays.map(o => {
-                const overlayPts = samples.map(p => `${p.x.toFixed(1)},${dawAutoValToY(o.transform(p.v)).toFixed(1)}`).join(' ');
-                return `<polyline points="${overlayPts}" fill="none" stroke="${o.color}" stroke-width="1.1" stroke-dasharray="${o.dash}" vector-effect="non-scaling-stroke" opacity="0.85"></polyline>`;
-            }).join('');
-            const legend = overlays.length ? `
+            const overlays = dawAutomationLinkedOverlays(t.id);
+            let overlayLines = '', overlayNodes = '';
+            overlays.forEach(o => {
+                const focused = focus === o.lineKey;
+                const dimmed = focus && !focused;
+                const opacity = dimmed ? 0.3 : 0.9;
+                let oPts;
+                if (o.linked) {
+                    oPts = samples.map(p => `${p.x.toFixed(1)},${dawAutoValToY(o.transform(p.v)).toFixed(1)}`).join(' ');
+                } else {
+                    const manualPts = dawPluginAutoPoints(t, o.lineKey);
+                    const fallback = o.adapter.toDisplay(o.adapter.getReal(o.state));
+                    const oSamples = dawAutomationSampleCurve(manualPts, fallback);
+                    oPts = oSamples.map(p => `${p.x.toFixed(1)},${dawAutoValToY(Math.max(0, Math.min(100, p.v + o.offset))).toFixed(1)}`).join(' ');
+                    overlayNodes += manualPts.map((p, i) => `
+                        <circle class="daw-automation-node" cx="${dawAutoTimeToX(p.t).toFixed(1)}" cy="${dawAutoValToY(Math.max(0, Math.min(100, p.v + o.offset))).toFixed(1)}" r="2.6"
+                            fill="${o.color}" stroke="${o.color}"
+                            onmousedown="window.dawAutomationNodeDown(event,'${t.id}','plugin','${o.lineKey}',${i})" ontouchstart="window.dawAutomationNodeDown(event,'${t.id}','plugin','${o.lineKey}',${i})"
+                            onclick="event.stopPropagation()"
+                            ondblclick="window.dawAutomationNodeRemove(event,'${t.id}','plugin','${o.lineKey}',${i})"
+                            oncontextmenu="window.dawAutomationNodeRemove(event,'${t.id}','plugin','${o.lineKey}',${i})"
+                            opacity="${dimmed ? 0.35 : 1}"></circle>`).join('');
+                }
+                overlayLines += `<polyline points="${oPts}" fill="none" stroke="${o.color}" stroke-width="${focused ? 1.6 : 1.1}" stroke-dasharray="${o.dash}" vector-effect="non-scaling-stroke" opacity="${opacity}"></polyline>`;
+            });
+
+            const legendItem = (color, label, dash, isVolume, o) => {
+                const key = isVolume ? 'volume' : o.lineKey;
+                const focused = focus === key;
+                const dimmed = focus && !focused;
+                const swatchStyle = dash ? `border-top:2px dashed ${color}; width:8px; height:0;` : `width:8px; height:2px; background:${color};`;
+                const linkIcon = isVolume ? '' : `<span class="cursor-pointer" style="pointer-events:auto; font-size:7px;" title="${o.linked ? 'Break tether — go manual' : 'Link to volume'}" onclick="event.stopPropagation(); window.dawAutomationToggleLinkFromLane('${t.id}','${o.cat}','${key}')">${o.linked ? '🔗' : '⛓️‍💥'}</span>`;
+                return `<span class="flex items-center gap-1" style="opacity:${dimmed ? 0.4 : 1};">
+                    <span class="flex items-center gap-1 cursor-pointer" style="pointer-events:auto;" onclick="event.stopPropagation(); window.dawAutomationSetFocus('${t.id}','${key}')">
+                        <span style="display:inline-block; ${swatchStyle}"></span>
+                        <span class="text-[6.5px] font-bold uppercase tracking-wide" style="color:${isVolume ? (focused ? '#2fd0ff' : '#9ca3af') : color}; ${focused ? 'text-decoration:underline;' : ''}">${label}</span>
+                    </span>
+                    ${linkIcon}
+                </span>`;
+            };
+            const legend = `
                 <div class="absolute top-1 left-1.5 flex items-center gap-2.5 flex-wrap pointer-events-none" style="max-width:calc(100% - 12px);">
-                    <span class="flex items-center gap-1"><span style="width:8px; height:2px; background:#2fd0ff; display:inline-block;"></span><span class="text-[6.5px] text-gray-400 font-bold uppercase tracking-wide">Volume</span></span>
-                    ${overlays.map(o => `<span class="flex items-center gap-1"><span style="width:8px; height:2px; background:${o.color}; display:inline-block;"></span><span class="text-[6.5px] font-bold uppercase tracking-wide" style="color:${o.color};">${o.label}</span></span>`).join('')}
-                </div>` : '';
+                    ${legendItem('#2fd0ff', 'Volume', '', true, null)}
+                    ${overlays.map(o => legendItem(o.color, o.label, o.dash, false, o)).join('')}
+                </div>
+                ${overlays.length ? `<div class="absolute bottom-0.5 right-1.5 text-[6px] text-gray-500 font-bold uppercase tracking-wide pointer-events-none">Shift=Volume · Alt=Plugin</div>` : ''}`;
 
             return `${legend}<svg id="daw-automation-svg-${t.id}" width="100%" height="100%" viewBox="0 0 1000 100" preserveAspectRatio="none"
                     style="display:block; cursor:crosshair;" onclick="window.dawAutomationLaneClick(event,'${t.id}')">
                     <line x1="0" y1="${dawAutoValToY(80).toFixed(1)}" x2="1000" y2="${dawAutoValToY(80).toFixed(1)}" stroke="rgba(47,208,255,0.12)" stroke-width="0.6" vector-effect="non-scaling-stroke"></line>
                     ${pts.length
-                        ? `<polyline points="${pathD}" fill="none" stroke="#2fd0ff" stroke-width="1.4" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.55));"></polyline>${overlayLines}`
+                        ? `<polyline points="${pathD}" fill="none" stroke="#2fd0ff" stroke-width="${volumeFocused ? 1.9 : 1.4}" vector-effect="non-scaling-stroke" opacity="${volumeLocked ? 0.4 : 1}" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.55));"></polyline>`
                         : `<line x1="0" y1="${dawAutoValToY(80).toFixed(1)}" x2="1000" y2="${dawAutoValToY(80).toFixed(1)}" stroke="rgba(47,208,255,0.3)" stroke-width="0.6" stroke-dasharray="6,4" vector-effect="non-scaling-stroke"></line>`}
+                    ${overlayLines}
                     ${nodes}
+                    ${overlayNodes}
                 </svg>`;
         }
 
@@ -7326,6 +7517,10 @@
             window.initDawWaves(); // renderDawTracks rebuilds the wave containers too — reattach any already-loaded audio
         };
 
+        // Layered point placement: a plain click respects the legend's focus/solo
+        // state; Shift+Click always targets Volume; Alt+Click always targets a
+        // plugin line — letting you build a full spectral automation map (volume
+        // + several plugin curves) without ever switching pages or modes.
         window.dawAutomationLaneClick = function(event, trackId) {
             const svg = document.getElementById('daw-automation-svg-' + trackId);
             const track = window.dawTracks.find(x => x.id === trackId);
@@ -7333,22 +7528,44 @@
             const rect = svg.getBoundingClientRect();
             const xFrac = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
             const yPct = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100));
-            const pts = dawAutomationPoints(track);
-            pts.push({ t: dawAutoXToTime(xFrac), v: Math.round(dawAutoYToVal(yPct)) });
-            pts.sort((a, b) => a.t - b.t);
+            const time = dawAutoXToTime(xFrac);
+
+            let target;
+            if (event.shiftKey) target = { kind: 'volume' };
+            else if (event.altKey) target = dawAutomationAltClickTarget(trackId);
+            else target = dawAutomationClickTarget(trackId);
+            if (!target || target.kind === 'locked') return;
+
+            if (target.kind === 'volume') {
+                const pts = dawAutomationPoints(track);
+                pts.push({ t: time, v: Math.round(dawAutoYToVal(yPct)) });
+                pts.sort((a, b) => a.t - b.t);
+                const chip = document.getElementById('daw-auto-' + trackId);
+                if (chip) chip.innerText = 'A ' + pts.length;
+            } else {
+                const o = target.overlay;
+                const raw = Math.max(0, Math.min(100, dawAutoYToVal(yPct) - (o.offset || 0)));
+                const pts = dawPluginAutoPoints(track, o.lineKey);
+                pts.push({ t: time, v: Math.round(raw) });
+                pts.sort((a, b) => a.t - b.t);
+            }
             window.renderDawAutomationLane(trackId);
-            const chip = document.getElementById('daw-auto-' + trackId);
-            if (chip) chip.innerText = 'A ' + pts.length;
-            window.dawApplyAutomationFrame(); // reflect the new curve on the fader immediately
+            window.dawApplyAutomationFrame(); // reflect the new curve immediately
         };
 
-        window.dawAutomationNodeDown = function(event, trackId, index) {
+        window.dawAutomationNodeDown = function(event, trackId, kind, lineKey, index) {
             event.preventDefault();
             event.stopPropagation(); // don't let this bubble into dawAutomationLaneClick and add a second point
             const svg = document.getElementById('daw-automation-svg-' + trackId);
             const track = window.dawTracks.find(x => x.id === trackId);
             if (!svg || !track) return;
             const rect = svg.getBoundingClientRect();
+            let offset = 0;
+            if (kind === 'plugin') {
+                const ov = dawAutomationLinkedOverlays(trackId).find(o => o.lineKey === lineKey);
+                offset = ov ? (ov.offset || 0) : 0;
+            }
+            const getPts = () => kind === 'volume' ? dawAutomationPoints(track) : dawPluginAutoPoints(track, lineKey);
             const drag = { rafId: null, pending: null };
             window.dawAutomationDrag = drag;
 
@@ -7356,7 +7573,8 @@
                 const pt = e.touches ? e.touches[0] : e;
                 const xFrac = Math.max(0, Math.min(1, (pt.clientX - rect.left) / rect.width));
                 const yPct = Math.max(0, Math.min(100, ((pt.clientY - rect.top) / rect.height) * 100));
-                return { t: dawAutoXToTime(xFrac), v: Math.round(dawAutoYToVal(yPct)) };
+                const raw = dawAutoYToVal(yPct) - offset;
+                return { t: dawAutoXToTime(xFrac), v: Math.round(Math.max(0, Math.min(100, raw))) };
             }
 
             function onMove(e) {
@@ -7366,7 +7584,7 @@
                 drag.rafId = window.requestAnimationFrame(() => {
                     drag.rafId = null;
                     if (!drag.pending) return;
-                    const pts = dawAutomationPoints(track);
+                    const pts = getPts();
                     const p = pts[index];
                     if (p) {
                         p.t = drag.pending.t;
@@ -7385,7 +7603,7 @@
                 if (drag.rafId) { window.cancelAnimationFrame(drag.rafId); drag.rafId = null; }
                 window.dawAutomationDrag = null;
                 // points may have been dragged past a neighbor — keep them time-sorted
-                dawAutomationPoints(track).sort((a, b) => a.t - b.t);
+                getPts().sort((a, b) => a.t - b.t);
                 window.renderDawAutomationLane(trackId);
             }
 
@@ -7395,16 +7613,18 @@
             document.addEventListener('touchend', onUp);
         };
 
-        window.dawAutomationNodeRemove = function(event, trackId, index) {
+        window.dawAutomationNodeRemove = function(event, trackId, kind, lineKey, index) {
             event.preventDefault();
             event.stopPropagation();
             const track = window.dawTracks.find(x => x.id === trackId);
             if (!track) return;
-            const pts = dawAutomationPoints(track);
+            const pts = kind === 'volume' ? dawAutomationPoints(track) : dawPluginAutoPoints(track, lineKey);
             pts.splice(index, 1);
             window.renderDawAutomationLane(trackId);
-            const chip = document.getElementById('daw-auto-' + trackId);
-            if (chip) chip.innerText = pts.length ? 'A ' + pts.length : 'A';
+            if (kind === 'volume') {
+                const chip = document.getElementById('daw-auto-' + trackId);
+                if (chip) chip.innerText = pts.length ? 'A ' + pts.length : 'A';
+            }
         };
 
         // Drives the mixer fader (and the audio's actual volume) from each track's
@@ -7413,11 +7633,13 @@
         // exactly like a real console with automation engaged.
         window.dawApplyAutomationFrame = function() {
             window.dawTracks.forEach(t => {
-                if (!dawAutomationPoints(t).length) return;
-                const v = window.dawAutomationValueAt(t, window.dawTransportTime);
-                if (v === null) return;
-                window.setDawVolume(t.id, v);
-                dawApplyLinkedAutomationForTrack(t.id, v);
+                if (dawAutomationPoints(t).length) {
+                    const v = window.dawAutomationValueAt(t, window.dawTransportTime);
+                    if (v !== null) window.setDawVolume(t.id, v);
+                }
+                // Runs regardless of whether the track has volume automation —
+                // an unlinked plugin line plays back off its own manual points.
+                dawApplyLinkedAutomationForTrack(t.id, window.dawTransportTime);
             });
         };
 
@@ -7447,6 +7669,7 @@
         window.dawEqToggleVolumeLink = function(key) {
             const s = dawEqGetState(key);
             s.volumeLink = !s.volumeLink;
+            s.automationEnabled = true; // stays visible/editable in the automation lane whether tethered or not
             let lp = s.bands.find(b => b.type === 'Low Pass');
             if (s.volumeLink && !lp && s.bands.length < 8) {
                 // Linking with no Low Pass band would silently do nothing — add one
@@ -7455,74 +7678,117 @@
                 s.bands.push(lp);
                 s.selectedBand = s.bands.length - 1;
             }
-            if (s.volumeLink && lp) s.volumeLinkBaseFreq = lp.freq; // remember where the user had it for a clean unlink
-            else if (!s.volumeLink && lp && s.volumeLinkBaseFreq != null) { lp.freq = s.volumeLinkBaseFreq; }
+            if (s.volumeLink && lp) s.volumeLinkBaseFreq = lp.freq; // remember where the user had it, for reference only
+            // unlinking freezes the LP cutoff right where it is — the line goes flat
+            // there, waiting for manual nodes, instead of snapping back
             const sk = eq8SafeKey(key);
             const btn = document.getElementById(`eq8-vollink-${sk}`);
             if (btn) btn.classList.toggle('link-active', s.volumeLink);
             window.renderDawFxPicker(); // band list may have changed — repaint the whole panel, not just the graph
+            if (typeof window.renderDawAllAutomationLanes === 'function') window.renderDawAllAutomationLanes();
         };
 
         window.dawSpToggleVolumeLink = function(key) {
             const s = dawSpGetState(key);
             s.volumeLink = !s.volumeLink;
+            s.automationEnabled = true;
             if (s.volumeLink) s.volumeLinkBaseThr = s.thr;
-            else if (s.volumeLinkBaseThr != null) s.thr = s.volumeLinkBaseThr;
+            // unlinking freezes the threshold right where it is — flat line, waiting
+            // for manual nodes, instead of snapping back to the pre-link value
             const sk = eq8SafeKey(key);
             const btn = document.getElementById(`dawsp-vollink-${sk}`);
             if (btn) btn.classList.toggle('link-active', s.volumeLink);
+            if (typeof window.renderDawAllAutomationLanes === 'function') window.renderDawAllAutomationLanes();
         };
 
         window.dawArToggleVolumeLink = function(key) {
             const s = dawArGetState(key);
             s.volumeLink = !s.volumeLink;
+            s.automationEnabled = true;
             if (s.volumeLink) s.volumeLinkBaseReverb = s.reverb;
-            else if (s.volumeLinkBaseReverb != null) s.reverb = s.volumeLinkBaseReverb;
+            // unlinking freezes the wet% right where it is — flat line, waiting for
+            // manual nodes, instead of snapping back to the pre-link value
             const sk = eq8SafeKey(key);
             const btn = document.getElementById(`dawar-vollink-${sk}`);
             if (btn) btn.classList.toggle('link-active', s.volumeLink);
+            if (typeof window.renderDawAllAutomationLanes === 'function') window.renderDawAllAutomationLanes();
         };
 
-        // Applies every linked plugin parameter on one track for the given 0-100
-        // automation value `v`. Called once per playback/scrub frame right
-        // alongside the fader move, so everything glides together.
-        function dawApplyLinkedAutomationForTrack(trackId, v) {
-            const frac = Math.max(0, Math.min(1, v / 100));
+        // Applies every automated plugin parameter on one track for the current
+        // transport `time`. Tethered (linked) params ride the volume fader exactly
+        // as before; unlinked-but-enabled params play back off their OWN manual
+        // {t,v} points instead, holding at their current value until points exist.
+        // Called once per playback/scrub frame right alongside the fader move.
+        function dawApplyLinkedAutomationForTrack(trackId, time) {
+            const track = window.dawTracks.find(x => x.id === trackId);
+            if (!track) return;
+            const volPts = dawAutomationPoints(track);
+            const v = volPts.length ? window.dawAutomationValueAt(track, time) : (typeof track.volume === 'number' ? track.volume : 80);
+            const frac = Math.max(0, Math.min(1, (v == null ? 80 : v) / 100));
 
             Object.keys(window.dawEqState || {}).forEach(key => {
                 if (dawTrackIdFromFxKey(key) !== trackId) return;
                 const s = window.dawEqState[key];
-                if (!s.volumeLink) return;
-                const lp = s.bands.find(b => b.type === 'Low Pass');
-                if (!lp) return;
-                lp.freq = DAW_LINK_EQ_MIN_FREQ + frac * (DAW_LINK_EQ_MAX_FREQ - DAW_LINK_EQ_MIN_FREQ);
-                if (document.getElementById(`eq8-graph-wrap-${eq8SafeKey(key)}`)) window.dawEqRenderGraphOnly(key);
+                const adapter = DAW_LINK_PARAM_ADAPTERS.eq;
+                if (s.volumeLink) {
+                    const lp = s.bands.find(b => b.type === 'Low Pass');
+                    if (!lp) return;
+                    lp.freq = DAW_LINK_EQ_MIN_FREQ + frac * (DAW_LINK_EQ_MAX_FREQ - DAW_LINK_EQ_MIN_FREQ);
+                    adapter.afterApply(key);
+                } else if (s.automationEnabled) {
+                    const pts = dawPluginAutoPoints(track, key);
+                    const fallback = adapter.toDisplay(adapter.getReal(s));
+                    const val = dawAutomationValueAtPoints(pts, time, fallback);
+                    adapter.setReal(s, adapter.fromDisplay(val));
+                    adapter.afterApply(key);
+                }
             });
 
             Object.keys(window.dawSpState || {}).forEach(key => {
                 if (dawTrackIdFromFxKey(key) !== trackId) return;
                 const s = window.dawSpState[key];
-                if (!s.volumeLink || s.volumeLinkBaseThr == null) return;
-                s.thr = Math.max(-60, Math.min(0, s.volumeLinkBaseThr - (1 - frac) * DAW_LINK_COMP_RANGE_DB));
+                const adapter = DAW_LINK_PARAM_ADAPTERS.sp;
+                if (s.volumeLink) {
+                    if (s.volumeLinkBaseThr == null) return;
+                    s.thr = Math.max(-60, Math.min(0, s.volumeLinkBaseThr - (1 - frac) * DAW_LINK_COMP_RANGE_DB));
+                } else if (s.automationEnabled) {
+                    const pts = dawPluginAutoPoints(track, key);
+                    const fallback = adapter.toDisplay(adapter.getReal(s));
+                    const val = dawAutomationValueAtPoints(pts, time, fallback);
+                    adapter.setReal(s, adapter.fromDisplay(val));
+                }
             });
 
             Object.keys(window.dawArState || {}).forEach(key => {
                 if (dawTrackIdFromFxKey(key) !== trackId) return;
                 const s = window.dawArState[key];
-                if (!s.volumeLink || s.volumeLinkBaseReverb == null) return;
-                s.reverb = Math.max(0, Math.min(100, s.volumeLinkBaseReverb + (1 - frac) * DAW_LINK_REVERB_MAX_BOOST));
+                const adapter = DAW_LINK_PARAM_ADAPTERS.ar;
+                if (s.volumeLink) {
+                    if (s.volumeLinkBaseReverb == null) return;
+                    s.reverb = Math.max(0, Math.min(100, s.volumeLinkBaseReverb + (1 - frac) * DAW_LINK_REVERB_MAX_BOOST));
+                } else if (s.automationEnabled) {
+                    const pts = dawPluginAutoPoints(track, key);
+                    const fallback = adapter.toDisplay(adapter.getReal(s));
+                    const val = dawAutomationValueAtPoints(pts, time, fallback);
+                    adapter.setReal(s, adapter.fromDisplay(val));
+                }
             });
 
             Object.keys(window.dawSdState || {}).forEach(key => {
                 if (dawTrackIdFromFxKey(key) !== trackId) return;
                 const s = window.dawSdState[key];
-                if (!s.volumeLink || s.volumeLinkBaseWet == null) return;
-                s.wet = Math.max(0, Math.min(100, s.volumeLinkBaseWet + (1 - frac) * DAW_LINK_REVERB_MAX_BOOST));
-                const sk = eq8SafeKey(key);
-                const sl = document.getElementById(`dawsd-slider-wet-${sk}`);
-                if (sl) sl.value = Math.round(s.wet);
-                const inp = document.getElementById(`dawsd-input-wet-${sk}`);
-                if (inp) inp.value = Math.round(s.wet) + '%';
+                const adapter = DAW_LINK_PARAM_ADAPTERS.sd;
+                if (s.volumeLink) {
+                    if (s.volumeLinkBaseWet == null) return;
+                    s.wet = Math.max(0, Math.min(100, s.volumeLinkBaseWet + (1 - frac) * DAW_LINK_REVERB_MAX_BOOST));
+                    adapter.afterApply(key);
+                } else if (s.automationEnabled) {
+                    const pts = dawPluginAutoPoints(track, key);
+                    const fallback = adapter.toDisplay(adapter.getReal(s));
+                    const val = dawAutomationValueAtPoints(pts, time, fallback);
+                    adapter.setReal(s, adapter.fromDisplay(val));
+                    adapter.afterApply(key);
+                }
             });
         }
 
