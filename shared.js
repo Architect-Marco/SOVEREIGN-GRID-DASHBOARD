@@ -12627,9 +12627,17 @@
                 let message = (match && RELAY_PERSONA_COLORS[match[1].trim()]) ? match[2].trim() : raw;
 
                 // Guaranteed cleanup: strip any leading "PERSONA:" the UI is about to render anyway,
-                // in case the regex above missed a formatting variant (e.g. emoji before the colon)
+                // in case the regex above missed a formatting variant (e.g. emoji before the colon).
+                // Looped because the model sometimes echoes the label twice ("LEXI-CON: LEXI-CON: ...") —
+                // a single pass only removed one copy, leaving the second stuck in front of her reply.
                 const labelPattern = new RegExp('^[\\s*_]*' + persona.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '[\\s*_]*:\\s*', 'i');
-                message = message.replace(labelPattern, '').trim();
+                let strippedMessage = message;
+                for (let i = 0; i < 5; i++) {
+                    const next = strippedMessage.replace(labelPattern, '').trim();
+                    if (next === strippedMessage) break;
+                    strippedMessage = next;
+                }
+                message = strippedMessage;
 
                 return { persona, message };
             } catch (err) {
@@ -12773,16 +12781,19 @@
             const isFemale = v => femaleHints.some(h => v.name.toLowerCase().includes(h));
             const isMale = v => maleHints.some(h => v.name.toLowerCase().includes(h));
 
+            // US English only — Lexi-Con should always sound American, never British/Australian/Indian
+            // English etc, even though those are technically "en-*" voices too.
+            const usVoices = voices.filter(v => v.lang && v.lang.toLowerCase() === 'en-us');
             const englishVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
-            const pool = englishVoices.length ? englishVoices : voices;
+            const pool = usVoices.length ? usVoices : (englishVoices.length ? englishVoices : voices);
 
-            // 1. Best case: a known female voice name
-            const femaleMatch = pool.find(isFemale) || voices.find(isFemale);
+            // 1. Best case: a known female voice name, US English preferred
+            const femaleMatch = pool.find(isFemale) || (usVoices.length ? null : voices.find(isFemale));
             if (femaleMatch) return femaleMatch;
 
             // 2. No confirmed female voice available — better to guess from names that are
             //    at least NOT confirmed male than to blindly grab pool[0] and risk a male voice.
-            const unknownGenderVoice = pool.find(v => !isMale(v)) || voices.find(v => !isMale(v));
+            const unknownGenderVoice = pool.find(v => !isMale(v)) || (usVoices.length ? null : voices.find(v => !isMale(v)));
             if (unknownGenderVoice) {
                 console.warn('No known female voice found for Lexi-Con — using best guess:', unknownGenderVoice.name);
                 return unknownGenderVoice;
@@ -12972,6 +12983,7 @@
             try {
                 const utter = new SpeechSynthesisUtterance(clean);
                 utter.voice = window.relayFemaleVoice;
+                utter.lang = 'en-US'; // force US English pronunciation, regardless of the picked voice's own tag
                 utter.pitch = window.relayVoiceSettings.pitch;
                 utter.rate = window.relayVoiceSettings.rate;
                 utter.volume = 0.9;
