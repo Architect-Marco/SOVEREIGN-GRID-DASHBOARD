@@ -12752,10 +12752,9 @@
         };
 
         // --- Text-to-speech for Lexi-Con's replies, via the browser's built-in Web Speech API ---
-        // The API has no actual "gender" setting — only a list of voices the OS/browser
-        // provides, each with its own name (e.g. "Samantha", "Microsoft Zira", "Google UK
-        // English Female"). So "pick a female voice" means matching against known female
-        // voice names across the common platforms.
+        // This is only a fallback for when Groq's Orpheus neural voice (Lexi-Con's real voice)
+        // isn't available — no key set, or the request failed. Simplified to just grab a US
+        // English voice from whatever the browser offers, no name-matching against a big list.
         window.relayFemaleVoice = null;
 
         function sfcPickFemaleVoice() {
@@ -12763,44 +12762,12 @@
             const voices = window.speechSynthesis.getVoices();
             if (!voices.length) return null;
 
-            const femaleHints = [
-                'female', 'zira', 'samantha', 'victoria', 'karen', 'moira', 'tessa', 'susan', 'fiona',
-                'aria', 'jenny', 'eva', 'linda', 'hazel', 'salli', 'kendra', 'kimberly', 'joanna', 'ivy',
-                'kathy', 'siti', 'yasmin', 'noor', 'amira', 'nicky', 'shelley', 'catherine', 'sara', 'sonia',
-                'emma', 'amy', 'nova', 'shimmer', 'allison', 'ava', 'susan', 'zoe', 'olivia', 'grace',
-                'chloe', 'mia', 'lucy', 'ella', 'sofia', 'valeria', 'mariska', 'ting-ting', 'mei-jia'
-            ];
-            // Explicitly excluded so a name-match miss never silently hands Lexi-Con a male voice
-            const maleHints = [
-                'male', 'david', 'mark', 'alex', 'daniel', 'fred', 'james', 'george', 'mike', 'tom',
-                'guy', 'eric', 'oliver', 'ryan', 'aaron', 'gordon', 'ahmad', 'rishi', 'diego', 'thomas',
-                'yuri', 'liam', 'ethan', 'brian', 'sean', 'lee', 'rocko', 'albert', 'jorge', 'juan',
-                'wenwen', 'yunjian'
-            ];
-
-            const isFemale = v => femaleHints.some(h => v.name.toLowerCase().includes(h));
-            const isMale = v => maleHints.some(h => v.name.toLowerCase().includes(h));
-
             // US English only — Lexi-Con should always sound American, never British/Australian/Indian
             // English etc, even though those are technically "en-*" voices too.
             const usVoices = voices.filter(v => v.lang && v.lang.toLowerCase() === 'en-us');
-            const englishVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
-            const pool = usVoices.length ? usVoices : (englishVoices.length ? englishVoices : voices);
+            if (usVoices.length) return usVoices[0];
 
-            // 1. Best case: a known female voice name, US English preferred
-            const femaleMatch = pool.find(isFemale) || (usVoices.length ? null : voices.find(isFemale));
-            if (femaleMatch) return femaleMatch;
-
-            // 2. No confirmed female voice available — better to guess from names that are
-            //    at least NOT confirmed male than to blindly grab pool[0] and risk a male voice.
-            const unknownGenderVoice = pool.find(v => !isMale(v)) || (usVoices.length ? null : voices.find(v => !isMale(v)));
-            if (unknownGenderVoice) {
-                console.warn('No known female voice found for Lexi-Con — using best guess:', unknownGenderVoice.name);
-                return unknownGenderVoice;
-            }
-
-            // 3. Every available voice matches a known male name — nothing safe to pick.
-            console.warn('Only male-named voices are available on this device/browser for Lexi-Con.');
+            console.warn('No en-US voice available on this device/browser for Lexi-Con.');
             return null;
         }
 
@@ -12974,10 +12941,10 @@
             }
             if (spoke || myGeneration !== relaySpeechGeneration) return; // spoke fine, or a newer reply already took over
 
-            // Fallback: browser's built-in speech synthesis, screened to a known female voice only
+            // Fallback: browser's built-in speech synthesis, screened to US English only
             if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
             if (!window.relayFemaleVoice) {
-                console.warn('Skipping speech: no female voice resolved for Lexi-Con.');
+                console.warn('Skipping speech: no en-US voice resolved for Lexi-Con.');
                 return; // never fall through to the browser's unscreened default voice
             }
             try {
