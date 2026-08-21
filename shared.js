@@ -12753,8 +12753,9 @@
 
         // --- Text-to-speech for Lexi-Con's replies, via the browser's built-in Web Speech API ---
         // This is only a fallback for when Groq's Orpheus neural voice (Lexi-Con's real voice)
-        // isn't available — no key set, or the request failed. Simplified to just grab a US
-        // English voice from whatever the browser offers, no name-matching against a big list.
+        // isn't available — no key set, or the request failed. Forces a US Female voice: explicitly
+        // requires the 'en-US' tag and explicitly blocks 'en-GB' (and every other English variant),
+        // then steers away from the browser's common default male voice names.
         window.relayFemaleVoice = null;
 
         function sfcPickFemaleVoice() {
@@ -12762,13 +12763,25 @@
             const voices = window.speechSynthesis.getVoices();
             if (!voices.length) return null;
 
-            // US English only — Lexi-Con should always sound American, never British/Australian/Indian
-            // English etc, even though those are technically "en-*" voices too.
-            const usVoices = voices.filter(v => v.lang && v.lang.toLowerCase() === 'en-us');
-            if (usVoices.length) return usVoices[0];
+            // Explicit block: en-GB (and any non-US English) is never eligible for Lexi-Con,
+            // even though it's technically an "en-*" voice.
+            const usVoices = voices.filter(v => {
+                const lang = (v.lang || '').toLowerCase();
+                if (lang === 'en-gb') return false; // explicitly blocked
+                return lang === 'en-us'; // only US English is eligible
+            });
+            if (!usVoices.length) {
+                console.warn('No en-US voice available on this device/browser for Lexi-Con.');
+                return null;
+            }
 
-            console.warn('No en-US voice available on this device/browser for Lexi-Con.');
-            return null;
+            // A handful of the most common cross-platform default MALE en-US voice names
+            // (Windows/Chrome/macOS) — just enough to avoid landing on one by luck when
+            // grabbing "the first en-US voice", not a full gender-matching name list.
+            const commonMaleNames = ['david', 'mark', 'guy', 'fred', 'alex'];
+            const notCommonMale = v => !commonMaleNames.some(n => v.name.toLowerCase().includes(n));
+
+            return usVoices.find(notCommonMale) || usVoices[0];
         }
 
         if ('speechSynthesis' in window) {
