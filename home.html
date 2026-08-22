@@ -43,9 +43,17 @@
 <body class="flex flex-col">
     <div class="scanline"></div>
 
+    <!-- MOBILE SIDEBAR TOGGLE — only visible on small screens -->
+    <button onclick="window.toggleMobileSidebar()" id="mobile-sidebar-toggle" class="md:hidden fixed top-4 left-4 z-[60] w-10 h-10 rounded-lg bg-[#0a0a0a] border border-[rgba(47,208,255,0.4)] flex items-center justify-center neon-blue-text">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+
+    <!-- MOBILE SIDEBAR BACKDROP — click to close -->
+    <div id="mobile-sidebar-backdrop" onclick="window.toggleMobileSidebar(false)" class="hidden fixed inset-0 bg-black/70 z-40 md:hidden"></div>
+
     <div class="flex flex-1 overflow-hidden">
         <!-- SIDEBAR -->
-        <aside class="w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col flex-shrink-0 h-full">
+        <aside id="main-sidebar" class="w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col flex-shrink-0 h-full fixed md:static inset-y-0 left-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
             <div class="p-8 border-b border-white/5 mb-4">
                 <div class="ethnocentric-title" style="font-size:8pt; letter-spacing:-0.02em; white-space:nowrap;">THE SICK TEAM <span class="dash-red">-</span> LAB</div>
                 <div class="text-[9px] text-gray-600 uppercase font-black tracking-[0.4em] mt-1">Human. Machine. United.</div>
@@ -77,7 +85,7 @@
         </aside>
 
         <!-- MAIN VIEW AREA -->
-        <main class="flex-1 overflow-y-auto p-12 bg-[#050505]">
+        <main class="flex-1 overflow-y-auto p-4 pt-20 md:p-12 bg-[#050505] w-full min-w-0">
             
             <div id="view-home" class="view-content">
                 <div class="mb-8 flex items-start justify-between gap-6 flex-wrap">
