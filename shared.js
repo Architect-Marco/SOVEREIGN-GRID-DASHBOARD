@@ -229,6 +229,19 @@
             if (dest) window.location.href = dest;
         };
 
+        // 1.55 MOBILE SIDEBAR DRAWER — toggles the fixed sidebar in/out of view on small screens.
+        // force: pass true/false to set state explicitly (e.g. backdrop click always closes),
+        // omit to just flip current state (e.g. hamburger button tap).
+        window.toggleMobileSidebar = function(force) {
+            const sidebar = document.getElementById('main-sidebar');
+            const backdrop = document.getElementById('mobile-sidebar-backdrop');
+            if (!sidebar) return;
+            const shouldOpen = typeof force === 'boolean' ? force : sidebar.classList.contains('-translate-x-full');
+            sidebar.classList.toggle('-translate-x-full', !shouldOpen);
+            sidebar.classList.toggle('translate-x-0', shouldOpen);
+            if (backdrop) backdrop.classList.toggle('hidden', !shouldOpen);
+        };
+
         // 1.5 APP MENU (9-dot icon) + HOME SEARCH
         window.toggleAppMenu = function() {
             const modal = document.getElementById('app-menu-modal');
