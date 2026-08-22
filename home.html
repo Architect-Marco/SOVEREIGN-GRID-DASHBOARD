@@ -40,7 +40,7 @@
         }
     </style>
 </head>
-<body class="flex flex-col">
+<body class="flex flex-col overflow-x-hidden" style="max-width:100vw;">
     <div class="scanline"></div>
 
     <!-- MOBILE SIDEBAR TOGGLE — only visible on small screens -->
@@ -587,7 +587,7 @@
     </div>
 
     <!-- PARLEY RELAY — floating chat widget (NOIR SECTOR COMMAND) -->
-    <div id="relay-widget" class="fixed bottom-24 right-6 w-[26rem] z-40">
+    <div id="relay-widget" class="fixed bottom-20 right-3 w-[calc(100vw-1.5rem)] max-w-[26rem] sm:bottom-24 sm:right-6 sm:w-[26rem] z-40">
         <div class="flex flex-col h-[500px] bg-[#050505] border border-teal-900/40 rounded-lg overflow-hidden shadow-2xl font-mono">
 
             <!-- HEADER: TACTICAL OVERLAY -->
