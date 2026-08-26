@@ -994,6 +994,13 @@
               presets: [
                 { name: 'sovereign: signature glow', values: [['TARGET','528Hz'],['RESONANCE','95%'],['AMOUNT','65%'],['GLOW','100%']] },
                 { name: 'sovereign: subtle signature', values: [['TARGET','528Hz'],['RESONANCE','70%'],['AMOUNT','30%'],['GLOW','70%']] }
+              ] },
+            { id: 'bitcrush-noir', name: 'Bit-Crush Noir', tagline: 'Industrial Grit', category: 'COLOR',
+              values: [['BITS','8-bit'],['RATE','4x'],['TONE','40%'],['MIX','65%']],
+              presets: [
+                { name: 'sovereign: cdfm chaos broadcast', values: [['BITS','6-bit'],['RATE','6x'],['TONE','55%'],['MIX','80%']] },
+                { name: 'sovereign: subtle grit', values: [['BITS','10-bit'],['RATE','2x'],['TONE','25%'],['MIX','35%']] },
+                { name: 'sovereign: dead signal', values: [['BITS','4-bit'],['RATE','8x'],['TONE','70%'],['MIX','100%']] }
               ] }
         ];
 
@@ -2077,6 +2084,8 @@
                     detail.innerHTML = window.dawLsPanel(key, plugin);
                 } else if (plugin && plugin.id === 'spectral-dynamics') {
                     detail.innerHTML = window.dawSpPanel(key, plugin);
+                } else if (plugin && plugin.id === 'bitcrush-noir') {
+                    detail.innerHTML = window.dawBcPanel(key, plugin);
                 } else {
                     detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
                 }
@@ -3308,6 +3317,274 @@
             }
             window.renderDawFxPicker();
         };
+
+        // ============================================================
+        // BIT-CRUSH NOIR — industrial lo-fi grit: real bit-depth reduction
+        // + sample-and-hold rate reduction + a post tone filter, dry/wet mix.
+        // Unlike the other Sovereign 12 plugins (which are visual-only so far),
+        // this one is wired to genuine Web Audio DSP that actually processes
+        // the audio during Render / Export — see dawBcApplyToOfflineChain(),
+        // called from window.dawRenderTracks.
+        // ============================================================
+        window.dawBcState = window.dawBcState || {};
+
+        function dawBcDefaultState() {
+            return { bits: 8, downsample: 4, tone: 0.4, mix: 0.65, power: true };
+        }
+        function dawBcGetState(key) {
+            if (!window.dawBcState[key]) window.dawBcState[key] = dawBcDefaultState();
+            return window.dawBcState[key];
+        }
+
+        const DAW_BC_FIELDS = {
+            bits:       { min: 2, max: 16, decimals: 0 },
+            downsample: { min: 1, max: 32, decimals: 0 },
+            tone:       { min: 0, max: 1, decimals: 2 },
+            mix:        { min: 0, max: 1, decimals: 2 }
+        };
+
+        function dawBcFormat(field, v) {
+            if (field === 'bits') return Math.round(v) + '-bit';
+            if (field === 'downsample') return Math.round(v) + 'x';
+            if (field === 'tone' || field === 'mix') return Math.round(v * 100) + '%';
+            return v.toFixed(2);
+        }
+        function dawBcParse(field, text) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            if (isNaN(num)) return null;
+            if (field === 'tone' || field === 'mix') return num / 100;
+            return num;
+        }
+
+        // Purely cosmetic staircase wave so the panel visually reacts to Bits/Rate —
+        // quantizes a sine wave in both amplitude (bits, capped for legible rendering)
+        // and horizontal hold-length (downsample), same idea as the real DSP below.
+        function dawBcWaveD(s) {
+            const width = 200, height = 60, totalPoints = 64;
+            const levels = Math.max(2, Math.pow(2, Math.min(s.bits, 6)));
+            const holdSamples = Math.max(1, Math.round(s.downsample / 2));
+            let d = '';
+            for (let i = 0; i <= totalPoints; i++) {
+                const heldIndex = Math.floor(i / holdSamples) * holdSamples;
+                const t = heldIndex / totalPoints;
+                const raw = Math.sin(t * Math.PI * 2);
+                const quant = Math.round(((raw + 1) / 2) * (levels - 1)) / (levels - 1) * 2 - 1;
+                const x = (i / totalPoints) * width;
+                const y = height / 2 - quant * (height / 2 - 4);
+                d += (i === 0 ? `M ${x.toFixed(1)} ${y.toFixed(1)}` : ` L ${x.toFixed(1)} ${y.toFixed(1)}`);
+            }
+            return d;
+        }
+
+        function dawBcKnob(key, sk, field, label, size) {
+            const s = dawBcGetState(key);
+            const c = DAW_BC_FIELDS[field];
+            const pct = (s[field] - c.min) / (c.max - c.min);
+            const deg = -135 + pct * 270;
+            const dim = size || 40;
+            return `
+            <div class="flex flex-col items-center gap-1">
+                <div id="dawbc-knob-${field}-${sk}" class="relative rounded-full bg-black border-2 border-[rgba(47,208,255,0.45)] cursor-ns-resize select-none flex-shrink-0"
+                     style="width:${dim}px; height:${dim}px;"
+                     onmousedown="event.stopPropagation(); window.dawBcKnobDrag(event,'${key}','${field}')" ontouchstart="event.stopPropagation(); window.dawBcKnobDrag(event,'${key}','${field}')">
+                    <div id="dawbc-knob-ind-${field}-${sk}" class="absolute top-0.5 left-1/2 w-0.5 bg-[#2fd0ff] origin-bottom" style="height:${dim * 0.4}px; transform:translateX(-50%) rotate(${deg}deg);"></div>
+                </div>
+                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
+                <input id="dawbc-val-${field}-${sk}" type="text" value="${dawBcFormat(field, s[field])}" onclick="event.stopPropagation()" onchange="window.dawBcSetFromText('${key}','${field}', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[7px] text-center neon-blue-text font-bold outline-none">
+            </div>`;
+        }
+
+        window.dawBcKnobDrag = function(e, key, field) {
+            e.preventDefault();
+            const c = DAW_BC_FIELDS[field];
+            const s = dawBcGetState(key);
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
+            const startVal = s[field];
+            const range = c.max - c.min;
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const deltaY = startY - clientY;
+                let newVal = startVal + deltaY * (range / 150);
+                newVal = Math.max(c.min, Math.min(c.max, newVal));
+                s[field] = newVal;
+                window.dawBcUpdateKnobVisual(key, field);
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
+        window.dawBcUpdateKnobVisual = function(key, field) {
+            const sk = eq8SafeKey(key);
+            const s = dawBcGetState(key);
+            const c = DAW_BC_FIELDS[field];
+            const pct = (s[field] - c.min) / (c.max - c.min);
+            const deg = -135 + pct * 270;
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawbc-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const ind = document.getElementById(`dawbc-knob-ind-${field}-${sk}`);
+            if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+            const val = document.getElementById(`dawbc-val-${field}-${sk}`);
+            if (val) val.value = dawBcFormat(field, s[field]);
+            const wavePath = document.getElementById(`dawbc-wave-path-${sk}`);
+            if (wavePath) wavePath.setAttribute('d', dawBcWaveD(s));
+        };
+
+        window.dawBcSetFromText = function(key, field, text) {
+            const c = DAW_BC_FIELDS[field];
+            const parsed = dawBcParse(field, text);
+            if (parsed === null) return;
+            const s = dawBcGetState(key);
+            s[field] = Math.max(c.min, Math.min(c.max, parsed));
+            window.dawBcUpdateKnobVisual(key, field);
+        };
+
+        window.dawBcTogglePower = function(key) {
+            const s = dawBcGetState(key);
+            s.power = !s.power;
+            delete window.dawFxActivePresetLabel[key];
+            window.renderDawFxPicker();
+        };
+
+        window.dawBcPanel = function(key, plugin) {
+            const s = dawBcGetState(key);
+            const sk = eq8SafeKey(key);
+            return `
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button onclick="event.stopPropagation(); window.dawBcTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                        <span id="dawbc-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div id="dawbc-preset-menu-${sk}" class="hidden-section"></div>
+                </span>
+            </div>
+            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+
+            <div class="flex gap-3 mt-4 items-center">
+                <button onclick="window.dawBcTogglePower('${key}')" title="Power" class="w-8 h-8 rounded flex items-center justify-center border-2 transition-colors flex-shrink-0 ${s.power ? 'bg-[#2fd0ff] border-[#2fd0ff] text-black' : 'border-[rgba(47,208,255,0.4)] text-gray-500'}">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2v8"/><circle cx="12" cy="14" r="7"/></svg>
+                </button>
+
+                <div class="flex-1 min-w-0 rounded-lg overflow-hidden" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08); height:70px;">
+                    <svg id="dawbc-wave-${sk}" viewBox="0 0 200 60" preserveAspectRatio="none" style="width:100%; height:100%; display:block;">
+                        <line x1="0" y1="30" x2="200" y2="30" stroke="rgba(47,208,255,0.14)" stroke-width="0.5"/>
+                        <path id="dawbc-wave-path-${sk}" d="${dawBcWaveD(s)}" fill="none" stroke="#2fd0ff" stroke-width="1.6" style="filter:drop-shadow(0 0 3px rgba(47,208,255,0.7));"/>
+                    </svg>
+                </div>
+
+                <div class="flex gap-2.5 flex-shrink-0">
+                    ${dawBcKnob(key, sk, 'bits', 'Bits', 40)}
+                    ${dawBcKnob(key, sk, 'downsample', 'Rate', 40)}
+                    ${dawBcKnob(key, sk, 'tone', 'Tone', 40)}
+                    ${dawBcKnob(key, sk, 'mix', 'Mix', 40)}
+                </div>
+            </div>
+            <div class="text-[7px] text-gray-600 uppercase tracking-widest text-center mt-3">Real DSP — applied on Render / Export</div>`;
+        };
+
+        window.dawBcTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawbc-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawBcRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawBcRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawbc-preset-menu-${sk}`);
+            if (!el) return;
+            const userPresets = (window.dawFxUserPresets['bitcrush-noir'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawBcApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                <button onclick="window.dawBcApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
+                </button>
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawBcApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+
+        window.dawBcApplyPreset = function(key, presetIndex) {
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawBcState[key] = dawBcDefaultState();
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = (window.dawFxUserPresets['bitcrush-noir'] || [])[presetIndex];
+                if (preset) {
+                    window.dawBcState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
+            window.renderDawFxPicker();
+        };
+
+        // Real DSP: builds a ScriptProcessorNode that does genuine bit-depth
+        // quantization + sample-and-hold rate reduction, plus a dry/wet mix
+        // and a post tone filter — inserted between a track's source and its
+        // gain node during offline render. Called from window.dawRenderTracks.
+        function dawBcApplyToOfflineChain(offlineCtx, sourceNode, outputNode, state) {
+            if (!state || !state.power) { sourceNode.connect(outputNode); return; }
+
+            const step = Math.pow(0.5, Math.max(1, state.bits));
+            const factor = Math.max(1, Math.round(state.downsample));
+
+            const crusher = offlineCtx.createScriptProcessor(4096, 2, 2);
+            let phase = 0, lastL = 0, lastR = 0;
+            crusher.onaudioprocess = (e) => {
+                const inL = e.inputBuffer.getChannelData(0);
+                const inR = e.inputBuffer.numberOfChannels > 1 ? e.inputBuffer.getChannelData(1) : inL;
+                const outL = e.outputBuffer.getChannelData(0);
+                const outR = e.outputBuffer.getChannelData(1);
+                for (let i = 0; i < inL.length; i++) {
+                    if (phase <= 0) {
+                        phase = factor;
+                        lastL = Math.round(inL[i] / step) * step;
+                        lastR = Math.round(inR[i] / step) * step;
+                    }
+                    phase--;
+                    outL[i] = lastL;
+                    outR[i] = lastR;
+                }
+            };
+
+            // Tone: post lowpass filter on the crushed (wet) signal only —
+            // lower Tone = darker/muffled industrial grit, higher = brighter/harsher.
+            const toneFilter = offlineCtx.createBiquadFilter();
+            toneFilter.type = 'lowpass';
+            toneFilter.frequency.value = 800 + state.tone * 11200;
+
+            const dryGain = offlineCtx.createGain();
+            dryGain.gain.value = 1 - state.mix;
+            const wetGain = offlineCtx.createGain();
+            wetGain.gain.value = state.mix;
+
+            sourceNode.connect(dryGain);
+            sourceNode.connect(crusher);
+            crusher.connect(toneFilter);
+            toneFilter.connect(wetGain);
+            dryGain.connect(outputNode);
+            wetGain.connect(outputNode);
+        }
 
         // ============================================================
         // VOCAL DE-ESSER — Detector (frequency-selective sidechain sensor)
@@ -6065,6 +6342,7 @@
             else if (sel.plugin.id === 'aether-reverb') window.dawArTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'luxury-saturation') window.dawLsTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'spectral-dynamics') window.dawSpTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'bitcrush-noir') window.dawBcTogglePresetMenu(sel.key);
             else window.dawFxTogglePresetMenu(sel.key);
         };
 
@@ -6101,6 +6379,8 @@
                 data = JSON.parse(JSON.stringify(dawLsGetState(sel.key)));
             } else if (sel.plugin.id === 'spectral-dynamics') {
                 data = JSON.parse(JSON.stringify(dawSpGetState(sel.key)));
+            } else if (sel.plugin.id === 'bitcrush-noir') {
+                data = JSON.parse(JSON.stringify(dawBcGetState(sel.key)));
             } else {
                 const choice = window.dawFxPresetChoice[sel.key];
                 data = { values: choice ? choice.values : sel.plugin.values };
@@ -6109,7 +6389,7 @@
             window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
             window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
             window.dawFxActivePresetLabel[sel.key] = label;
-            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'aether-reverb' && sel.plugin.id !== 'luxury-saturation' && sel.plugin.id !== 'spectral-dynamics') {
+            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'aether-reverb' && sel.plugin.id !== 'luxury-saturation' && sel.plugin.id !== 'spectral-dynamics' && sel.plugin.id !== 'bitcrush-noir') {
                 window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
             }
             window.renderDawFxPicker();
@@ -10136,7 +10416,18 @@
                     source.buffer = buffer;
                     const gain = offlineCtx.createGain();
                     gain.gain.value = (typeof track.volume === 'number' ? track.volume : 80) / 100;
-                    source.connect(gain);
+
+                    // Bit-Crush Noir is currently the only Sovereign 12 plugin wired to
+                    // real DSP — if it's in this track's chain, route through it first.
+                    const fxNames = track.fx || [];
+                    const bcIndex = fxNames.indexOf('Bit-Crush Noir');
+                    if (bcIndex >= 0) {
+                        const bcState = window.dawBcState && window.dawBcState[`${track.id}::${bcIndex}`];
+                        dawBcApplyToOfflineChain(offlineCtx, source, gain, bcState);
+                    } else {
+                        source.connect(gain);
+                    }
+
                     gain.connect(offlineCtx.destination);
                     source.start(0);
                 });
