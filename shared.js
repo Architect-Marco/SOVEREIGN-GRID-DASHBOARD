@@ -1001,6 +1001,13 @@
                 { name: 'sovereign: cdfm chaos broadcast', values: [['BITS','6-bit'],['RATE','6x'],['TONE','55%'],['MIX','80%']] },
                 { name: 'sovereign: subtle grit', values: [['BITS','10-bit'],['RATE','2x'],['TONE','25%'],['MIX','35%']] },
                 { name: 'sovereign: dead signal', values: [['BITS','4-bit'],['RATE','8x'],['TONE','70%'],['MIX','100%']] }
+              ] },
+            { id: 'shutter-gate', name: 'Surgical Shutter-Gate', tagline: 'Cyber Funk Cuts', category: 'TIME',
+              values: [['RATE','1/16'],['GATE','50%'],['EDGE','60%'],['DEPTH','100%']],
+              presets: [
+                { name: 'sovereign: cyber funk 1/128', values: [['RATE','1/128'],['GATE','35%'],['EDGE','95%'],['DEPTH','100%']] },
+                { name: 'sovereign: pumping 1/16', values: [['RATE','1/16'],['GATE','60%'],['EDGE','40%'],['DEPTH','80%']] },
+                { name: 'sovereign: subtle pulse', values: [['RATE','1/8'],['GATE','75%'],['EDGE','20%'],['DEPTH','40%']] }
               ] }
         ];
 
@@ -2086,6 +2093,8 @@
                     detail.innerHTML = window.dawSpPanel(key, plugin);
                 } else if (plugin && plugin.id === 'bitcrush-noir') {
                     detail.innerHTML = window.dawBcPanel(key, plugin);
+                } else if (plugin && plugin.id === 'shutter-gate') {
+                    detail.innerHTML = window.dawSgPanel(key, plugin);
                 } else {
                     detail.innerHTML = ppDetailPanel(plugin, key, ctx) || ppEmptyDetail('Plugin data unavailable');
                 }
@@ -3323,7 +3332,7 @@
         // + sample-and-hold rate reduction + a post tone filter, dry/wet mix.
         // Unlike the other Sovereign 12 plugins (which are visual-only so far),
         // this one is wired to genuine Web Audio DSP that actually processes
-        // the audio during Render / Export — see dawBcApplyToOfflineChain(),
+        // the audio during Render / Export — see dawBcBuildOfflineNode(),
         // called from window.dawRenderTracks.
         // ============================================================
         window.dawBcState = window.dawBcState || {};
@@ -3540,10 +3549,11 @@
 
         // Real DSP: builds a ScriptProcessorNode that does genuine bit-depth
         // quantization + sample-and-hold rate reduction, plus a dry/wet mix
-        // and a post tone filter — inserted between a track's source and its
-        // gain node during offline render. Called from window.dawRenderTracks.
-        function dawBcApplyToOfflineChain(offlineCtx, sourceNode, outputNode, state) {
-            if (!state || !state.power) { sourceNode.connect(outputNode); return; }
+        // and a post tone filter. Returns the output node so it can chain with
+        // other real-DSP plugins (e.g. Surgical Shutter-Gate) on the same track.
+        // Called from window.dawRenderTracks.
+        function dawBcBuildOfflineNode(offlineCtx, inputNode, state) {
+            if (!state || !state.power) return inputNode;
 
             const step = Math.pow(0.5, Math.max(1, state.bits));
             const factor = Math.max(1, Math.round(state.downsample));
@@ -3577,13 +3587,282 @@
             dryGain.gain.value = 1 - state.mix;
             const wetGain = offlineCtx.createGain();
             wetGain.gain.value = state.mix;
+            const mergeGain = offlineCtx.createGain();
 
-            sourceNode.connect(dryGain);
-            sourceNode.connect(crusher);
+            inputNode.connect(dryGain);
+            inputNode.connect(crusher);
             crusher.connect(toneFilter);
             toneFilter.connect(wetGain);
-            dryGain.connect(outputNode);
-            wetGain.connect(outputNode);
+            dryGain.connect(mergeGain);
+            wetGain.connect(mergeGain);
+            return mergeGain;
+        }
+
+        // ============================================================
+        // SURGICAL SHUTTER-GATE — a tempo-synced trance/stutter gate for
+        // Cyber Funk-style rhythmic cuts. Genuinely syncs to the DAW's
+        // actual project BPM (window.dawBpm), not a fixed rate. Like
+        // Bit-Crush Noir, this is real DSP applied on Render / Export —
+        // see dawSgBuildOfflineNode(), called from window.dawRenderTracks.
+        // ============================================================
+        window.dawSgState = window.dawSgState || {};
+        const DAW_SG_RATES = ['1/4', '1/8', '1/16', '1/32', '1/64', '1/128'];
+
+        function dawSgDefaultState() {
+            return { rate: '1/16', gateLen: 0.5, edge: 0.6, depth: 1.0, power: true };
+        }
+        function dawSgGetState(key) {
+            if (!window.dawSgState[key]) window.dawSgState[key] = dawSgDefaultState();
+            return window.dawSgState[key];
+        }
+
+        const DAW_SG_FIELDS = {
+            gateLen: { min: 0.05, max: 0.95 },
+            edge:    { min: 0, max: 1 },
+            depth:   { min: 0, max: 1 }
+        };
+
+        function dawSgFormat(v) { return Math.round(v * 100) + '%'; }
+        function dawSgParse(text) {
+            const num = parseFloat(String(text).replace(/[^0-9.\-]/g, ''));
+            return isNaN(num) ? null : num / 100;
+        }
+
+        // Cosmetic 16-block strip showing how much of each step is "open" —
+        // purely illustrative of the gate's duty cycle, reacts live to the Gate knob.
+        function dawSgPatternHtml(s) {
+            const openPct = Math.round(s.gateLen * 100);
+            let html = '<div class="flex gap-0.5 w-full h-full items-stretch">';
+            for (let i = 0; i < 16; i++) {
+                html += `<div class="flex-1 rounded-sm overflow-hidden flex" style="background:rgba(47,208,255,0.08);">
+                    <div style="width:${openPct}%; background:#2fd0ff; box-shadow:0 0 6px rgba(47,208,255,0.7);"></div>
+                </div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function dawSgKnob(key, sk, field, label, size) {
+            const s = dawSgGetState(key);
+            const c = DAW_SG_FIELDS[field];
+            const pct = (s[field] - c.min) / (c.max - c.min);
+            const deg = -135 + pct * 270;
+            const dim = size || 40;
+            return `
+            <div class="flex flex-col items-center gap-1">
+                <div id="dawsg-knob-${field}-${sk}" class="relative rounded-full bg-black border-2 border-[rgba(47,208,255,0.45)] cursor-ns-resize select-none flex-shrink-0"
+                     style="width:${dim}px; height:${dim}px;"
+                     onmousedown="event.stopPropagation(); window.dawSgKnobDrag(event,'${key}','${field}')" ontouchstart="event.stopPropagation(); window.dawSgKnobDrag(event,'${key}','${field}')">
+                    <div id="dawsg-knob-ind-${field}-${sk}" class="absolute top-0.5 left-1/2 w-0.5 bg-[#2fd0ff] origin-bottom" style="height:${dim * 0.4}px; transform:translateX(-50%) rotate(${deg}deg);"></div>
+                </div>
+                <span class="text-[7px] text-gray-500 uppercase font-black tracking-widest">${label}</span>
+                <input id="dawsg-val-${field}-${sk}" type="text" value="${dawSgFormat(s[field])}" onclick="event.stopPropagation()" onchange="window.dawSgSetFromText('${key}','${field}', this.value)" class="w-14 bg-black/50 border border-[rgba(47,208,255,0.35)] rounded px-1 py-0.5 text-[7px] text-center neon-blue-text font-bold outline-none">
+            </div>`;
+        }
+
+        window.dawSgKnobDrag = function(e, key, field) {
+            e.preventDefault();
+            const c = DAW_SG_FIELDS[field];
+            const s = dawSgGetState(key);
+            const startY = e.touches ? e.touches[0].clientY : e.clientY;
+            const startVal = s[field];
+            const range = c.max - c.min;
+            const move = (ev) => {
+                const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const deltaY = startY - clientY;
+                let newVal = startVal + deltaY * (range / 150);
+                newVal = Math.max(c.min, Math.min(c.max, newVal));
+                s[field] = newVal;
+                window.dawSgUpdateKnobVisual(key, field);
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            document.addEventListener('touchmove', move);
+            document.addEventListener('touchend', up);
+        };
+
+        window.dawSgUpdateKnobVisual = function(key, field) {
+            const sk = eq8SafeKey(key);
+            const s = dawSgGetState(key);
+            const c = DAW_SG_FIELDS[field];
+            const pct = (s[field] - c.min) / (c.max - c.min);
+            const deg = -135 + pct * 270;
+            delete window.dawFxActivePresetLabel[key];
+            const badge = document.getElementById(`dawsg-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const ind = document.getElementById(`dawsg-knob-ind-${field}-${sk}`);
+            if (ind) ind.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+            const val = document.getElementById(`dawsg-val-${field}-${sk}`);
+            if (val) val.value = dawSgFormat(s[field]);
+            const pattern = document.getElementById(`dawsg-pattern-${sk}`);
+            if (pattern) pattern.innerHTML = dawSgPatternHtml(s);
+        };
+
+        window.dawSgSetFromText = function(key, field, text) {
+            const c = DAW_SG_FIELDS[field];
+            const parsed = dawSgParse(text);
+            if (parsed === null) return;
+            const s = dawSgGetState(key);
+            s[field] = Math.max(c.min, Math.min(c.max, parsed));
+            window.dawSgUpdateKnobVisual(key, field);
+        };
+
+        window.dawSgTogglePower = function(key) {
+            const s = dawSgGetState(key);
+            s.power = !s.power;
+            delete window.dawFxActivePresetLabel[key];
+            window.renderDawFxPicker();
+        };
+
+        window.dawSgCycleRate = function(key, dir) {
+            const s = dawSgGetState(key);
+            let idx = DAW_SG_RATES.indexOf(s.rate);
+            idx = (idx + dir + DAW_SG_RATES.length) % DAW_SG_RATES.length;
+            s.rate = DAW_SG_RATES[idx];
+            delete window.dawFxActivePresetLabel[key];
+            const sk = eq8SafeKey(key);
+            const badge = document.getElementById(`dawsg-badge-${sk}`);
+            if (badge) badge.innerText = 'factory preset';
+            const rateEl = document.getElementById(`dawsg-rate-${sk}`);
+            if (rateEl) rateEl.innerText = s.rate;
+        };
+
+        window.dawSgPanel = function(key, plugin) {
+            const s = dawSgGetState(key);
+            const sk = eq8SafeKey(key);
+            return `
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <div class="min-w-0">
+                    <div class="neon-blue-text text-sm font-black italic truncate">${plugin.name}</div>
+                    <div class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">${plugin.tagline}</div>
+                </div>
+                <span class="relative inline-block flex-shrink-0">
+                    <button onclick="event.stopPropagation(); window.dawSgTogglePresetMenu('${key}')" class="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest neon-blue-text border border-[rgba(47,208,255,0.5)] rounded px-2 py-1 bg-black/50 hover:bg-[#2fd0ff]/15 transition-colors max-w-[150px]">
+                        <span id="dawsg-badge-${sk}" class="truncate">${window.dawFxActivePresetLabel[key] || 'factory preset'}</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="flex-shrink-0"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div id="dawsg-preset-menu-${sk}" class="hidden-section"></div>
+                </span>
+            </div>
+            <div class="inline-block text-[8px] neon-blue-text uppercase font-black tracking-widest mt-1 border border-[rgba(47,208,255,0.35)] rounded px-1.5 py-0.5">${plugin.category}</div>
+
+            <div class="flex gap-3 mt-4 items-center">
+                <button onclick="window.dawSgTogglePower('${key}')" title="Power" class="w-8 h-8 rounded flex items-center justify-center border-2 transition-colors flex-shrink-0 ${s.power ? 'bg-[#2fd0ff] border-[#2fd0ff] text-black' : 'border-[rgba(47,208,255,0.4)] text-gray-500'}">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2v8"/><circle cx="12" cy="14" r="7"/></svg>
+                </button>
+
+                <div class="flex flex-col items-center flex-shrink-0" style="width:64px;">
+                    <span class="text-[7px] font-black uppercase tracking-widest mb-1.5 text-gray-500">Rate</span>
+                    <div class="flex items-center gap-1 rounded px-1.5 py-1 bg-black/40" style="border:1px solid rgba(47,208,255,0.3);">
+                        <button onclick="window.dawSgCycleRate('${key}', -1)" class="text-[9px] text-gray-500 hover:text-[#2fd0ff]">&#9664;</button>
+                        <span id="dawsg-rate-${sk}" class="text-[9px] font-black neon-blue-text w-9 text-center inline-block">${s.rate}</span>
+                        <button onclick="window.dawSgCycleRate('${key}', 1)" class="text-[9px] text-gray-500 hover:text-[#2fd0ff]">&#9654;</button>
+                    </div>
+                    <span class="text-[6.5px] text-gray-600 uppercase tracking-widest mt-1">Synced to BPM</span>
+                </div>
+
+                <div class="flex-1 min-w-0 rounded-lg overflow-hidden px-2" style="border:1px solid rgba(47,208,255,0.35); box-shadow: inset 0 0 12px rgba(47,208,255,0.08); height:56px;">
+                    <div id="dawsg-pattern-${sk}" class="w-full h-full flex items-center">${dawSgPatternHtml(s)}</div>
+                </div>
+
+                <div class="flex gap-2.5 flex-shrink-0">
+                    ${dawSgKnob(key, sk, 'gateLen', 'Gate', 40)}
+                    ${dawSgKnob(key, sk, 'edge', 'Edge', 40)}
+                    ${dawSgKnob(key, sk, 'depth', 'Depth', 40)}
+                </div>
+            </div>
+            <div class="text-[7px] text-gray-600 uppercase tracking-widest text-center mt-3">Real DSP, synced to project BPM — applied on Render / Export</div>`;
+        };
+
+        window.dawSgTogglePresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawsg-preset-menu-${sk}`);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden-section');
+            if (isHidden) { window.dawSgRenderPresetMenu(key); el.classList.remove('hidden-section'); }
+            else el.classList.add('hidden-section');
+        };
+
+        window.dawSgRenderPresetMenu = function(key) {
+            const sk = eq8SafeKey(key);
+            const el = document.getElementById(`dawsg-preset-menu-${sk}`);
+            if (!el) return;
+            const userPresets = (window.dawFxUserPresets['shutter-gate'] || []);
+            const activeLabel = window.dawFxActivePresetLabel[key];
+            el.innerHTML = `
+            <div class="absolute top-full right-0 mt-1.5 w-56 z-20 bg-black rounded-lg overflow-y-auto slick-scroll" style="border:1px solid #2fd0ff; box-shadow: 0 0 16px rgba(47,208,255,0.4), inset 0 0 2px rgba(47,208,255,0.45); max-height:220px;" onclick="event.stopPropagation()">
+                <button onclick="window.dawSgApplyPreset('${key}', null)" class="w-full text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest neon-blue-text hover:bg-[#2fd0ff]/15 transition-colors border-b border-[rgba(47,208,255,0.25)]">Reset to factory default</button>
+                <button onclick="window.dawSgApplyPreset('${key}', null)" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors border-b border-[rgba(47,208,255,0.15)] ${!activeLabel ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-400 hover:bg-white/5'}">
+                    <span class="w-3 flex-shrink-0">${!activeLabel ? '✓' : ''}</span> No preset
+                </button>
+                ${userPresets.length ? `<div class="px-3 py-1.5 text-[7px] text-gray-500 uppercase tracking-[0.2em] border-b border-[rgba(47,208,255,0.15)]">---- User Presets ----</div>` : ''}
+                ${userPresets.map((p, i) => `
+                <button onclick="window.dawSgApplyPreset('${key}', ${i})" class="w-full flex items-center gap-2 text-left px-3 py-2 text-[9px] font-bold tracking-wide transition-colors ${activeLabel === p.name ? 'bg-[#2fd0ff]/20 neon-blue-text' : 'text-gray-300 hover:bg-white/5 hover:text-[#2fd0ff]'}">
+                    <span class="w-3 flex-shrink-0">${activeLabel === p.name ? '✓' : ''}</span> <span class="truncate">${p.name}</span>
+                </button>`).join('')}
+            </div>`;
+        };
+
+        window.dawSgApplyPreset = function(key, presetIndex) {
+            if (presetIndex === null || presetIndex === undefined) {
+                window.dawSgState[key] = dawSgDefaultState();
+                delete window.dawFxActivePresetLabel[key];
+            } else {
+                const preset = (window.dawFxUserPresets['shutter-gate'] || [])[presetIndex];
+                if (preset) {
+                    window.dawSgState[key] = JSON.parse(JSON.stringify(preset.data));
+                    window.dawFxActivePresetLabel[key] = preset.name;
+                }
+            }
+            window.renderDawFxPicker();
+        };
+
+        // Real DSP: schedules genuine sample-accurate GainNode automation to
+        // gate the signal open/closed on a rhythmic grid derived from the
+        // DAW's actual project BPM (window.dawBpm) and the chosen note division.
+        // Returns the output node so it can chain with other real-DSP plugins.
+        function dawSgBuildOfflineNode(offlineCtx, inputNode, state, durationSec) {
+            if (!state || !state.power) return inputNode;
+
+            const gainNode = offlineCtx.createGain();
+            inputNode.connect(gainNode);
+
+            const bpm = parseFloat(window.dawBpm) || 120;
+            const divisionMap = { '1/4': 4, '1/8': 8, '1/16': 16, '1/32': 32, '1/64': 64, '1/128': 128 };
+            const div = divisionMap[state.rate] || 16;
+            const stepDur = (60 / bpm) * 4 / div; // seconds per step, 4/4 time
+            const duty = Math.max(0.02, Math.min(0.98, state.gateLen));
+            const openDur = stepDur * duty;
+            const closedLevel = Math.max(0, 1 - state.depth);
+            // Edge time capped to a fraction of the step so fast rates never overlap weirdly.
+            const edgeTime = Math.max(0.0004, (1 - state.edge) * Math.min(0.03, stepDur * 0.3));
+
+            const g = gainNode.gain;
+            g.setValueAtTime(closedLevel, 0);
+
+            // Safety cap so a pathologically fast division (1/128) on a long track
+            // doesn't schedule an unreasonable number of automation events.
+            const maxSteps = 20000;
+            const totalSteps = Math.min(Math.ceil(durationSec / stepDur) + 1, maxSteps);
+
+            for (let i = 0; i < totalSteps; i++) {
+                const stepStart = i * stepDur;
+                if (stepStart > durationSec) break;
+                const riseEnd = Math.min(stepStart + edgeTime, stepStart + openDur);
+                const fallStart = Math.max(riseEnd, stepStart + openDur - edgeTime);
+                const fallEnd = Math.min(fallStart + edgeTime, stepStart + stepDur);
+                g.setValueAtTime(closedLevel, stepStart);
+                g.linearRampToValueAtTime(1, riseEnd);
+                g.setValueAtTime(1, fallStart);
+                g.linearRampToValueAtTime(closedLevel, fallEnd);
+            }
+            return gainNode;
         }
 
         // ============================================================
@@ -6343,6 +6622,7 @@
             else if (sel.plugin.id === 'luxury-saturation') window.dawLsTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'spectral-dynamics') window.dawSpTogglePresetMenu(sel.key);
             else if (sel.plugin.id === 'bitcrush-noir') window.dawBcTogglePresetMenu(sel.key);
+            else if (sel.plugin.id === 'shutter-gate') window.dawSgTogglePresetMenu(sel.key);
             else window.dawFxTogglePresetMenu(sel.key);
         };
 
@@ -6381,6 +6661,8 @@
                 data = JSON.parse(JSON.stringify(dawSpGetState(sel.key)));
             } else if (sel.plugin.id === 'bitcrush-noir') {
                 data = JSON.parse(JSON.stringify(dawBcGetState(sel.key)));
+            } else if (sel.plugin.id === 'shutter-gate') {
+                data = JSON.parse(JSON.stringify(dawSgGetState(sel.key)));
             } else {
                 const choice = window.dawFxPresetChoice[sel.key];
                 data = { values: choice ? choice.values : sel.plugin.values };
@@ -6389,7 +6671,7 @@
             window.dawFxUserPresets[sel.plugin.id] = window.dawFxUserPresets[sel.plugin.id] || [];
             window.dawFxUserPresets[sel.plugin.id].push({ name: label, data });
             window.dawFxActivePresetLabel[sel.key] = label;
-            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'aether-reverb' && sel.plugin.id !== 'luxury-saturation' && sel.plugin.id !== 'spectral-dynamics' && sel.plugin.id !== 'bitcrush-noir') {
+            if (sel.plugin.id !== 'surgical-eq8' && sel.plugin.id !== 'master-limiter' && sel.plugin.id !== 'stereo-imager' && sel.plugin.id !== 'bass-maximizer' && sel.plugin.id !== 'harmonic-exciter' && sel.plugin.id !== 'sovereign-delay' && sel.plugin.id !== 'multiband-comp' && sel.plugin.id !== 'vocal-deesser' && sel.plugin.id !== 'vocal-rider' && sel.plugin.id !== 'aether-reverb' && sel.plugin.id !== 'luxury-saturation' && sel.plugin.id !== 'spectral-dynamics' && sel.plugin.id !== 'bitcrush-noir' && sel.plugin.id !== 'shutter-gate') {
                 window.dawFxPresetChoice[sel.key] = { name: label, values: data.values };
             }
             window.renderDawFxPicker();
@@ -10414,21 +10696,25 @@
                 buffers.forEach(({ track, buffer }) => {
                     const source = offlineCtx.createBufferSource();
                     source.buffer = buffer;
-                    const gain = offlineCtx.createGain();
-                    gain.gain.value = (typeof track.volume === 'number' ? track.volume : 80) / 100;
+                    const outGain = offlineCtx.createGain();
+                    outGain.gain.value = (typeof track.volume === 'number' ? track.volume : 80) / 100;
 
-                    // Bit-Crush Noir is currently the only Sovereign 12 plugin wired to
-                    // real DSP — if it's in this track's chain, route through it first.
+                    // Real-DSP Sovereign 12 plugins chain in the order they sit in the
+                    // track's FX list. Bit-Crush Noir and Surgical Shutter-Gate are
+                    // currently the only two wired to actual audio processing.
+                    let node = source;
                     const fxNames = track.fx || [];
-                    const bcIndex = fxNames.indexOf('Bit-Crush Noir');
-                    if (bcIndex >= 0) {
-                        const bcState = window.dawBcState && window.dawBcState[`${track.id}::${bcIndex}`];
-                        dawBcApplyToOfflineChain(offlineCtx, source, gain, bcState);
-                    } else {
-                        source.connect(gain);
-                    }
+                    fxNames.forEach((fxName, idx) => {
+                        const slotKey = `${track.id}::${idx}`;
+                        if (fxName === 'Bit-Crush Noir') {
+                            node = dawBcBuildOfflineNode(offlineCtx, node, window.dawBcState && window.dawBcState[slotKey]);
+                        } else if (fxName === 'Surgical Shutter-Gate') {
+                            node = dawSgBuildOfflineNode(offlineCtx, node, window.dawSgState && window.dawSgState[slotKey], buffer.duration);
+                        }
+                    });
 
-                    gain.connect(offlineCtx.destination);
+                    node.connect(outGain);
+                    outGain.connect(offlineCtx.destination);
                     source.start(0);
                 });
 
