@@ -8864,29 +8864,110 @@
         window.dawMasterFx = [];
 
         // ============================================================
-        // MIXER: PANNING (L/C/R) + MASTER MUTE/SOLO
+        // MIXER: PANNING (continuous knob, -100 = hard left ... 100 = hard right)
+        // + MASTER MUTE/SOLO
         // ============================================================
-        window.dawMasterPan = window.dawMasterPan || 'C'; // 'L' | 'C' | 'R'
+        // Legacy state may still hold the old 'L' | 'C' | 'R' strings — coerce once.
+        window.dawMasterPan = (window.dawMasterPan === 'L') ? -100 : (window.dawMasterPan === 'R') ? 100 : (Number(window.dawMasterPan) || 0);
         window.dawMasterMuted = window.dawMasterMuted || false;
         let dawMasterVolumeBeforeMute = null;
 
         function dawPanToValue(pan) {
-            if (pan === 'L') return -1;
-            if (pan === 'R') return 1;
-            return 0;
+            // Numeric -100..100 -> Web Audio's -1..1 range.
+            return Math.max(-1, Math.min(1, (Number(pan) || 0) / 100));
         }
 
-        // Clicking the already-active side resets to Center — a standard L/C/R toggle.
-        window.setDawTrackPan = function(trackId, side) {
+        function dawPanLabel(value) {
+            const v = Math.round(Number(value) || 0);
+            if (v === 0) return 'C';
+            return (v < 0 ? 'L' : 'R') + Math.abs(v);
+        }
+
+        function dawPanKnobAngle(value) {
+            // -135deg (hard left) .. 135deg (hard right), 0 = straight up (center).
+            return (Math.max(-100, Math.min(100, Number(value) || 0)) / 100) * 135;
+        }
+
+        window.dawUpdatePanKnobUI = function(id) {
+            const isMaster = id === 'master';
+            const value = isMaster ? window.dawMasterPan : ((window.dawTracks.find(t => t.id === id) || {}).pan || 0);
+            const knob = document.getElementById('daw-pan-knob-' + id);
+            const label = document.getElementById('daw-pan-label-' + id);
+            if (knob) {
+                const indicator = knob.querySelector('.daw-pan-knob-indicator');
+                if (indicator) indicator.style.transform = 'rotate(' + dawPanKnobAngle(value) + 'deg)';
+                knob.classList.toggle('panned', Math.round(value) !== 0);
+            }
+            if (label) label.textContent = dawPanLabel(value);
+        };
+
+        window.setDawTrackPan = function(trackId, value) {
             const track = window.dawTracks.find(t => t.id === trackId);
             if (!track) return;
-            track.pan = track.pan === side ? 'C' : side;
-            window.renderDawMixer();
+            track.pan = Math.max(-100, Math.min(100, Math.round(Number(value) || 0)));
+            window.dawUpdatePanKnobUI(trackId);
         };
-        window.setDawMasterPan = function(side) {
-            window.dawMasterPan = window.dawMasterPan === side ? 'C' : side;
-            window.renderDawMixer();
+        window.setDawMasterPan = function(value) {
+            window.dawMasterPan = Math.max(-100, Math.min(100, Math.round(Number(value) || 0)));
+            window.dawUpdatePanKnobUI('master');
         };
+
+        // Twist-to-pan: drag the knob up/down (or finger up/down on touch) to sweep
+        // smoothly between hard left and hard right. Double-click / double-tap re-centers.
+        window.dawPanKnobStart = function(event, id) {
+            event.preventDefault();
+            event.stopPropagation();
+            const isMaster = id === 'master';
+            const getValue = () => isMaster ? window.dawMasterPan : ((window.dawTracks.find(t => t.id === id) || {}).pan || 0);
+            const setValue = (v) => isMaster ? window.setDawMasterPan(v) : window.setDawTrackPan(id, v);
+            const startValue = getValue();
+            const startY = event.touches ? event.touches[0].clientY : event.clientY;
+            const PIXELS_FOR_FULL_SWEEP = 160; // drag this many px for hard-left <-> hard-right
+
+            function onMove(e) {
+                e.preventDefault();
+                const y = e.touches ? e.touches[0].clientY : e.clientY;
+                const deltaY = startY - y; // drag up = pan right, drag down = pan left
+                setValue(startValue + (deltaY / PIXELS_FOR_FULL_SWEEP) * 200);
+            }
+            function onEnd() {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onEnd);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onEnd);
+            }
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onEnd);
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend', onEnd);
+        };
+
+        window.dawPanKnobReset = function(event, id) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (id === 'master') window.setDawMasterPan(0);
+            else window.setDawTrackPan(id, 0);
+        };
+
+        // One-time CSS injection for the pan knob (kept self-contained here since
+        // this file has no accompanying stylesheet hook).
+        window.dawInjectPanKnobStyles = function() {
+            if (document.getElementById('daw-pan-knob-styles')) return;
+            const style = document.createElement('style');
+            style.id = 'daw-pan-knob-styles';
+            style.textContent = `
+                .daw-pan-row { display:flex; align-items:center; justify-content:center; gap:4px; }
+                .daw-pan-side-label { font-size:7px; font-weight:900; letter-spacing:.05em; color:#6b7280; text-transform:uppercase; user-select:none; }
+                .daw-pan-knob { position:relative; width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); cursor:grab; touch-action:none; flex-shrink:0; transition:border-color .15s, box-shadow .15s; }
+                .daw-pan-knob:active { cursor:grabbing; }
+                .daw-pan-knob.panned { border-color:rgba(47,208,255,0.6); box-shadow:0 0 6px rgba(47,208,255,0.35); }
+                .daw-pan-knob-dial { position:absolute; inset:0; }
+                .daw-pan-knob-indicator { position:absolute; left:50%; top:1px; width:2px; height:8px; margin-left:-1px; background:rgba(255,255,255,0.45); border-radius:1px; transform-origin:50% 100%; transform:rotate(0deg); }
+                .daw-pan-knob.panned .daw-pan-knob-indicator { background:#2fd0ff; }
+            `;
+            document.head.appendChild(style);
+        };
+        window.dawInjectPanKnobStyles();
 
         window.toggleDawMasterMute = function() {
             window.dawMasterMuted = !window.dawMasterMuted;
@@ -8940,11 +9021,20 @@
                         <span class="daw-mixer-io-pill"></span>
                     </div>
 
-                    <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
-                        <button onclick="window.setDawMasterPan('L')" class="daw-chip-btn ${window.dawMasterPan === 'L' ? 'on-solo' : ''}" title="Pan hard left">L</button>
-                        <button onclick="window.setDawMasterPan('R')" class="daw-chip-btn ${window.dawMasterPan === 'R' ? 'on-solo' : ''}" title="Pan hard right">R</button>
+                    <div class="daw-pan-row" onclick="event.stopPropagation()">
+                        <span class="daw-pan-side-label">L</span>
+                        <div class="daw-pan-knob ${Math.round(window.dawMasterPan) !== 0 ? 'panned' : ''}" id="daw-pan-knob-master"
+                             onmousedown="window.dawPanKnobStart(event,'master')"
+                             ontouchstart="window.dawPanKnobStart(event,'master')"
+                             ondblclick="window.dawPanKnobReset(event,'master')"
+                             title="Drag up/down to pan • double-click to center">
+                            <div class="daw-pan-knob-dial">
+                                <div class="daw-pan-knob-indicator" style="transform:rotate(${dawPanKnobAngle(window.dawMasterPan)}deg)"></div>
+                            </div>
+                        </div>
+                        <span class="daw-pan-side-label">R</span>
                     </div>
-                    <span class="text-[7px] text-gray-600 uppercase font-black tracking-widest">${window.dawMasterPan === 'L' ? 'left' : window.dawMasterPan === 'R' ? 'right' : 'center'}</span>
+                    <span class="text-[7px] text-gray-600 uppercase font-black tracking-widest" id="daw-pan-label-master">${dawPanLabel(window.dawMasterPan)}</span>
 
                     <div class="flex items-center gap-1.5">
                         <button onclick="event.stopPropagation(); window.toggleDawMasterMute()" class="daw-chip-btn ${window.dawMasterMuted ? 'on-mute' : ''}">M</button>
@@ -8994,11 +9084,20 @@
                         <span class="daw-mixer-io-pill"></span>
                     </div>
 
-                    <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
-                        <button onclick="window.setDawTrackPan('${t.id}', 'L')" class="daw-chip-btn ${t.pan === 'L' ? 'on-solo' : ''}" title="Pan hard left">L</button>
-                        <button onclick="window.setDawTrackPan('${t.id}', 'R')" class="daw-chip-btn ${t.pan === 'R' ? 'on-solo' : ''}" title="Pan hard right">R</button>
+                    <div class="daw-pan-row" onclick="event.stopPropagation()">
+                        <span class="daw-pan-side-label">L</span>
+                        <div class="daw-pan-knob ${Math.round(t.pan || 0) !== 0 ? 'panned' : ''}" id="daw-pan-knob-${t.id}"
+                             onmousedown="window.dawPanKnobStart(event,'${t.id}')"
+                             ontouchstart="window.dawPanKnobStart(event,'${t.id}')"
+                             ondblclick="window.dawPanKnobReset(event,'${t.id}')"
+                             title="Drag up/down to pan • double-click to center">
+                            <div class="daw-pan-knob-dial">
+                                <div class="daw-pan-knob-indicator" style="transform:rotate(${dawPanKnobAngle(t.pan || 0)}deg)"></div>
+                            </div>
+                        </div>
+                        <span class="daw-pan-side-label">R</span>
                     </div>
-                    <span class="text-[7px] text-gray-600 uppercase font-black tracking-widest">${t.pan === 'L' ? 'left' : t.pan === 'R' ? 'right' : 'center'}</span>
+                    <span class="text-[7px] text-gray-600 uppercase font-black tracking-widest" id="daw-pan-label-${t.id}">${dawPanLabel(t.pan || 0)}</span>
 
                     <div class="flex items-center gap-1.5">
                         <button onclick="toggleDawMute('${t.id}')" id="daw-mixer-mute-${t.id}" class="daw-chip-btn ${t.muted ? 'on-mute' : ''}">M</button>
