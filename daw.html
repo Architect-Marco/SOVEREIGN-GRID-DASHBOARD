@@ -33,6 +33,9 @@
         .daw-automation-node { fill: #0a0a0a; stroke: #2fd0ff; stroke-width: 1.6; vector-effect: non-scaling-stroke; cursor: grab; }
         .daw-automation-node:hover { fill: #2fd0ff; filter: drop-shadow(0 0 4px rgba(47,208,255,0.85)); }
         .daw-automation-node:active { cursor: grabbing; }
+
+        /* MIDI Piano Roll — active playhead column highlight */
+        .midi-roll-playhead { outline: 1px solid rgba(47,208,255,0.9); outline-offset: -1px; }
     </style>
 </head>
 </head>
@@ -169,6 +172,7 @@
                         <button class="daw-transport-btn play" onclick="playAllDaw()" id="daw-play-btn" title="Play"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
                         <button class="daw-transport-btn record" onclick="toggleDawRecordArm()" id="daw-record-btn" title="Record"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg></button>
                         <button class="daw-transport-btn" onclick="toggleDawLoop()" id="daw-loop-btn" title="Loop"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></button>
+                        <button class="daw-transport-btn" onclick="window.openMidiPianoRoll()" id="daw-midi-btn" title="MIDI Piano Roll"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M7 4v10M11 4v6M15 4v10M19 4v6"/></svg></button>
                         <div class="daw-position-display"><span id="daw-position">1.1.00</span> / <span id="daw-timer-current">0:00.000</span></div>
                         <span id="daw-status" class="daw-status-pill">[Stopped]</span>
                     </div>
@@ -291,6 +295,45 @@
                 </div>
 
 
+                </div>
+
+                <!-- MIDI PIANO ROLL — pop-out editor, opened via the MIDI icon in the transport bar -->
+                <div id="midi-piano-roll-backdrop" class="hidden-section fixed inset-0 z-50" style="background:rgba(0,0,0,0.75);" onclick="window.closeMidiPianoRoll()"></div>
+                <div id="midi-piano-roll-modal" class="hidden-section fixed inset-0 z-50 flex items-center justify-center p-6" style="pointer-events:none;">
+                    <div class="w-full max-w-4xl overflow-hidden flex flex-col" style="pointer-events:auto; max-height:85vh; background:#0a0a0a; border:1px solid rgba(47,208,255,0.55); box-shadow: 0 0 28px rgba(47,208,255,0.18), inset 0 0 4px rgba(47,208,255,0.35); border-radius:14px;" onclick="event.stopPropagation()">
+
+                        <!-- Title bar, macOS-style chrome, matching the Device Rack pop-out -->
+                        <div class="flex items-center justify-between px-4 py-2.5 border-b border-[rgba(47,208,255,0.22)] flex-shrink-0" style="background:linear-gradient(180deg, rgba(47,208,255,0.07), rgba(47,208,255,0));">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="flex items-center gap-1.5 flex-shrink-0">
+                                    <span class="w-2.5 h-2.5 rounded-full" style="background:#ff5f57;"></span>
+                                    <span class="w-2.5 h-2.5 rounded-full" style="background:#febc2e;"></span>
+                                    <span class="w-2.5 h-2.5 rounded-full" style="background:#28c840;"></span>
+                                </div>
+                                <h3 class="text-[11px] font-black uppercase tracking-[0.15em] neon-blue-text truncate">MIDI Piano Roll</h3>
+                            </div>
+                            <button onclick="window.closeMidiPianoRoll()" class="text-gray-500 hover:text-white flex-shrink-0 ml-3" title="Close">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Transport row: play/stop, clear, bars, BPM readout (mirrors project BPM) -->
+                        <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[rgba(47,208,255,0.15)] flex-shrink-0 flex-wrap">
+                            <button id="midi-roll-play-btn" onclick="window.midiTogglePlay()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[rgba(47,208,255,0.5)] bg-black/40 hover:bg-[#2fd0ff]/15 text-[9px] font-black uppercase tracking-widest neon-blue-text transition-colors">
+                                <svg id="midi-roll-play-icon" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                <span id="midi-roll-play-label">Play</span>
+                            </button>
+                            <button onclick="window.midiClearGrid()" class="px-3 py-1.5 rounded-md border border-white/10 bg-black/40 hover:border-red-400/50 hover:text-red-400 text-[9px] font-black uppercase tracking-widest text-gray-400 transition-colors">Clear</button>
+                            <span class="text-[9px] text-gray-500 uppercase tracking-widest">Synced to project BPM: <span id="midi-roll-bpm-readout" class="neon-blue-text font-black">120</span></span>
+                            <span class="text-[8px] text-gray-600 uppercase tracking-widest ml-auto">Click a cell to add a note · click a key to audition</span>
+                        </div>
+
+                        <!-- Grid: piano keys (left, scrolls vertically in sync) + step grid (right) -->
+                        <div id="midi-roll-scroll" class="flex overflow-auto slick-scroll" style="flex:1; min-height:0;">
+                            <div id="midi-roll-keys" class="flex-shrink-0 sticky left-0 z-10" style="background:#0a0a0a;"></div>
+                            <div id="midi-roll-grid" class="flex-shrink-0"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
