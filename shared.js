@@ -8863,6 +8863,48 @@
 
         window.dawMasterFx = [];
 
+        // ============================================================
+        // MIXER: PANNING (L/C/R) + MASTER MUTE/SOLO
+        // ============================================================
+        window.dawMasterPan = window.dawMasterPan || 'C'; // 'L' | 'C' | 'R'
+        window.dawMasterMuted = window.dawMasterMuted || false;
+        let dawMasterVolumeBeforeMute = null;
+
+        function dawPanToValue(pan) {
+            if (pan === 'L') return -1;
+            if (pan === 'R') return 1;
+            return 0;
+        }
+
+        // Clicking the already-active side resets to Center — a standard L/C/R toggle.
+        window.setDawTrackPan = function(trackId, side) {
+            const track = window.dawTracks.find(t => t.id === trackId);
+            if (!track) return;
+            track.pan = track.pan === side ? 'C' : side;
+            window.renderDawMixer();
+        };
+        window.setDawMasterPan = function(side) {
+            window.dawMasterPan = window.dawMasterPan === side ? 'C' : side;
+            window.renderDawMixer();
+        };
+
+        window.toggleDawMasterMute = function() {
+            window.dawMasterMuted = !window.dawMasterMuted;
+            if (window.dawMasterMuted) {
+                dawMasterVolumeBeforeMute = window.dawMasterVolume ?? 80;
+                window.setDawMasterVolume(0);
+            } else {
+                window.setDawMasterVolume(dawMasterVolumeBeforeMute ?? 80);
+            }
+            window.renderDawMixer();
+        };
+        // Soloing the master bus isn't a meaningful operation (it already contains
+        // the entire mix), so this is a visual toggle only — no audio effect.
+        window.toggleDawMasterSolo = function() {
+            window.dawMasterSolo = !window.dawMasterSolo;
+            window.renderDawMixer();
+        };
+
         window.renderDawMixer = function() {
             const mixer = document.getElementById('daw-mixer');
             if (!mixer) return;
@@ -8882,7 +8924,7 @@
 
                     <div class="daw-mixer-io-row">
                         <span class="daw-mixer-io-label" style="color:#2fd0ff;">I/O</span>
-                        <span class="daw-mixer-io-pill on"></span>
+                        <span class="daw-mixer-io-pill on" title="Master bus — always active"></span>
                     </div>
 
                     <button onclick="window.toggleDawMixerFxBox('master')" class="w-full flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg bg-black/40 border ${masterFxList.length ? 'border-[rgba(47,208,255,0.3)]' : 'border-white/5'} text-[8px] font-black uppercase tracking-widest transition-colors ${masterFxList.length ? 'neon-blue-text' : 'text-gray-600'}">
@@ -8898,12 +8940,15 @@
                         <span class="daw-mixer-io-pill"></span>
                     </div>
 
-                    <div class="daw-knob"></div>
-                    <span class="text-[7px] text-gray-600 uppercase font-black tracking-widest">center</span>
+                    <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+                        <button onclick="window.setDawMasterPan('L')" class="daw-chip-btn ${window.dawMasterPan === 'L' ? 'on-solo' : ''}" title="Pan hard left">L</button>
+                        <button onclick="window.setDawMasterPan('R')" class="daw-chip-btn ${window.dawMasterPan === 'R' ? 'on-solo' : ''}" title="Pan hard right">R</button>
+                    </div>
+                    <span class="text-[7px] text-gray-600 uppercase font-black tracking-widest">${window.dawMasterPan === 'L' ? 'left' : window.dawMasterPan === 'R' ? 'right' : 'center'}</span>
 
                     <div class="flex items-center gap-1.5">
-                        <button class="daw-chip-btn">M</button>
-                        <button class="daw-chip-btn">S</button>
+                        <button onclick="event.stopPropagation(); window.toggleDawMasterMute()" class="daw-chip-btn ${window.dawMasterMuted ? 'on-mute' : ''}">M</button>
+                        <button onclick="event.stopPropagation(); window.toggleDawMasterSolo()" class="daw-chip-btn ${window.dawMasterSolo ? 'on-solo' : ''}">S</button>
                     </div>
 
                     <div class="daw-mixer-value-row">
@@ -8933,7 +8978,7 @@
 
                     <div class="daw-mixer-io-row">
                         <span class="daw-mixer-io-label" style="color:#2fd0ff;">I/O</span>
-                        <span class="daw-mixer-io-pill on"></span>
+                        <span class="daw-mixer-io-pill ${(window.dawFiles[t.id] || window.dawUrls[t.id]) ? 'on' : ''}" title="${(window.dawFiles[t.id] || window.dawUrls[t.id]) ? 'Audio loaded' : 'No audio loaded on this track'}"></span>
                     </div>
 
                     <button onclick="window.toggleDawMixerFxBox('${t.id}')" class="w-full flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg bg-black/40 border ${fxList.length ? 'border-[rgba(47,208,255,0.3)]' : 'border-white/5'} text-[8px] font-black uppercase tracking-widest transition-colors ${fxList.length ? 'neon-blue-text' : 'text-gray-600'}">
@@ -8949,8 +8994,11 @@
                         <span class="daw-mixer-io-pill"></span>
                     </div>
 
-                    <div class="daw-knob"></div>
-                    <span class="text-[7px] text-gray-600 uppercase font-black tracking-widest">center</span>
+                    <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+                        <button onclick="window.setDawTrackPan('${t.id}', 'L')" class="daw-chip-btn ${t.pan === 'L' ? 'on-solo' : ''}" title="Pan hard left">L</button>
+                        <button onclick="window.setDawTrackPan('${t.id}', 'R')" class="daw-chip-btn ${t.pan === 'R' ? 'on-solo' : ''}" title="Pan hard right">R</button>
+                    </div>
+                    <span class="text-[7px] text-gray-600 uppercase font-black tracking-widest">${t.pan === 'L' ? 'left' : t.pan === 'R' ? 'right' : 'center'}</span>
 
                     <div class="flex items-center gap-1.5">
                         <button onclick="toggleDawMute('${t.id}')" id="daw-mixer-mute-${t.id}" class="daw-chip-btn ${t.muted ? 'on-mute' : ''}">M</button>
@@ -11002,6 +11050,12 @@
                 const maxLength = Math.max(...buffers.map(b => b.buffer.length));
                 const offlineCtx = new OfflineAudioContext(2, maxLength, sampleRate);
 
+                // Master bus panner — every track routes through this before hitting
+                // the final output, so Master's own L/C/R setting affects everything.
+                const masterPanner = offlineCtx.createStereoPanner();
+                masterPanner.pan.value = dawPanToValue(window.dawMasterPan);
+                masterPanner.connect(offlineCtx.destination);
+
                 buffers.forEach(({ track, buffer }) => {
                     const source = offlineCtx.createBufferSource();
                     source.buffer = buffer;
@@ -11022,8 +11076,12 @@
                         }
                     });
 
-                    node.connect(outGain);
-                    outGain.connect(offlineCtx.destination);
+                    // Per-track L/C/R panning, set from the mixer strip's L/R buttons.
+                    const panner = offlineCtx.createStereoPanner();
+                    panner.pan.value = dawPanToValue(track.pan);
+                    node.connect(panner);
+                    panner.connect(outGain);
+                    outGain.connect(masterPanner);
                     source.start(0);
                 });
 
