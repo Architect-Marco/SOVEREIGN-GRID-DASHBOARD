@@ -186,7 +186,7 @@
                         <div class="daw-mini-field">4/4</div>
                         <div class="flex items-center gap-1.5 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5">
                             <span class="daw-toolbar-label">BPM</span>
-                            <input type="number" id="daw-bpm" value="120" min="20" max="300" oninput="window.dawBpm = this.value; window.renderDawRuler();" class="w-10 bg-transparent neon-blue-text text-xs font-black outline-none">
+                            <input type="number" id="daw-bpm" value="120" min="20" max="300" oninput="window.dawBpm = this.value; window.renderDawRuler(); window.midiSyncBpm();" class="w-10 bg-transparent neon-blue-text text-xs font-black outline-none">
                         </div>
                         <div class="flex items-center gap-1.5">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-500"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -330,7 +330,7 @@
                                 <span id="midi-roll-play-label">Play</span>
                             </button>
                             <button onclick="window.midiClearGrid()" class="px-3 py-1.5 rounded-md border border-white/10 bg-black/40 hover:border-red-400/50 hover:text-red-400 text-[9px] font-black uppercase tracking-widest text-gray-400 transition-colors">Clear</button>
-                            <span class="text-[9px] text-gray-500 uppercase tracking-widest">Synced to project BPM: <span id="midi-roll-bpm-readout" class="neon-blue-text font-black">120</span></span>
+                            <span class="text-[9px] text-gray-500 uppercase tracking-widest">BPM: <input type="number" id="midi-roll-bpm-input" value="120" min="20" max="300" oninput="window.dawBpm = this.value; window.midiSyncBpm();" class="w-10 bg-transparent neon-blue-text text-[10px] font-black outline-none border-b border-[rgba(47,208,255,0.3)]"></span>
                             <span id="midi-roll-hint" class="text-[8px] text-gray-600 uppercase tracking-widest ml-auto">Click a cell to add a note · click a key to audition</span>
                         </div>
 
