@@ -3866,7 +3866,170 @@
         }
 
         // ============================================================
-        // VOCAL DE-ESSER — Detector (frequency-selective sidechain sensor)
+        // MIDI PIANO ROLL — a pop-out note-grid editor. Two octaves (C3–B4),
+        // 16 steps per bar over 4 bars. Click a cell to add/remove a note,
+        // click a piano key to audition it, Play steps through the grid at
+        // the project's actual BPM (window.dawBpm) using real oscillators.
+        // Standalone editor for now — not yet wired to bounce onto a track.
+        // ============================================================
+        window.dawMidiNotes = window.dawMidiNotes || {}; // key "row-col" -> true if note is active
+        window.dawMidiPlaying = false;
+        let dawMidiPlayTimer = null;
+        let dawMidiPlayCol = 0;
+        let dawMidiAudioCtx = null;
+
+        const MIDI_ROLL_COLS = 64; // 16 steps/bar * 4 bars
+        const MIDI_ROLL_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        // Two octaves, C3 up to B4, rendered top (highest) to bottom (lowest) like a real piano roll.
+        const MIDI_ROLL_ROWS = (() => {
+            const rows = [];
+            for (let octave = 4; octave >= 3; octave--) {
+                for (let i = 11; i >= 0; i--) {
+                    rows.push({ name: MIDI_ROLL_NOTE_NAMES[i] + octave, midi: (octave + 1) * 12 + i, isSharp: MIDI_ROLL_NOTE_NAMES[i].includes('#') });
+                }
+            }
+            return rows;
+        })();
+
+        function midiNoteToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+
+        function midiAudioCtx() {
+            if (!dawMidiAudioCtx) {
+                try { dawMidiAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (err) { console.error('MIDI audio context failed:', err); }
+            }
+            return dawMidiAudioCtx;
+        }
+
+        window.midiAuditionKey = function(midi) {
+            const ctx = midiAudioCtx();
+            if (!ctx) return;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.value = midiNoteToFreq(midi);
+            gain.gain.setValueAtTime(0.18, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.35);
+        };
+
+        window.midiToggleCell = function(row, col) {
+            const key = `${row}-${col}`;
+            if (window.dawMidiNotes[key]) delete window.dawMidiNotes[key];
+            else window.dawMidiNotes[key] = true;
+            const cell = document.getElementById(`midi-cell-${row}-${col}`);
+            if (cell) cell.style.background = window.dawMidiNotes[key] ? '#2fd0ff' : '';
+            if (window.dawMidiNotes[key]) window.midiAuditionKey(MIDI_ROLL_ROWS[row].midi);
+        };
+
+        window.midiClearGrid = function() {
+            window.dawMidiNotes = {};
+            window.renderMidiPianoRoll();
+        };
+
+        window.midiTogglePlay = function() {
+            if (window.dawMidiPlaying) window.midiStopPlay();
+            else window.midiStartPlay();
+        };
+
+        window.midiStartPlay = function() {
+            const ctx = midiAudioCtx();
+            if (!ctx) return;
+            window.dawMidiPlaying = true;
+            dawMidiPlayCol = 0;
+            const playIcon = document.getElementById('midi-roll-play-icon');
+            const playLabel = document.getElementById('midi-roll-play-label');
+            if (playIcon) playIcon.innerHTML = '<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>';
+            if (playLabel) playLabel.innerText = 'Stop';
+
+            const bpm = parseFloat(window.dawBpm) || 120;
+            const stepDur = (60 / bpm) / 4; // 16th-note step, 4/4 time
+            const stepMs = stepDur * 1000;
+
+            const playStep = () => {
+                if (!window.dawMidiPlaying) return;
+                // Highlight the playhead column
+                document.querySelectorAll('.midi-roll-playhead').forEach(el => el.classList.remove('midi-roll-playhead'));
+                document.querySelectorAll(`[data-col="${dawMidiPlayCol}"]`).forEach(el => el.classList.add('midi-roll-playhead'));
+
+                MIDI_ROLL_ROWS.forEach((rowDef, row) => {
+                    if (window.dawMidiNotes[`${row}-${dawMidiPlayCol}`]) {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sawtooth';
+                        osc.frequency.value = midiNoteToFreq(rowDef.midi);
+                        gain.gain.setValueAtTime(0.16, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + stepDur * 0.9);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start();
+                        osc.stop(ctx.currentTime + stepDur * 0.9);
+                    }
+                });
+
+                dawMidiPlayCol = (dawMidiPlayCol + 1) % MIDI_ROLL_COLS;
+            };
+
+            playStep();
+            dawMidiPlayTimer = setInterval(playStep, stepMs);
+        };
+
+        window.midiStopPlay = function() {
+            window.dawMidiPlaying = false;
+            if (dawMidiPlayTimer) { clearInterval(dawMidiPlayTimer); dawMidiPlayTimer = null; }
+            document.querySelectorAll('.midi-roll-playhead').forEach(el => el.classList.remove('midi-roll-playhead'));
+            const playIcon = document.getElementById('midi-roll-play-icon');
+            const playLabel = document.getElementById('midi-roll-play-label');
+            if (playIcon) playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+            if (playLabel) playLabel.innerText = 'Play';
+        };
+
+        window.renderMidiPianoRoll = function() {
+            const keysEl = document.getElementById('midi-roll-keys');
+            const gridEl = document.getElementById('midi-roll-grid');
+            const bpmReadout = document.getElementById('midi-roll-bpm-readout');
+            if (!keysEl || !gridEl) return;
+            if (bpmReadout) bpmReadout.innerText = parseFloat(window.dawBpm) || 120;
+
+            const rowH = 18, colW = 22;
+
+            keysEl.innerHTML = MIDI_ROLL_ROWS.map((r, row) => `
+                <div onclick="window.midiAuditionKey(${r.midi})" class="flex items-center justify-end pr-2 cursor-pointer select-none border-b border-white/5 hover:bg-[#2fd0ff]/15 transition-colors"
+                     style="height:${rowH}px; width:52px; background:${r.isSharp ? '#050505' : '#0d0d0d'};">
+                    <span class="text-[7px] font-black tracking-wide ${r.isSharp ? 'text-gray-600' : 'text-gray-400'}">${r.name}</span>
+                </div>`).join('');
+
+            let gridHtml = `<div style="position:relative; width:${MIDI_ROLL_COLS * colW}px;">`;
+            MIDI_ROLL_ROWS.forEach((r, row) => {
+                gridHtml += `<div class="flex" style="height:${rowH}px;">`;
+                for (let col = 0; col < MIDI_ROLL_COLS; col++) {
+                    const active = window.dawMidiNotes[`${row}-${col}`];
+                    const barEdge = col % 16 === 0 ? 'border-l-2 border-l-[rgba(47,208,255,0.3)]' : (col % 4 === 0 ? 'border-l border-l-white/10' : 'border-l border-l-white/5');
+                    gridHtml += `<div id="midi-cell-${row}-${col}" data-col="${col}" onclick="window.midiToggleCell(${row}, ${col})"
+                        class="flex-shrink-0 border-b border-b-white/5 ${barEdge} cursor-pointer hover:bg-[#2fd0ff]/20 transition-colors"
+                        style="width:${colW}px; height:${rowH}px; background:${active ? '#2fd0ff' : (r.isSharp ? 'rgba(255,255,255,0.02)' : 'transparent')};"></div>`;
+                }
+                gridHtml += `</div>`;
+            });
+            gridHtml += `</div>`;
+            gridEl.innerHTML = gridHtml;
+        };
+
+        window.openMidiPianoRoll = function() {
+            document.getElementById('midi-piano-roll-backdrop').classList.remove('hidden-section');
+            document.getElementById('midi-piano-roll-modal').classList.remove('hidden-section');
+            window.renderMidiPianoRoll();
+        };
+
+        window.closeMidiPianoRoll = function() {
+            window.midiStopPlay();
+            document.getElementById('midi-piano-roll-backdrop').classList.add('hidden-section');
+            document.getElementById('midi-piano-roll-modal').classList.add('hidden-section');
+        };
+
+
         // + Suppressor (frequency-selective gain reduction), matching a
         // classic dual-graph de-esser layout: detection curve on top,
         // suppression curve below, with a horizontal Smoothing slider.
