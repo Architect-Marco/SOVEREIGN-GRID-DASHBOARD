@@ -4006,6 +4006,16 @@
             else window.midiAuditionKey(rowDef.midi);
         };
 
+        // Keeps the main DAW toolbar's BPM field and the MIDI Piano Roll's BPM
+        // field showing the same value, whichever one you actually edit.
+        window.midiSyncBpm = function() {
+            const bpm = parseFloat(window.dawBpm) || 120;
+            const toolbarInput = document.getElementById('daw-bpm');
+            const rollInput = document.getElementById('midi-roll-bpm-input');
+            if (toolbarInput && document.activeElement !== toolbarInput) toolbarInput.value = bpm;
+            if (rollInput && document.activeElement !== rollInput) rollInput.value = bpm;
+        };
+
         window.midiSetMode = function(mode) {
             if (mode !== 'piano' && mode !== 'drum') return;
             window.midiStopPlay();
@@ -4113,9 +4123,9 @@
         window.renderMidiPianoRoll = function() {
             const keysEl = document.getElementById('midi-roll-keys');
             const gridEl = document.getElementById('midi-roll-grid');
-            const bpmReadout = document.getElementById('midi-roll-bpm-readout');
+            const bpmInput = document.getElementById('midi-roll-bpm-input');
             if (!keysEl || !gridEl) return;
-            if (bpmReadout) bpmReadout.innerText = parseFloat(window.dawBpm) || 120;
+            if (bpmInput) bpmInput.value = parseFloat(window.dawBpm) || 120;
 
             const isDrum = window.midiRollMode === 'drum';
             const rows = midiActiveRows();
@@ -10865,6 +10875,14 @@
             if (e.code !== 'Space') return;
             const activeTag = document.activeElement ? document.activeElement.tagName : '';
             if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable)) return;
+            // If the MIDI Piano Roll / Drum-X pop-out is open, Space controls its
+            // own transport instead of the main DAW's, since it's the focused surface.
+            const midiModal = document.getElementById('midi-piano-roll-modal');
+            if (midiModal && !midiModal.classList.contains('hidden-section')) {
+                e.preventDefault();
+                window.midiTogglePlay();
+                return;
+            }
             const dawView = document.getElementById('view-daw');
             if (!dawView || dawView.classList.contains('hidden-section')) return;
             e.preventDefault();
