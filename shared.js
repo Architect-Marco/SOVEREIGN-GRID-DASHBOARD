@@ -3866,13 +3866,17 @@
         }
 
         // ============================================================
-        // MIDI PIANO ROLL — a pop-out note-grid editor. Two octaves (C3–B4),
-        // 16 steps per bar over 4 bars. Click a cell to add/remove a note,
-        // click a piano key to audition it, Play steps through the grid at
-        // the project's actual BPM (window.dawBpm) using real oscillators.
+        // MIDI PIANO ROLL — a pop-out note-grid editor with two modes sharing
+        // the same grid engine, BPM sync, and playhead:
+        //   'piano' — two octaves (C3-B4), real oscillator notes
+        //   'drum'  — Sovereign Drum-X: Kick/Snare/Hi-Hat, real synthesized hits
+        // Both: 16 steps per bar over 4 bars, click a cell to add/remove a hit,
+        // Play steps through the grid at the project's actual BPM (window.dawBpm).
         // Standalone editor for now — not yet wired to bounce onto a track.
         // ============================================================
-        window.dawMidiNotes = window.dawMidiNotes || {}; // key "row-col" -> true if note is active
+        window.dawMidiNotes = window.dawMidiNotes || {}; // piano mode: key "row-col" -> true
+        window.dawDrumNotes = window.dawDrumNotes || {}; // drum mode: key "row-col" -> true
+        window.midiRollMode = window.midiRollMode || 'piano';
         window.dawMidiPlaying = false;
         let dawMidiPlayTimer = null;
         let dawMidiPlayCol = 0;
@@ -3890,6 +3894,14 @@
             }
             return rows;
         })();
+        const DRUM_X_ROWS = [
+            { name: 'HI-HAT', type: 'hihat' },
+            { name: 'SNARE', type: 'snare' },
+            { name: 'KICK', type: 'kick' }
+        ];
+
+        function midiActiveRows() { return window.midiRollMode === 'drum' ? DRUM_X_ROWS : MIDI_ROLL_ROWS; }
+        function midiActiveNotes() { return window.midiRollMode === 'drum' ? window.dawDrumNotes : window.dawMidiNotes; }
 
         function midiNoteToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
 
@@ -3915,17 +3927,125 @@
             osc.stop(ctx.currentTime + 0.35);
         };
 
+        // Sovereign Drum-X — real Web Audio synthesis, no samples.
+        // Kick: pitched sine sweeping down. Snare: noise burst + tonal body.
+        // Hi-Hat: short high-passed noise burst.
+        function dawDrumPlayKick(ctx) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.9, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.2);
+        }
+        function dawDrumMakeNoiseBuffer(ctx, durationSec) {
+            const bufferSize = Math.max(1, Math.round(ctx.sampleRate * durationSec));
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            return buffer;
+        }
+        function dawDrumPlaySnare(ctx) {
+            const noise = ctx.createBufferSource();
+            noise.buffer = dawDrumMakeNoiseBuffer(ctx, 0.2);
+            const noiseFilter = ctx.createBiquadFilter();
+            noiseFilter.type = 'highpass';
+            noiseFilter.frequency.value = 1000;
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(0.7, ctx.currentTime);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(ctx.destination);
+            noise.start();
+
+            const osc = ctx.createOscillator();
+            const oscGain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = 180;
+            oscGain.gain.setValueAtTime(0.4, ctx.currentTime);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+            osc.connect(oscGain);
+            oscGain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.12);
+        }
+        function dawDrumPlayHihat(ctx) {
+            const noise = ctx.createBufferSource();
+            noise.buffer = dawDrumMakeNoiseBuffer(ctx, 0.08);
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = 7000;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.35, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+            noise.start();
+        }
+        function dawDrumTrigger(ctx, type) {
+            if (type === 'kick') dawDrumPlayKick(ctx);
+            else if (type === 'snare') dawDrumPlaySnare(ctx);
+            else if (type === 'hihat') dawDrumPlayHihat(ctx);
+        }
+
+        // Unified audition for either mode — called when clicking a row label
+        // or when a new note/hit is placed on the grid.
+        window.midiAuditionRow = function(row) {
+            const ctx = midiAudioCtx();
+            if (!ctx) return;
+            const rowDef = midiActiveRows()[row];
+            if (!rowDef) return;
+            if (window.midiRollMode === 'drum') dawDrumTrigger(ctx, rowDef.type);
+            else window.midiAuditionKey(rowDef.midi);
+        };
+
+        window.midiSetMode = function(mode) {
+            if (mode !== 'piano' && mode !== 'drum') return;
+            window.midiStopPlay();
+            window.midiRollMode = mode;
+            const title = document.getElementById('midi-roll-title');
+            if (title) title.innerText = mode === 'drum' ? 'Sovereign Drum-X' : 'MIDI Piano Roll';
+            const hint = document.getElementById('midi-roll-hint');
+            if (hint) hint.innerText = mode === 'drum' ? 'Click a cell to add a hit · click a label to audition' : 'Click a cell to add a note · click a key to audition';
+            const pianoTab = document.getElementById('midi-mode-piano-tab');
+            const drumTab = document.getElementById('midi-mode-drum-tab');
+            if (pianoTab) {
+                pianoTab.classList.toggle('neon-blue-text', mode === 'piano');
+                pianoTab.classList.toggle('bg-[rgba(47,208,255,0.08)]', mode === 'piano');
+                pianoTab.classList.toggle('border-[rgba(47,208,255,0.4)]', mode === 'piano');
+                pianoTab.classList.toggle('text-gray-500', mode !== 'piano');
+                pianoTab.classList.toggle('border-transparent', mode !== 'piano');
+            }
+            if (drumTab) {
+                drumTab.classList.toggle('neon-blue-text', mode === 'drum');
+                drumTab.classList.toggle('bg-[rgba(47,208,255,0.08)]', mode === 'drum');
+                drumTab.classList.toggle('border-[rgba(47,208,255,0.4)]', mode === 'drum');
+                drumTab.classList.toggle('text-gray-500', mode !== 'drum');
+                drumTab.classList.toggle('border-transparent', mode !== 'drum');
+            }
+            window.renderMidiPianoRoll();
+        };
+
         window.midiToggleCell = function(row, col) {
+            const notes = midiActiveNotes();
             const key = `${row}-${col}`;
-            if (window.dawMidiNotes[key]) delete window.dawMidiNotes[key];
-            else window.dawMidiNotes[key] = true;
+            if (notes[key]) delete notes[key];
+            else notes[key] = true;
             const cell = document.getElementById(`midi-cell-${row}-${col}`);
-            if (cell) cell.style.background = window.dawMidiNotes[key] ? '#2fd0ff' : '';
-            if (window.dawMidiNotes[key]) window.midiAuditionKey(MIDI_ROLL_ROWS[row].midi);
+            if (cell) cell.style.background = notes[key] ? '#2fd0ff' : '';
+            if (notes[key]) window.midiAuditionRow(row);
         };
 
         window.midiClearGrid = function() {
-            window.dawMidiNotes = {};
+            if (window.midiRollMode === 'drum') window.dawDrumNotes = {};
+            else window.dawMidiNotes = {};
             window.renderMidiPianoRoll();
         };
 
@@ -3950,12 +4070,16 @@
 
             const playStep = () => {
                 if (!window.dawMidiPlaying) return;
-                // Highlight the playhead column
                 document.querySelectorAll('.midi-roll-playhead').forEach(el => el.classList.remove('midi-roll-playhead'));
                 document.querySelectorAll(`[data-col="${dawMidiPlayCol}"]`).forEach(el => el.classList.add('midi-roll-playhead'));
 
-                MIDI_ROLL_ROWS.forEach((rowDef, row) => {
-                    if (window.dawMidiNotes[`${row}-${dawMidiPlayCol}`]) {
+                const rows = midiActiveRows();
+                const notes = midiActiveNotes();
+                rows.forEach((rowDef, row) => {
+                    if (!notes[`${row}-${dawMidiPlayCol}`]) return;
+                    if (window.midiRollMode === 'drum') {
+                        dawDrumTrigger(ctx, rowDef.type);
+                    } else {
                         const osc = ctx.createOscillator();
                         const gain = ctx.createGain();
                         osc.type = 'sawtooth';
@@ -3993,23 +4117,26 @@
             if (!keysEl || !gridEl) return;
             if (bpmReadout) bpmReadout.innerText = parseFloat(window.dawBpm) || 120;
 
-            const rowH = 18, colW = 22;
+            const isDrum = window.midiRollMode === 'drum';
+            const rows = midiActiveRows();
+            const notes = midiActiveNotes();
+            const rowH = isDrum ? 40 : 18, colW = 22;
 
-            keysEl.innerHTML = MIDI_ROLL_ROWS.map((r, row) => `
-                <div onclick="window.midiAuditionKey(${r.midi})" class="flex items-center justify-end pr-2 cursor-pointer select-none border-b border-white/5 hover:bg-[#2fd0ff]/15 transition-colors"
-                     style="height:${rowH}px; width:52px; background:${r.isSharp ? '#050505' : '#0d0d0d'};">
-                    <span class="text-[7px] font-black tracking-wide ${r.isSharp ? 'text-gray-600' : 'text-gray-400'}">${r.name}</span>
+            keysEl.innerHTML = rows.map((r, row) => `
+                <div onclick="window.midiAuditionRow(${row})" class="flex items-center justify-end pr-2 cursor-pointer select-none border-b border-white/5 hover:bg-[#2fd0ff]/15 transition-colors"
+                     style="height:${rowH}px; width:${isDrum ? 64 : 52}px; background:${!isDrum && r.isSharp ? '#050505' : '#0d0d0d'};">
+                    <span class="text-[${isDrum ? '8' : '7'}px] font-black tracking-wide ${!isDrum && r.isSharp ? 'text-gray-600' : 'text-gray-400'}">${r.name}</span>
                 </div>`).join('');
 
             let gridHtml = `<div style="position:relative; width:${MIDI_ROLL_COLS * colW}px;">`;
-            MIDI_ROLL_ROWS.forEach((r, row) => {
+            rows.forEach((r, row) => {
                 gridHtml += `<div class="flex" style="height:${rowH}px;">`;
                 for (let col = 0; col < MIDI_ROLL_COLS; col++) {
-                    const active = window.dawMidiNotes[`${row}-${col}`];
+                    const active = notes[`${row}-${col}`];
                     const barEdge = col % 16 === 0 ? 'border-l-2 border-l-[rgba(47,208,255,0.3)]' : (col % 4 === 0 ? 'border-l border-l-white/10' : 'border-l border-l-white/5');
                     gridHtml += `<div id="midi-cell-${row}-${col}" data-col="${col}" onclick="window.midiToggleCell(${row}, ${col})"
                         class="flex-shrink-0 border-b border-b-white/5 ${barEdge} cursor-pointer hover:bg-[#2fd0ff]/20 transition-colors"
-                        style="width:${colW}px; height:${rowH}px; background:${active ? '#2fd0ff' : (r.isSharp ? 'rgba(255,255,255,0.02)' : 'transparent')};"></div>`;
+                        style="width:${colW}px; height:${rowH}px; background:${active ? '#2fd0ff' : (!isDrum && r.isSharp ? 'rgba(255,255,255,0.02)' : 'transparent')};"></div>`;
                 }
                 gridHtml += `</div>`;
             });
@@ -4020,7 +4147,7 @@
         window.openMidiPianoRoll = function() {
             document.getElementById('midi-piano-roll-backdrop').classList.remove('hidden-section');
             document.getElementById('midi-piano-roll-modal').classList.remove('hidden-section');
-            window.renderMidiPianoRoll();
+            window.midiSetMode(window.midiRollMode || 'piano');
         };
 
         window.closeMidiPianoRoll = function() {
@@ -4029,7 +4156,8 @@
             document.getElementById('midi-piano-roll-modal').classList.add('hidden-section');
         };
 
-
+        // ============================================================
+        // VOCAL DE-ESSER — Detector (frequency-selective sidechain sensor)
         // + Suppressor (frequency-selective gain reduction), matching a
         // classic dual-graph de-esser layout: detection curve on top,
         // suppression curve below, with a horizontal Smoothing slider.
