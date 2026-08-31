@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: sick-team-lab-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: AETHERWAVE_API_KEY
+        sync: false
+      - key: AUDD_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGIN
+        sync: false
+      - key: REJECT_THRESHOLD
+        value: "85"
+      - key: FLAG_THRESHOLD
+        value: "40"
+      - key: AETHERWAVE_RATE_LIMIT
+        value: "5"
+      - key: AETHERWAVE_SESSION_CAP
+        value: "20"
