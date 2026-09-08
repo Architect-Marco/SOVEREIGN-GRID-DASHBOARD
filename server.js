@@ -7,6 +7,7 @@ import path from 'node:path';
 import { nanoid } from 'nanoid';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
+import vocalRouter from './vocal-render.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,6 +51,7 @@ const db = {
 
 app.use(express.json());
 app.use(express.static('public'));
+app.use(vocalRouter);
 
 // ---------------------------------------------------------------------------
 // AetherWave integration — AI music generation bridge
